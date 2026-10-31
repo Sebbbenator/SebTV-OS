@@ -234,6 +234,11 @@ public class MainActivity extends Activity {
             backgrounds.importShared();
             loadBackground(false);
             refreshApps();
+            // Indstillinger er ændret: gem profilen på Jellyfin, hvis den bruges
+            Net.async(() -> {
+                ProfileCode.pushToJellyfin(this);
+                return null;
+            }, null);
         }
         refreshRemote();
         handler.removeCallbacks(tick);

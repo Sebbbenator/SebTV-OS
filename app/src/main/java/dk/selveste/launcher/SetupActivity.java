@@ -87,6 +87,11 @@ public class SetupActivity extends Activity {
         box.addView(heart);
         heading("Hej!", "Lad os gøre tv'et til dit. Det tager et minut, og alt kan ændres bagefter.");
         box.addView(Ui.row(this, "Kom i gang", "", accent(), v -> show(1)));
+        box.addView(Ui.row(this, "Jeg har en profilkode", "Indsæt den fra telefonen", accent(), v -> {
+            // Telefonsiden har et felt til koden; når den er lagt ind, er guiden overstået
+            startActivity(new android.content.Intent(this, UploadActivity.class));
+            finish();
+        }));
     }
 
     private void name() {

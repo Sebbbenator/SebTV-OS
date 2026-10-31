@@ -66,7 +66,7 @@ public class UploadActivity extends Activity {
         pin.setTypeface(Typeface.MONOSPACE);
         pin.setLetterSpacing(0.3f);
         col.addView(pin);
-        status = Ui.text(this, "Her lægger du baggrunde op, slår funktioner til og fra og indsætter Home Assistant token.", 16, Ui.TEXT_DIM);
+        status = Ui.text(this, "Her lægger du baggrunde op, logger ind på Home Assistant og gemmer eller indlæser din profilkode.", 16, Ui.TEXT_DIM);
         status.setPadding(0, Ui.dp(this, 24), 0, 0);
         col.addView(status);
         setContentView(root);

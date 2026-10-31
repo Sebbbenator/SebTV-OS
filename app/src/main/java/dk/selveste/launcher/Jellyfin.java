@@ -118,6 +118,11 @@ final class Jellyfin {
         return found;
     }
 
+    /** Rå kald til serveren med brugerens login (bruges af profil synk). */
+    String raw(String method, String path, String body) throws IOException {
+        return Net.request(method, prefs.jfUrl() + path, headers(), body);
+    }
+
     // Quick Connect
 
     JSONObject initiateQuickConnect() throws Exception {

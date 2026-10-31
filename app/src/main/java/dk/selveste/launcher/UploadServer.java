@@ -200,6 +200,26 @@ final class UploadServer {
             backgrounds.delete(query.get("name"));
             notifyChanged();
             send(out, 200, "application/json", bytes(state().toString()));
+        } else if (path.equals("/api/profile-code")) {
+            send(out, 200, "application/json", bytes(new JSONObject().put("code", ProfileCode.export(context)).toString()));
+        } else if (path.equals("/api/profile-import") && method.equals("POST")) {
+            try {
+                ProfileCode.apply(context, new String(body, StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                send(out, 400, "text/plain", bytes("Koden kunne ikke læses: " + e.getMessage()));
+                return;
+            }
+            notifyChanged();
+            send(out, 200, "application/json", bytes(state().toString()));
+        } else if (path.equals("/api/ha-login-url")) {
+            String haUrl = query.getOrDefault("haUrl", prefs.haUrl());
+            if (haUrl == null || haUrl.trim().isEmpty()) {
+                send(out, 400, "text/plain", bytes("Skriv Home Assistant adressen først"));
+                return;
+            }
+            String host = query.getOrDefault("host", "");
+            if (!host.matches("[0-9a-zA-Z.:\\[\\]-]+")) host = UploadActivity.ip() + ":" + PORT;
+            send(out, 200, "application/json", bytes(new JSONObject().put("url", HaLogin.startUrl(haUrl, "http://" + host)).toString()));
         } else if (path.equals("/api/settings") && method.equals("POST")) {
             JSONObject j = new JSONObject(new String(body, StandardCharsets.UTF_8));
             if (j.has("mode")) prefs.setBgMode(j.getString("mode"));
