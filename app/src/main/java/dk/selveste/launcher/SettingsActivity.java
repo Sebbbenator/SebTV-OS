@@ -139,6 +139,7 @@ public class SettingsActivity extends Activity {
         if (jf.configured()) {
             list.addView(Ui.row(this, "Jellyfin", "Forbundet, tryk for at logge ud", c, v -> {
                 prefs.clearJellyfin();
+                RemoteCache.clear(this);
                 build();
             }));
         } else {
@@ -285,6 +286,7 @@ public class SettingsActivity extends Activity {
             list.addView(Ui.row(this, "Log ud", "", c, v -> {
                 prefs.clearHaToken();
                 HaLogin.forget(prefs);
+                RemoteCache.clear(this);
                 build();
             }));
         }
@@ -475,7 +477,7 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.header(this, "VERSION", c));
         list.addView(Ui.row(this, "Installeret", Updater.installedName(this), c, v -> { }));
         list.addView(Ui.row(this, "Nyt i denne version", "Vis", c,
-                v -> MainActivity.showChangelog(this, Updater.installedVersion(this))));
+                v -> AppUpdates.showChangelog(this, Updater.installedVersion(this))));
         list.addView(Ui.row(this, "Søg efter opdatering", "", c, v -> checkUpdate()));
         list.addView(Ui.row(this, "Opdateringskanal", Updater.testChannel(this) ? "Test (nyeste, før andre)" : "Stabil", c, v -> {
             prefs.setTestChannel(!Updater.testChannel(this));
@@ -746,7 +748,7 @@ public class SettingsActivity extends Activity {
             } else if (r == null) {
                 Toast.makeText(this, "Du har den nyeste version", Toast.LENGTH_SHORT).show();
             } else {
-                MainActivity.installUpdate(this, r);
+                AppUpdates.installUpdate(this, r);
             }
         });
     }

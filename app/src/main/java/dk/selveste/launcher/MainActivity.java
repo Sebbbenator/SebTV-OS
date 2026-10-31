@@ -65,7 +65,7 @@ public class MainActivity extends Activity {
             KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT};
 
-    private final Handler handler = new Handler(Looper.getMainLooper());
+    final Handler handler = new Handler(Looper.getMainLooper());
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", DANISH);
     private final SimpleDateFormat secondsFormat = new SimpleDateFormat("HH:mm:ss", DANISH);
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("EEEE d. MMMM", DANISH);
@@ -77,10 +77,10 @@ public class MainActivity extends Activity {
         }
     };
 
-    private Prefs prefs;
+    Prefs prefs;
     private AppRepository repository;
-    private Backgrounds backgrounds;
-    private HomeAssistant ha;
+    Backgrounds backgrounds;
+    HomeAssistant ha;
     private Jellyfin jf;
 
     private FrameLayout root;
@@ -103,7 +103,7 @@ public class MainActivity extends Activity {
             sectionTools, sectionRest, sectionMore, moreBox;
     private boolean moreOpen;
     private final java.util.Set<String> photosFetched = new java.util.HashSet<>();
-    private Map<String, JSONObject> lastStates;
+    Map<String, JSONObject> lastStates;
     private boolean menuHandled;
     private long lastBack;
     private final Runnable menuLongPress = () -> {
@@ -194,6 +194,7 @@ public class MainActivity extends Activity {
         setContentView(buildLayout());
         applyLook();
         updateMore();
+        showCached();
         NightUpdate.schedule(this);
         Net.async(() -> {
             Updater.cleanUp(this);
@@ -244,8 +245,8 @@ public class MainActivity extends Activity {
         handler.removeCallbacks(tick);
         handler.post(tick);
         bootIfWoken();
-        maybeCheckUpdate();
-        maybeShowChangelog();
+        AppUpdates.maybeCheckUpdate(this, prefs);
+        AppUpdates.maybeShowChangelog(this, prefs);
     }
 
     @Override
@@ -332,97 +333,9 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    /** Hurtigpanel i højre side: det man oftest skal bruge, uden at gå ind i menuer. */
+    /** Hurtigpanel i højre side (langt tryk på ☰), se QuickPanel. */
     private void showQuickPanel() {
-        android.app.Dialog d = new android.app.Dialog(this);
-        d.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
-        int c = currentAccent();
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(24), dp(8), dp(24), dp(24));
-        box.setBackground(Ui.card(this, Ui.bg(0.94f), Ui.CARD_STROKE, 1));
-        box.addView(Ui.header(this, "HURTIGPANEL", c));
-
-        Map<String, JSONObject> states = lastStates;
-        JSONObject mode = states == null ? null : states.get(prefs.haModes());
-        JSONObject modeAttrs = mode == null ? null : mode.optJSONObject("attributes");
-        JSONArray modeOptions = modeAttrs == null ? null : modeAttrs.optJSONArray("options");
-        if (modeOptions != null && modeOptions.length() > 0) {
-            box.addView(Ui.row(this, "Tilstand", mode.optString("state"), c, v -> {
-                d.dismiss();
-                chooseOption(prefs.haModes(), "Tilstand", modeOptions, mode.optString("state"));
-            }));
-        }
-        // Hurtigknapper der kan tændes og slukkes, fx lys sync
-        for (String id : Prefs.split(prefs.haButtons())) {
-            JSONObject st = states == null ? null : states.get(id);
-            String state = st == null ? "" : st.optString("state");
-            if (!"on".equals(state) && !"off".equals(state)) continue;
-            boolean on = "on".equals(state);
-            View[] row = new View[1];
-            row[0] = Ui.row(this, HomeAssistant.friendly(st, id), on ? "Til" : "Fra", c, v -> {
-                Ui.setValue(row[0], "...");
-                Net.async(() -> {
-                    ha.press(id);
-                    return true;
-                }, (ok, err) -> {
-                    Ui.setValue(row[0], err != null ? "Fejl" : (on ? "Fra" : "Til"));
-                    handler.postDelayed(this::refreshRemote, 700);
-                });
-            });
-            box.addView(row[0]);
-        }
-        if ("billeder".equals(prefs.str("bg_source", "billeder")) && backgrounds.list().size() > 1) {
-            box.addView(Ui.row(this, "Næste baggrund", "", c, v -> {
-                List<String> all = backgrounds.list();
-                prefs.setBgCurrent(backgrounds.next(all, prefs.bgCurrent() == null ? all.get(0) : prefs.bgCurrent()));
-                loadBackground(false);
-            }));
-        }
-        box.addView(Ui.row(this, "Rolig tilstand", "", c, v -> {
-            d.dismiss();
-            setAmbient(true);
-        }));
-        box.addView(Ui.row(this, "Sov nu", "", c, v -> {
-            d.dismiss();
-            FireTvMenu.sleep(this);
-        }));
-        box.addView(Ui.row(this, "Wi-Fi", "", c, v -> {
-            d.dismiss();
-            FireTvMenu.open(this, Settings.ACTION_WIFI_SETTINGS);
-        }));
-        box.addView(Ui.row(this, "Bluetooth og fjernbetjening", "", c, v -> {
-            d.dismiss();
-            FireTvMenu.open(this, Settings.ACTION_BLUETOOTH_SETTINGS);
-        }));
-        box.addView(Ui.row(this, "Alle indstillinger", "", c, v -> {
-            d.dismiss();
-            startActivity(new Intent(this, SettingsActivity.class));
-        }));
-
-        ScrollView sv = new ScrollView(this);
-        sv.addView(box);
-        d.setContentView(sv);
-        // Menuknappen lukker panelet igen, men ikke ved det første slip, der åbnede det
-        boolean[] firstUp = {true};
-        d.setOnKeyListener((dialog, keyCode, e) -> {
-            if (keyCode != KeyEvent.KEYCODE_MENU) return false;
-            if (e.getAction() == KeyEvent.ACTION_UP) {
-                if (firstUp[0]) firstUp[0] = false;
-                else dialog.dismiss();
-            }
-            return true;
-        });
-        android.view.Window w = d.getWindow();
-        if (w != null) {
-            w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-            w.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-            w.setLayout(dp(480), ViewGroup.LayoutParams.WRAP_CONTENT);
-            w.setDimAmount(0.45f);
-        }
-        d.show();
-        View first = firstFocusable(box);
-        if (first != null) first.requestFocus();
+        QuickPanel.show(this);
     }
 
     /** "Mere" kortet: viser eller skjuler rækkerne under Tilstande. */
@@ -659,7 +572,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static View firstFocusable(View v) {
+    static View firstFocusable(View v) {
         if (v.isFocusable() && v.getVisibility() == View.VISIBLE) return v;
         if (v instanceof ViewGroup) {
             ViewGroup g = (ViewGroup) v;
@@ -859,7 +772,32 @@ public class MainActivity extends Activity {
 
     // Jellyfin og Home Assistant
 
-    private void refreshRemote() {
+    /** Sidste kendte forside fra disken, vist med det samme ved start; refreshRemote henter det nye bagefter. */
+    private void showCached() {
+        if (jf.configured() && Features.on(prefs, Features.RESUME)) {
+            List<Jellyfin.Item> r = RemoteCache.loadItems(this, "resume");
+            if (r != null) fillMedia(sectionResume, "FORTSÆT AT SE", r, true, true);
+        }
+        if (jf.configured() && Features.on(prefs, Features.LATEST)) {
+            List<Jellyfin.Item> l = RemoteCache.loadItems(this, "latest");
+            if (l != null) fillMedia(sectionLatest, "NYT PÅ SERVEREN", l, false, false);
+        }
+        if (ha.configured()) {
+            Map<String, JSONObject> states = RemoteCache.loadStates(this);
+            if (states != null) {
+                lastStates = states;
+                fillStatus(states);
+                fillModes(states);
+                fillHaButtons(states);
+            }
+            if (Features.on(prefs, Features.UPCOMING)) {
+                List<HomeAssistant.Upcoming> u = RemoteCache.loadUpcoming(this);
+                if (u != null) fillUpcoming(u);
+            }
+        }
+    }
+
+    void refreshRemote() {
         lastRemoteRefresh = System.currentTimeMillis();
         refreshNowPlaying();
         if (jf.configured()) {
@@ -876,13 +814,19 @@ public class MainActivity extends Activity {
                     return items;
                 }, (items, err) -> {
                     if (items == null && err != null) statusRow(sectionResume, "FORTSÆT AT SE", "Jellyfin svarer ikke");
-                    else fillMedia(sectionResume, "FORTSÆT AT SE", items, true, true);
+                    else {
+                        fillMedia(sectionResume, "FORTSÆT AT SE", items, true, true);
+                        if (items != null) RemoteCache.saveItems(this, "resume", items);
+                    }
                     // Serveren svarer ikke på den gemte adresse: prøv LAN og Tailscale til næste gang
                     if (err instanceof java.io.IOException) Net.async(jf::findServer, null);
                 });
             } else sectionResume.removeAllViews();
             if (Features.on(prefs, Features.LATEST)) {
-                Net.async(jf::latest, (items, err) -> fillMedia(sectionLatest, "NYT PÅ SERVEREN", items, false, false));
+                Net.async(jf::latest, (items, err) -> {
+                    fillMedia(sectionLatest, "NYT PÅ SERVEREN", items, false, false);
+                    if (items != null) RemoteCache.saveItems(this, "latest", items);
+                });
             } else sectionLatest.removeAllViews();
         } else {
             sectionResume.removeAllViews();
@@ -904,6 +848,7 @@ public class MainActivity extends Activity {
                 fillStatus(states);
                 fillModes(states);
                 fillHaButtons(states);
+                RemoteCache.saveStates(this, states);
             });
         } else {
             status.setText("");
@@ -911,7 +856,10 @@ public class MainActivity extends Activity {
             sectionModes.removeAllViews();
         }
         if (ha.configured() && Features.on(prefs, Features.UPCOMING)) {
-            Net.async(ha::upcoming, (list, err) -> fillUpcoming(list));
+            Net.async(ha::upcoming, (list, err) -> {
+                fillUpcoming(list);
+                if (list != null) RemoteCache.saveUpcoming(this, list);
+            });
         } else {
             sectionUpcoming.removeAllViews();
         }
@@ -1217,7 +1165,7 @@ public class MainActivity extends Activity {
     }
 
     /** Valglister (fx tilstande) åbner en liste med det aktive valg markeret. */
-    private void chooseOption(String id, String name, JSONArray options, String active) {
+    void chooseOption(String id, String name, JSONArray options, String active) {
         String[] names = new String[options.length()];
         int checked = -1;
         for (int i = 0; i < names.length; i++) {
@@ -1251,7 +1199,7 @@ public class MainActivity extends Activity {
 
     // Baggrund
 
-    private void loadBackground(boolean homePressed) {
+    void loadBackground(boolean homePressed) {
         String source = prefs.str("bg_source", "billeder");
         // Ældre værdier (tegnede scener) bruger nu temaets fotos
         boolean themed = "tema".equals(source) || "scene".equals(source) || "ternet".equals(source);
@@ -1320,66 +1268,19 @@ public class MainActivity extends Activity {
         kenBurns.start();
     }
 
-    private int currentAccent() {
+    int currentAccent() {
         return System.currentTimeMillis() < ironManUntil ? Color.parseColor("#FFC640") : accent;
     }
 
     // Gimmicks
 
     private String greetingText() {
-        int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        String custom = prefs.customGreeting();
-        if (!custom.isEmpty()) return custom;
-        String g = h < 5 ? "Godnat" : h < 10 ? "Godmorgen" : h < 17 ? "Goddag" : h < 23 ? "Godaften" : "Godnat";
-        String name = prefs.profileName();
-        return name.isEmpty() ? g : g + ", " + name;
+        return Greeting.text(prefs);
     }
 
     private void updateGreeting() {
         set(greeting, greetingText());
-        if (!Features.on(prefs, Features.TOGETHER)) {
-            set(together, "");
-            return;
-        }
-        int[] since = prefs.togetherSince();
-        if (since == null) {
-            set(together, "");
-            return;
-        }
-        Calendar start = Calendar.getInstance();
-        start.clear();
-        start.set(since[0], since[1], since[2]);
-        Calendar today = Calendar.getInstance();
-        Calendar todayMidnight = Calendar.getInstance();
-        todayMidnight.clear();
-        todayMidnight.set(today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH));
-        long days = Math.round((todayMidnight.getTimeInMillis() - start.getTimeInMillis()) / (double) TimeUnit.DAYS.toMillis(1));
-
-        Calendar anniversary = Calendar.getInstance();
-        anniversary.clear();
-        anniversary.set(today.get(Calendar.YEAR), since[1], since[2]);
-        if (anniversary.before(todayMidnight)) anniversary.add(Calendar.YEAR, 1);
-        long toAnniversary = Math.round((anniversary.getTimeInMillis() - todayMidnight.getTimeInMillis()) / (double) TimeUnit.DAYS.toMillis(1));
-        int years = anniversary.get(Calendar.YEAR) - since[0];
-        long nextHundred = (days / 100 + 1) * 100;
-        long toHundred = nextHundred - days;
-
-        String extra;
-        if (toAnniversary == 0) extra = "I dag: " + years + " år sammen!";
-        else if (days % 100 == 0 && days > 0) extra = "I dag: " + days + " dage!";
-        else if (toHundred <= toAnniversary) extra = nextHundred + " dage " + when(toHundred);
-        else extra = years + " år " + when(toAnniversary);
-        String partner = prefs.partnerName();
-        String who = partner.isEmpty() ? "" : " med " + partner;
-        if (days < 0) {
-            set(together, "");
-            return;
-        }
-        set(together, "♥ " + days + " dage sammen" + who + "  ·  " + extra);
-    }
-
-    private static String when(long days) {
-        return days == 1 ? "i morgen" : "om " + days + " dage";
+        set(together, Greeting.together(prefs));
     }
 
     private void updateSeason() {
@@ -1416,7 +1317,7 @@ public class MainActivity extends Activity {
     }
 
     /** Rolig tilstand: kun baggrunden og et lille ur, som en pauseskærm inde i forsiden. */
-    private void setAmbient(boolean on) {
+    void setAmbient(boolean on) {
         ambient = on;
         column.animate().alpha(on ? 0f : 1f).setDuration(on ? 1500 : 250).start();
         ambientClock.setText(timeFormat.format(new Date()));
@@ -1594,71 +1495,11 @@ public class MainActivity extends Activity {
         });
     }
 
-    private void maybeShowChangelog() {
-        int installed = Updater.installedVersion(this);
-        if (installed <= prefs.lastSeenVersion()) return;
-        prefs.setLastSeenVersion(installed);
-        showChangelog(this, installed);
-    }
-
-    /** Viser release noterne for en version, hentet fra GitHub. */
-    static void showChangelog(Activity a, int version) {
-        Net.async(() -> {
-            try {
-                return new JSONObject(Net.request("GET",
-                        "https://api.github.com/repos/" + Updater.REPO + "/releases/tags/launcher-v" + version, null, null))
-                        .optString("body", "");
-            } catch (java.io.IOException e) {
-                return new JSONObject(Net.request("GET",
-                        "https://api.github.com/repos/" + Updater.OLD_REPO + "/releases/tags/launcher-v" + version, null, null))
-                        .optString("body", "");
-            }
-        }, (body, err) -> {
-            if (a.isFinishing()) return;
-            if (body == null || body.trim().isEmpty()) {
-                if (err != null) Toast.makeText(a, "Kunne ikke hente noterne", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle("Nyt i " + new Prefs(a).appName() + " " + version)
-                    .setMessage(body.trim())
-                    .setPositiveButton("Fedt", null)
-                    .show();
-        });
-    }
-
-    // Selvopdatering
-
-    private void maybeCheckUpdate() {
-        if (!Features.on(prefs, Features.AUTO_UPDATE)) return;
-        if (System.currentTimeMillis() - prefs.lastUpdateCheck() < 20L * 60 * 60 * 1000) return;
-        prefs.setLastUpdateCheck(System.currentTimeMillis());
-        Net.async(() -> Updater.check(this), (r, err) -> {
-            if (r == null || isFinishing()) return;
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle("Ny version af " + prefs.appName())
-                    .setMessage("Version " + r.number + " er klar. Installér nu?")
-                    .setPositiveButton("Installér", (d, w) -> installUpdate(this, r))
-                    .setNegativeButton("Senere", null)
-                    .show();
-        });
-    }
-
-    static void installUpdate(Context context, Updater.Release r) {
-        Toast.makeText(context, "Henter version " + r.number + "...", Toast.LENGTH_SHORT).show();
-        Net.async(() -> {
-            Updater.install(context, r);
-            return true;
-        }, (ok, err) -> {
-            if (err != null) Toast.makeText(context, "Opdatering fejlede: " + err.getMessage(), Toast.LENGTH_LONG).show();
-        });
-    }
-
     private FrameLayout.LayoutParams match() {
         return new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
     }
 
-    private int dp(int value) {
+    int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 }
