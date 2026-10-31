@@ -36,11 +36,11 @@ final class Ui {
             {"spider", "#0E1A4A", "#13225C", "#1F2E7A", "#FFFFFF", "#B8C4F0"},
             {"gotham", "#0A0B0D", "#15171B", "#1F2228", "#EDEAE0", "#8E8C84"},
             {"krypton", "#0C2A6E", "#0F3380", "#164099", "#FFFFFF", "#BFD0F2"},
-            {"rose", "#F6E3E1", "#EFD3D0", "#E8C2BE", "#3A1820", "#8A5A63"},
+            {"rose", "#1C0E13", "#2A151D", "#3D1E2A", "#FFEFF3", "#D9AFBF"},
             {"uld", "#2A1D17", "#36261E", "#463126", "#F6E9D7", "#C8AE92"},
             {"salvie", "#E6EBE1", "#DCE4D5", "#CBD8C2", "#23331F", "#5E7357"},
             {"skov", "#0F2A1E", "#153526", "#1C4431", "#FBF5EA", "#BFD1C2"},
-            {"hav", "#E9F1F0", "#DCE9E7", "#CFE1DE", "#12343B", "#4E747A"},
+            {"hav", "#061419", "#0C222A", "#13323D", "#EAF8FA", "#9CC7CF"},
     };
 
     static float radiusDp = 10;

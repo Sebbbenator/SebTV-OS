@@ -1,45 +1,45 @@
 package dk.selveste.launcher;
 
 /**
- * Temaer med ét tryk. Hvert tema har sin egen tegnede scene, skrift, card stil og farver, så de ikke
- * ligner hinanden. Alt kan rettes enkeltvis bagefter under Udseende.
+ * Temaer med ét tryk: en fotoserie fra Unsplash, skrift, card stil og farver. Alt kan rettes enkeltvis
+ * bagefter under Udseende.
  */
 final class Themes {
 
     /** nøgle, navn, beskrivelse, udgave */
     static final String[][] ALL = {
-            {"efteraar", "Efterår", "Tartan i rust og sennep, Playfair og faldende blade", Prefs.EDITION_HOME},
-            {"rose", "Rosé", "Rosentryk i to farver som en risograf, rosenblade", Prefs.EDITION_HOME},
-            {"hygge", "Hygge", "Strik med nordisk bort og ur i håndskrift", Prefs.EDITION_HOME},
-            {"salvie", "Salvie", "Eukalyptus tegnet med streg på lyst papir", Prefs.EDITION_HOME},
-            {"natte", "Nattehimmel", "Stjernekort med stjernebilleder og månesegl", Prefs.EDITION_HOME},
-            {"jul", "Jul", "Julesweater i masker med stjerner og træer", Prefs.EDITION_HOME},
-            {"hav", "Havbrise", "Japanske bølger og sol på lyst papir", Prefs.EDITION_HOME},
-            {"jarvis", "Jarvis", "Teknisk tegning, ring ur og HUD skrift", Prefs.EDITION_JARVIS},
-            {"ironman", "Iron Man", "Rustningsplader og reaktor i rødt og guld", Prefs.EDITION_JARVIS},
-            {"spiderman", "Spider-Man", "Tegneserierude med net, raster og sorte kanter", Prefs.EDITION_JARVIS},
-            {"batman", "Batman", "Gotham om natten, signalet i skyerne og regn", Prefs.EDITION_JARVIS},
-            {"superman", "Superman", "Retroplakat med solstråler og kappe", Prefs.EDITION_JARVIS},
-            {"biograf", "Biograf", "Rødt tæppe, pærer og plakatskrift", Prefs.EDITION_JARVIS},
-            {"minimal", "Minimal", "Grafit, tyndt ur og ingen effekter", Prefs.EDITION_JARVIS},
+            {"efteraar", "Efterår", "Kakao, tæpper og blade, Playfair og analogt ur", Prefs.EDITION_HOME},
+            {"rose", "Rosé", "Dybe roser og fin serif", Prefs.EDITION_HOME},
+            {"hygge", "Hygge", "Levende lys og ur i håndskrift", Prefs.EDITION_HOME},
+            {"salvie", "Salvie", "Lyst og roligt med eukalyptus", Prefs.EDITION_HOME},
+            {"natte", "Nattehimmel", "Mælkevejen og stjerner", Prefs.EDITION_HOME},
+            {"jul", "Jul", "Julelys og pejs", Prefs.EDITION_HOME},
+            {"hav", "Havbrise", "Bølger i dybt blågrønt", Prefs.EDITION_HOME},
+            {"jarvis", "Jarvis", "Hologrammer, ring ur og HUD skrift", Prefs.EDITION_JARVIS},
+            {"ironman", "Iron Man", "Rød og guld, ring ur", Prefs.EDITION_JARVIS},
+            {"spiderman", "Spider-Man", "Fotos af Spidey, tegneserieskrift og cards", Prefs.EDITION_JARVIS},
+            {"batman", "Batman", "Gotham om natten og gotisk skrift", Prefs.EDITION_JARVIS},
+            {"superman", "Superman", "Rød kappe og blå himmel, plakatskrift", Prefs.EDITION_JARVIS},
+            {"biograf", "Biograf", "Biografsale og plakatskrift", Prefs.EDITION_JARVIS},
+            {"minimal", "Minimal", "Arkitektur i sort og hvid, tyndt ur", Prefs.EDITION_JARVIS},
     };
 
-    /** tema: tone, accent, ur, skrift, cards størrelse, scene, effekter, card stil, hjørner, mørklægning */
+    /** tema: tone, accent, ur, skrift, cards størrelse, card stil, hjørner */
     private static final String[][] LOOK = {
-            {"efteraar", "creme", "rust", "analog", "playfair", "normal", "tartan", "blade", "papir", "rund", "let"},
-            {"rose", "rose", "kirsebaer", "tynd", "playfair", "normal", "riso", "kronblade", "papir", "rund", "ingen"},
-            {"hygge", "uld", "sennep", "stor", "caveat", "normal", "strik", "ingen", "fast", "rund", "let"},
-            {"salvie", "salvie", "eukalyptus", "tynd", "quicksand", "kompakt", "botanisk", "ingen", "streg", "rund", "ingen"},
-            {"natte", "nat", "maane", "tynd", "quicksand", "normal", "stjernekort", "stjerner", "streg", "rund", "ingen"},
-            {"jul", "skov", "jul", "analog", "playfair", "normal", "julestrik", "sne", "papir", "normal", "let"},
-            {"hav", "hav", "petrol", "tynd", "quicksand", "normal", "boelger", "ingen", "papir", "rund", "ingen"},
-            {"jarvis", "kold", "cyan", "hud", "orbitron", "normal", "tegning", "auto", "streg", "skarp", "ingen"},
-            {"ironman", "reaktor", "guld", "hud", "orbitron", "normal", "reaktor", "auto", "fast", "skarp", "let"},
-            {"spiderman", "spider", "spider", "stor", "bangers", "normal", "spindel", "ingen", "tegneserie", "skarp", "ingen"},
-            {"batman", "gotham", "flagermus", "tynd", "cinzel", "normal", "gotham", "regn", "streg", "skarp", "ingen"},
-            {"superman", "krypton", "sol", "stor", "bebas", "normal", "solstraaler", "ingen", "tegneserie", "skarp", "ingen"},
-            {"biograf", "biograf", "guld", "stor", "bebas", "stor", "biograf", "ingen", "fast", "skarp", "let"},
-            {"minimal", "grafit", "kridt", "tynd", "system", "kompakt", "grafit", "ingen", "papir", "skarp", "ingen"},
+            {"efteraar", "chokolade", "karamel", "analog", "playfair", "normal", "fast", "rund"},
+            {"rose", "rose", "rosa", "tynd", "playfair", "normal", "fast", "rund"},
+            {"hygge", "uld", "sennep", "stor", "caveat", "normal", "fast", "rund"},
+            {"salvie", "salvie", "eukalyptus", "tynd", "quicksand", "kompakt", "papir", "rund"},
+            {"natte", "nat", "maane", "tynd", "quicksand", "normal", "fast", "rund"},
+            {"jul", "skov", "jul", "analog", "playfair", "normal", "fast", "rund"},
+            {"hav", "hav", "skum", "tynd", "quicksand", "normal", "fast", "rund"},
+            {"jarvis", "kold", "cyan", "hud", "orbitron", "normal", "fast", "normal"},
+            {"ironman", "reaktor", "guld", "hud", "orbitron", "normal", "fast", "skarp"},
+            {"spiderman", "spider", "spider", "stor", "bangers", "normal", "tegneserie", "skarp"},
+            {"batman", "gotham", "flagermus", "tynd", "cinzel", "normal", "fast", "skarp"},
+            {"superman", "krypton", "sol", "stor", "bebas", "normal", "fast", "skarp"},
+            {"biograf", "biograf", "guld", "stor", "bebas", "stor", "fast", "skarp"},
+            {"minimal", "grafit", "kridt", "tynd", "system", "kompakt", "papir", "skarp"},
     };
 
     static void apply(Prefs prefs, String key) {
@@ -51,14 +51,14 @@ final class Themes {
         prefs.setClockStyle(l[3]);
         prefs.setFont(l[4]);
         prefs.setTileSize(l[5]);
-        prefs.setStr("scene", l[6]);
-        prefs.setStr("bg_source", "scene");
-        prefs.setParticles(l[7]);
-        prefs.setStr("cards", l[8]);
-        prefs.setStr("corners", l[9]);
-        prefs.setStr("shade", l[10]);
-        // Scenerne er tegnet skarpt, så de skal ikke zoome; højtiderne må stadig komme
-        prefs.setFlag(Features.KEN_BURNS, false);
+        prefs.setStr("cards", l[6]);
+        prefs.setStr("corners", l[7]);
+        // Temaets fotos, hentet af tv'et selv; højtiderne (sne, fyrværkeri) må stadig komme
+        prefs.setStr("photo_theme", l[0]);
+        prefs.setStr("bg_source", "tema");
+        prefs.setStr("shade", "normal");
+        prefs.setParticles("auto");
+        prefs.setFlag(Features.KEN_BURNS, true);
         prefs.setFlag(Features.SEASONS, true);
         prefs.setFlag(Features.PARALLAX, !"minimal".equals(l[0]));
         prefs.setFlag(Features.BOOT, !"minimal".equals(l[0]));

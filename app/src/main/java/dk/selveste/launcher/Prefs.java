@@ -48,6 +48,7 @@ final class Prefs {
             {"maane", "Måneskin", "#F1E6C8"},
             {"jul", "Julerød", "#D23B33"},
             {"petrol", "Petrol", "#1F7A8C"},
+            {"skum", "Havskum", "#7FD6DC"},
             {"auto", "Fra baggrunden", ""},
     };
 

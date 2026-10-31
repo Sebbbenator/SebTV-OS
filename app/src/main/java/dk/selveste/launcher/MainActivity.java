@@ -97,6 +97,7 @@ public class MainActivity extends Activity {
     private LinearLayout sectionNowPlaying, sectionResume, sectionApps, sectionModes, sectionHa, sectionLatest, sectionUpcoming,
             sectionTools, sectionRest, sectionMore, moreBox;
     private boolean moreOpen;
+    private final java.util.Set<String> photosFetched = new java.util.HashSet<>();
     private Map<String, JSONObject> lastStates;
     private boolean menuHandled;
     private long lastBack;
@@ -1223,27 +1224,40 @@ public class MainActivity extends Activity {
 
     private void loadBackground(boolean homePressed) {
         String source = prefs.str("bg_source", "billeder");
-        // Gammel værdi "ternet" er nu scenen Tartan
-        String scene = "ternet".equals(source) ? "tartan" : prefs.str("scene", "tegning");
-        String name = "billeder".equals(source) ? backgrounds.current(homePressed)
-                : "mønster:" + source + ":" + scene + ":" + prefs.accentKey() + ":" + prefs.tone();
-        if (name != null && name.equals(shownBackground)) {
+        // Ældre værdier (tegnede scener) bruger nu temaets fotos
+        boolean themed = "tema".equals(source) || "scene".equals(source) || "ternet".equals(source);
+        Backgrounds from = backgrounds;
+        String photoTheme = prefs.str("photo_theme", prefs.theme());
+        if (themed) {
+            from = new Backgrounds(this, ThemePhotos.dir(this, photoTheme));
+            if (from.list().size() < 2 && !photosFetched.contains(photoTheme)) {
+                // Første gang: tv'et henter temaets fotos selv og viser dem, når de er nede
+                photosFetched.add(photoTheme);
+                Net.async(() -> ThemePhotos.download(this, photoTheme), (got, err) -> {
+                    if (Boolean.TRUE.equals(got)) {
+                        shownBackground = null;
+                        loadBackground(false);
+                    }
+                });
+            }
+        }
+        String pick = "ensfarvet".equals(source) ? null : from.current(homePressed);
+        String name = (themed ? "tema:" + photoTheme + ":" : "") + (pick == null ? "ingen" : pick);
+        if (name.equals(shownBackground)) {
             if (kenBurns != null) kenBurns.resume();
             return;
         }
         shownBackground = name;
-        File f = name == null || name.startsWith("mønster:") ? null : backgrounds.file(name);
-        boolean drawScene = "scene".equals(source) || "ternet".equals(source);
+        File f = pick == null ? null : from.file(pick);
         int width = Math.max(getResources().getDisplayMetrics().widthPixels, 1280);
         boolean wantAccent = "auto".equals(prefs.accentKey());
         int fixedAccent = prefs.accentColor();
         // Billedet læses på en baggrundstråd, så Home ikke hakker, når baggrunden skifter
         Net.async(() -> {
-            Bitmap bmp = drawScene ? Scenes.draw(scene, width, width * 9 / 16)
-                    : f == null ? null : Backgrounds.decode(f, width);
+            Bitmap bmp = f == null ? null : Backgrounds.decode(f, width);
             return new Object[]{bmp, wantAccent ? Backgrounds.accent(bmp, Ui.CYAN) : fixedAccent};
         }, (res, err) -> {
-            if (res == null || isDestroyed() || (name != null && !name.equals(shownBackground))) return;
+            if (res == null || isDestroyed() || !name.equals(shownBackground)) return;
             Bitmap bmp = (Bitmap) res[0];
             background.setAlpha(0f);
             background.setImageBitmap(bmp);
@@ -1253,7 +1267,8 @@ public class MainActivity extends Activity {
                 accent = newAccent;
                 refreshApps();
             }
-            clock.setShadowLayer(dp(12), 0, 0, HudView.withAlpha(currentAccent(), 0.5f));
+            // En diskret skygge, så uret kan læses på lyse fotos
+            clock.setShadowLayer(dp(6), 0, dp(1), Color.argb(110, 0, 0, 0));
             startKenBurns(bmp != null && Features.on(prefs, Features.KEN_BURNS));
         });
     }

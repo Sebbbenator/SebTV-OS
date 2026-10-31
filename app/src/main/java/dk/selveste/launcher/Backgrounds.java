@@ -25,11 +25,16 @@ final class Backgrounds {
     private final File dir;
 
     Backgrounds(Context context) {
+        this(context, new File(context.getFilesDir(), "baggrunde"));
+        migrateOld();
+    }
+
+    /** Samme skift og rækkefølge, men fra en anden mappe (temaets fotos). */
+    Backgrounds(Context context, File dir) {
         this.context = context;
         this.prefs = new Prefs(context);
-        this.dir = new File(context.getFilesDir(), "baggrunde");
+        this.dir = dir;
         if (!dir.isDirectory()) dir.mkdirs();
-        migrateOld();
     }
 
     /** Billedet fra første version (files/baggrund.jpg) flyttes ind i mappen. */
