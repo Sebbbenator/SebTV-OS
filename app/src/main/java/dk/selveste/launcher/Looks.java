@@ -59,6 +59,7 @@ final class Looks {
             new Option("photos", "photo_theme", "Fotoserie", "Stemning", "jarvis", Themes.ALL),
             new Option("shade", "shade", "Mørklægning af baggrund", "Stemning", "normal", SHADE),
             new Option("particles", "particles", "Effekter på skærmen", "Stemning", "auto", PARTICLES),
+            new Option("effects", "effects", "Bevægelse", "Stemning", "auto", Prefs.EFFECTS),
             new Option("corners", "corners", "Hjørner", "Form", "normal", CORNERS),
             new Option("cards", "cards", "Cards", "Form", "fast", CARDS),
             new Option("tiles", "tile_size", "Størrelse på cards", "Form", "normal", Prefs.TILE_SIZES),
@@ -84,7 +85,7 @@ final class Looks {
             if (v[0].equals(value)) {
                 prefs.setStr(o.pref, value);
                 // Sortering er ikke en del af udseendet, så temaet beholder sit navn
-                if (!"Forside".equals(o.group)) prefs.setTheme("");
+                if (!"Forside".equals(o.group) && !"effects".equals(o.key)) prefs.setTheme("");
                 return;
             }
         }

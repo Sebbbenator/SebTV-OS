@@ -4,6 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -17,12 +18,12 @@ final class HomeAssistant {
     }
 
     boolean configured() {
-        return !prefs.haToken().isEmpty();
+        return (!prefs.haToken().isEmpty() || HaLogin.loggedIn(prefs)) && !prefs.haUrl().isEmpty();
     }
 
     private Map<String, String> headers() {
         Map<String, String> h = new HashMap<>();
-        h.put("Authorization", "Bearer " + prefs.haToken());
+        h.put("Authorization", "Bearer " + HaLogin.token(prefs));
         return h;
     }
 
@@ -34,6 +35,62 @@ final class HomeAssistant {
             out.put(o.getString("entity_id"), o);
         }
         return out;
+    }
+
+    /**
+     * Kun de entiteter forsiden bruger, i stedet for hele HA (flere hundrede KB hos et stort hjem).
+     * "auto" i statuslinjen findes én gang via hele listen og gemmes.
+     */
+    Map<String, JSONObject> statesFor(java.util.Collection<String> ids) throws Exception {
+        if (ids.contains("auto")) {
+            Map<String, JSONObject> all = states();
+            List<String> status = new java.util.ArrayList<>();
+            for (String id : prefs.haStatus()) {
+                if (!"auto".equals(id)) status.add(id);
+                else for (String k : all.keySet()) {
+                    if (k.startsWith("weather.")) {
+                        status.add(k);
+                        break;
+                    }
+                }
+            }
+            prefs.setHaStatus(status);
+            return all;
+        }
+        Map<String, JSONObject> out = new LinkedHashMap<>();
+        Exception last = null;
+        for (String id : ids) {
+            if (id.isEmpty() || out.containsKey(id)) continue;
+            try {
+                out.put(id, state(id));
+            } catch (java.io.IOException e) {
+                // 404: entiteten findes ikke (længere); alt andet betyder at HA ikke svarer
+                if (e.getMessage() == null || !e.getMessage().contains("HTTP 404")) last = e;
+            }
+        }
+        if (out.isEmpty() && last != null) throw last;
+        return out;
+    }
+
+    /** Alle entiteter forsiden bruger lige nu. */
+    java.util.Set<String> needed() {
+        java.util.Set<String> ids = new java.util.LinkedHashSet<>(prefs.haStatus());
+        if (!prefs.haModes().isEmpty()) ids.add(prefs.haModes());
+        ids.addAll(Prefs.split(prefs.haButtons()));
+        return ids;
+    }
+
+    /** TTS motoren (helst Edge TTS); findes én gang og huskes. */
+    String ttsEngine() throws Exception {
+        String saved = prefs.str("tts_engine", "");
+        if (!saved.isEmpty()) return saved;
+        String engine = null;
+        for (String id : states().keySet()) {
+            if (!id.startsWith("tts.")) continue;
+            if (engine == null || id.contains("edge")) engine = id;
+        }
+        if (engine != null) prefs.setStr("tts_engine", engine);
+        return engine;
     }
 
     void call(String domain, String service, JSONObject data) throws Exception {
@@ -133,9 +190,13 @@ final class HomeAssistant {
     String ttsUrl(String message, String engineId) throws Exception {
         JSONObject body = new JSONObject()
                 .put("engine_id", engineId)
-                .put("message", message)
-                .put("language", "en-GB")
-                .put("options", new JSONObject().put("voice", "en-GB-RyanNeural"));
+                .put("message", message);
+        String voice = prefs.ttsVoice();
+        if (!voice.isEmpty()) {
+            // Stemmenavnet starter med sproget, fx en-GB-RyanNeural
+            if (voice.length() > 5 && voice.charAt(2) == '-') body.put("language", voice.substring(0, 5));
+            body.put("options", new JSONObject().put("voice", voice));
+        }
         JSONObject res = new JSONObject(Net.request("POST", prefs.haUrl() + "/api/tts_get_url", headers(), body.toString()));
         String path = res.optString("path", "");
         if (!path.isEmpty()) return prefs.haUrl() + path;

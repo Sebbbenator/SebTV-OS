@@ -40,11 +40,20 @@ final class Net {
                 result = job.run();
             } catch (Exception e) {
                 error = e;
+                ErrorLog.note(where(job), e);
             }
             final T r = result;
             final Exception err = error;
             if (cb != null) MAIN.post(() -> cb.done(r, err));
         });
+    }
+
+    /** Hvilken del af appen en fejl kom fra, ud fra lambdaens klasse (fx MainActivity). */
+    private static String where(Object job) {
+        String n = job.getClass().getName();
+        int dollar = n.indexOf('$');
+        if (dollar > 0) n = n.substring(0, dollar);
+        return n.substring(n.lastIndexOf('.') + 1);
     }
 
     static String request(String method, String url, Map<String, String> headers, String body) throws IOException {

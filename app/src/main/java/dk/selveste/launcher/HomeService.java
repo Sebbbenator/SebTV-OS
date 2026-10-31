@@ -28,6 +28,14 @@ public class HomeService extends AccessibilityService {
 
     private static final String TAG = "JarvisHome";
     private static final String AMAZON_LAUNCHER = "com.amazon.tv.launcher";
+    /** Google TV og Android TV: deres forsider omdirigeres på samme måde. */
+    private static final String[] GOOGLE_LAUNCHERS = {"com.google.android.apps.tv.launcherx", "com.google.android.tvlauncher"};
+
+    private static boolean isSystemHome(String pkg) {
+        if (AMAZON_LAUNCHER.equals(pkg)) return true;
+        for (String g : GOOGLE_LAUNCHERS) if (g.equals(pkg)) return true;
+        return false;
+    }
 
     private static HomeService instance;
 
@@ -83,6 +91,7 @@ public class HomeService extends AccessibilityService {
     protected void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
+        ErrorLog.init(this);
         IntentFilter f = new IntentFilter(Intent.ACTION_SCREEN_ON);
         f.addAction(Intent.ACTION_SCREEN_OFF);
         registerReceiver(screen, f);
@@ -96,8 +105,8 @@ public class HomeService extends AccessibilityService {
         for (ResolveInfo info : found) {
             if (info.activityInfo == null) continue;
             String pkg = info.activityInfo.packageName;
-            // Kun Amazons forside; Projectivy og andre launchere skal kunne åbnes normalt
-            if (!pkg.equals(AMAZON_LAUNCHER)) continue;
+            // Kun Amazons og Googles forside; Projectivy og andre launchere skal kunne åbnes normalt
+            if (!isSystemHome(pkg)) continue;
             homeActivities.add(info.activityInfo.name);
             Log.i(TAG, "Amazon forside: " + pkg + "/" + info.activityInfo.name);
         }
@@ -162,8 +171,9 @@ public class HomeService extends AccessibilityService {
     }
 
     private boolean isAmazonHome(String pkg, String cls) {
-        if (!AMAZON_LAUNCHER.equals(pkg)) return false;
+        if (!isSystemHome(pkg)) return false;
         if (homeActivities.contains(cls)) return true;
+        if (!AMAZON_LAUNCHER.equals(pkg)) return false;
         // Reserve hvis Amazon skifter klassenavn: forsiden hedder noget med Home
         return cls.contains("Home") && cls.contains("Activity");
     }

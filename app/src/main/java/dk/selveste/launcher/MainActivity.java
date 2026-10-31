@@ -57,26 +57,37 @@ public class MainActivity extends Activity {
     static volatile boolean wokeUp;
     /** Sat når apps installeres eller fjernes, eller indstillinger ændres; ellers genbruges rækkerne. */
     static volatile boolean appsDirty = true;
+    /** Næste forside åbner med en cirkel (efter temaskift). */
+    private static boolean revealNext;
+    /** Effektniveau: Motion.FULL, LIGHT eller NONE. */
+    private String motion = Motion.FULL;
+    /** Rækker der allerede er gledet ind; senere opdateringer skal ikke animere igen. */
+    private final java.util.Set<LinearLayout> staggered = new java.util.HashSet<>();
     private static MainActivity visible;
 
     private static final Locale DANISH = new Locale("da", "DK");
     private static final String WHOLPHIN = "com.github.damontecres.wholphin";
-    private static final String MODES_ENTITY = "input_select.vaerelset";
     private static final int[] KONAMI = {KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
             KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT};
 
-    private final Handler handler = new Handler(Looper.getMainLooper());
+    final Handler handler = new Handler(Looper.getMainLooper());
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", DANISH);
     private final SimpleDateFormat secondsFormat = new SimpleDateFormat("HH:mm:ss", DANISH);
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("EEEE d. MMMM", DANISH);
-    private final LruCache<String, Bitmap> images = new LruCache<>(48);
+    /** Plakater og billeder til cards, højst ca. 24 MB, så sticken ikke løber tør for hukommelse. */
+    private final LruCache<String, Bitmap> images = new LruCache<String, Bitmap>(24 * 1024 * 1024) {
+        @Override
+        protected int sizeOf(String key, Bitmap value) {
+            return value.getByteCount();
+        }
+    };
 
-    private Prefs prefs;
-    private AppRepository repository;
-    private Backgrounds backgrounds;
-    private HomeAssistant ha;
-    private Jellyfin jf;
+    Prefs prefs;
+    AppRepository repository;
+    Backgrounds backgrounds;
+    HomeAssistant ha;
+    Jellyfin jf;
 
     private FrameLayout root;
     private ImageView background;
@@ -98,7 +109,7 @@ public class MainActivity extends Activity {
             sectionTools, sectionRest, sectionMore, moreBox;
     private boolean moreOpen;
     private final java.util.Set<String> photosFetched = new java.util.HashSet<>();
-    private Map<String, JSONObject> lastStates;
+    Map<String, JSONObject> lastStates;
     private boolean menuHandled;
     private long lastBack;
     private final Runnable menuLongPress = () -> {
@@ -109,6 +120,9 @@ public class MainActivity extends Activity {
     private FrameLayout bgFrame;
     private LinearLayout column;
     private TextView ambientClock;
+    /** Over uret i rolig tilstand: vejret og det første fra statuslinjen. */
+    private TextView ambientInfo;
+    private String ambientText = "";
     private boolean ambient;
     private FrameLayout night;
     private TextView nightClock;
@@ -174,6 +188,32 @@ public class MainActivity extends Activity {
         if (a != null) a.handler.post(a::bootIfWoken);
     }
 
+    /** Udseendet er ændret udefra (HA kommando): byg forsiden forfra, hvis den vises. */
+    static void lookChangedFromOutside() {
+        appsDirty = true;
+        MainActivity a = visible;
+        if (a != null) a.handler.post(() -> {
+            revealNext = true;
+            a.recreate();
+        });
+    }
+
+    /** Ændringer fra HA's websocket: kun det der vises på forsiden, tegnes igen. */
+    private final HaSocket.Listener haLive = changed -> {
+        if (lastStates == null) return;
+        java.util.Set<String> needed = ha.needed();
+        boolean relevant = false;
+        for (String id : changed.keySet()) if (needed.contains(id)) relevant = true;
+        if (!relevant) return;
+        Map<String, JSONObject> merged = new java.util.LinkedHashMap<>(lastStates);
+        merged.putAll(changed);
+        lastStates = merged;
+        fillStatus(merged);
+        fillModes(merged);
+        fillHaButtons(merged);
+        RemoteCache.saveStates(this, merged);
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -182,13 +222,24 @@ public class MainActivity extends Activity {
         backgrounds = new Backgrounds(this);
         ha = new HomeAssistant(prefs);
         jf = new Jellyfin(prefs);
+        ErrorLog.init(this);
         installCrashHandler(this);
         builtTone = Looks.layoutSignature(prefs);
+        motion = Motion.level(this, prefs);
         Ui.loadFont(this, prefs.font());
         setContentView(buildLayout());
+        if (revealNext) {
+            revealNext = false;
+            Motion.reveal(root, motion, -1, -1);
+        }
         applyLook();
         updateMore();
+        showCached();
         NightUpdate.schedule(this);
+        Net.async(() -> {
+            Updater.cleanUp(this);
+            return null;
+        }, null);
         wokeUp = true;
         IntentFilter pkgFilter = new IntentFilter();
         pkgFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -212,6 +263,7 @@ public class MainActivity extends Activity {
         }
         if (!Looks.layoutSignature(prefs).equals(builtTone)) {
             // Ny farvetone: skyggerne og kortene er bygget med den gamle, så byg skærmen forfra
+            revealNext = true;
             recreate();
             return;
         }
@@ -219,25 +271,37 @@ public class MainActivity extends Activity {
             // Indstillinger kan have ændret accentfarve eller fliser: læs baggrund og farve igen
             shownBackground = null;
             accent = prefs.accentColor();
+            motion = Motion.level(this, prefs);
             applyLook();
             updateMore();
             backgrounds.importShared();
             loadBackground(false);
             refreshApps();
-            refreshRemote();
+            // Indstillinger er ændret: gem profilen på Jellyfin, hvis den bruges
+            Net.async(() -> {
+                ProfileCode.pushToJellyfin(this);
+                return null;
+            }, null);
         }
+        // Home tjenesten slås fra ved force-stop; har appen fået lov, tændes den bare igen
+        if (!HomeService.isRunning()) HomeSetup.repair(this);
         refreshRemote();
+        HaSocket socket = HaSocket.get(this);
+        socket.addListener(haLive);
+        socket.start();
         handler.removeCallbacks(tick);
         handler.post(tick);
         bootIfWoken();
-        maybeCheckUpdate();
-        maybeShowChangelog();
+        AppUpdates.maybeCheckUpdate(this, prefs);
+        AppUpdates.maybeShowChangelog(this, prefs);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         if (visible == this) visible = null;
+        if (konamiVideo != null) konamiVideo.stop();
+        HaSocket.get(this).removeListener(haLive);
         handler.removeCallbacks(tick);
         if (kenBurns != null) kenBurns.pause();
     }
@@ -276,6 +340,11 @@ public class MainActivity extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         int code = event.getKeyCode();
+        if (konamiVideo != null && code == KeyEvent.KEYCODE_BACK) {
+            // Tilbage stopper klippet; forsiden skifter alligevel
+            if (event.getAction() == KeyEvent.ACTION_UP) konamiVideo.stop();
+            return true;
+        }
         if (code == KeyEvent.KEYCODE_MENU) {
             // Kort tryk på ☰: indstillinger. Langt tryk: hurtigpanelet.
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
@@ -318,94 +387,9 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    /** Hurtigpanel i højre side: det man oftest skal bruge, uden at gå ind i menuer. */
+    /** Hurtigpanel i højre side (langt tryk på ☰), se QuickPanel. */
     private void showQuickPanel() {
-        android.app.Dialog d = new android.app.Dialog(this);
-        d.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
-        int c = currentAccent();
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(24), dp(8), dp(24), dp(24));
-        box.setBackground(Ui.card(this, Ui.bg(0.94f), Ui.CARD_STROKE, 1));
-        box.addView(Ui.header(this, "HURTIGPANEL", c));
-
-        Map<String, JSONObject> states = lastStates;
-        JSONObject mode = states == null ? null : states.get(MODES_ENTITY);
-        JSONObject modeAttrs = mode == null ? null : mode.optJSONObject("attributes");
-        JSONArray modeOptions = modeAttrs == null ? null : modeAttrs.optJSONArray("options");
-        if (modeOptions != null && modeOptions.length() > 0) {
-            box.addView(Ui.row(this, "Tilstand", mode.optString("state"), c, v -> {
-                d.dismiss();
-                chooseOption(MODES_ENTITY, "Tilstand", modeOptions, mode.optString("state"));
-            }));
-        }
-        JSONObject sync = states == null ? null : states.get("switch.lys_sync");
-        if (sync != null) {
-            boolean on = "on".equals(sync.optString("state"));
-            View[] row = new View[1];
-            row[0] = Ui.row(this, "Lys sync", on ? "Til" : "Fra", c, v -> {
-                Ui.setValue(row[0], "...");
-                Net.async(() -> {
-                    ha.press("switch.lys_sync");
-                    return true;
-                }, (ok, err) -> {
-                    Ui.setValue(row[0], err != null ? "Fejl" : (on ? "Fra" : "Til"));
-                    handler.postDelayed(this::refreshRemote, 700);
-                });
-            });
-            box.addView(row[0]);
-        }
-        if ("billeder".equals(prefs.str("bg_source", "billeder")) && backgrounds.list().size() > 1) {
-            box.addView(Ui.row(this, "Næste baggrund", "", c, v -> {
-                List<String> all = backgrounds.list();
-                prefs.setBgCurrent(backgrounds.next(all, prefs.bgCurrent() == null ? all.get(0) : prefs.bgCurrent()));
-                loadBackground(false);
-            }));
-        }
-        box.addView(Ui.row(this, "Rolig tilstand", "", c, v -> {
-            d.dismiss();
-            setAmbient(true);
-        }));
-        box.addView(Ui.row(this, "Sov nu", "", c, v -> {
-            d.dismiss();
-            FireTvMenu.sleep(this);
-        }));
-        box.addView(Ui.row(this, "Wi-Fi", "", c, v -> {
-            d.dismiss();
-            FireTvMenu.open(this, Settings.ACTION_WIFI_SETTINGS);
-        }));
-        box.addView(Ui.row(this, "Bluetooth og fjernbetjening", "", c, v -> {
-            d.dismiss();
-            FireTvMenu.open(this, Settings.ACTION_BLUETOOTH_SETTINGS);
-        }));
-        box.addView(Ui.row(this, "Alle indstillinger", "", c, v -> {
-            d.dismiss();
-            startActivity(new Intent(this, SettingsActivity.class));
-        }));
-
-        ScrollView sv = new ScrollView(this);
-        sv.addView(box);
-        d.setContentView(sv);
-        // Menuknappen lukker panelet igen, men ikke ved det første slip, der åbnede det
-        boolean[] firstUp = {true};
-        d.setOnKeyListener((dialog, keyCode, e) -> {
-            if (keyCode != KeyEvent.KEYCODE_MENU) return false;
-            if (e.getAction() == KeyEvent.ACTION_UP) {
-                if (firstUp[0]) firstUp[0] = false;
-                else dialog.dismiss();
-            }
-            return true;
-        });
-        android.view.Window w = d.getWindow();
-        if (w != null) {
-            w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-            w.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-            w.setLayout(dp(480), ViewGroup.LayoutParams.WRAP_CONTENT);
-            w.setDimAmount(0.45f);
-        }
-        d.show();
-        View first = firstFocusable(box);
-        if (first != null) first.requestFocus();
+        QuickPanel.show(this);
     }
 
     /** "Mere" kortet: viser eller skjuler rækkerne under Tilstande. */
@@ -544,6 +528,13 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.END);
         acp.setMargins(0, 0, dp(56), dp(40));
         root.addView(ambientClock, acp);
+        ambientInfo = Ui.text(this, "", 20, Ui.TEXT);
+        ambientInfo.setShadowLayer(dp(8), 0, 0, Color.BLACK);
+        ambientInfo.setAlpha(0f);
+        FrameLayout.LayoutParams aip = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.END);
+        aip.setMargins(0, 0, dp(58), dp(100));
+        root.addView(ambientInfo, aip);
 
         night = new FrameLayout(this);
         night.setBackgroundColor(Color.BLACK);
@@ -642,7 +633,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static View firstFocusable(View v) {
+    static View firstFocusable(View v) {
         if (v.isFocusable() && v.getVisibility() == View.VISIBLE) return v;
         if (v instanceof ViewGroup) {
             ViewGroup g = (ViewGroup) v;
@@ -668,6 +659,7 @@ public class MainActivity extends Activity {
         row.setClipToPadding(false);
         hscroll.addView(row);
         section.addView(hscroll);
+        if (staggered.add(section)) Motion.stagger(row, motion);
         return row;
     }
 
@@ -729,8 +721,8 @@ public class MainActivity extends Activity {
         }
         final TextView subF = sub;
         card.setOnFocusChangeListener((v, has) -> {
-            float s = has ? 1.08f : 1f;
-            v.animate().scaleX(s).scaleY(s).setDuration(140).start();
+            Motion.focus(v, has, motion);
+            if (has) Sounds.move(this, prefs);
             if (shadowF != null) shadowF.setColor(has ? currentAccent() : Ui.INK);
             else bg.setStroke(dp((has ? 3 : 1) + Ui.restStroke()), has ? currentAccent() : Ui.CARD_STROKE);
             l.setTextColor(has ? Ui.TEXT : Ui.TEXT_DIM);
@@ -767,7 +759,8 @@ public class MainActivity extends Activity {
         return holder;
     }
 
-    private void launch(AppEntry entry) {
+    void launch(AppEntry entry) {
+        Sounds.select(this, prefs);
         switch (entry.packageName) {
             case AppRepository.SETTINGS_KEY:
                 FireTvMenu.show(this);
@@ -842,7 +835,32 @@ public class MainActivity extends Activity {
 
     // Jellyfin og Home Assistant
 
-    private void refreshRemote() {
+    /** Sidste kendte forside fra disken, vist med det samme ved start; refreshRemote henter det nye bagefter. */
+    private void showCached() {
+        if (jf.configured() && Features.on(prefs, Features.RESUME)) {
+            List<Jellyfin.Item> r = RemoteCache.loadItems(this, "resume");
+            if (r != null) fillMedia(sectionResume, "FORTSÆT AT SE", r, true, true);
+        }
+        if (jf.configured() && Features.on(prefs, Features.LATEST)) {
+            List<Jellyfin.Item> l = RemoteCache.loadItems(this, "latest");
+            if (l != null) fillMedia(sectionLatest, "NYT PÅ SERVEREN", l, false, false);
+        }
+        if (ha.configured()) {
+            Map<String, JSONObject> states = RemoteCache.loadStates(this);
+            if (states != null) {
+                lastStates = states;
+                fillStatus(states);
+                fillModes(states);
+                fillHaButtons(states);
+            }
+            if (Features.on(prefs, Features.UPCOMING)) {
+                List<HomeAssistant.Upcoming> u = RemoteCache.loadUpcoming(this);
+                if (u != null) fillUpcoming(u);
+            }
+        }
+    }
+
+    void refreshRemote() {
         lastRemoteRefresh = System.currentTimeMillis();
         refreshNowPlaying();
         if (jf.configured()) {
@@ -859,13 +877,19 @@ public class MainActivity extends Activity {
                     return items;
                 }, (items, err) -> {
                     if (items == null && err != null) statusRow(sectionResume, "FORTSÆT AT SE", "Jellyfin svarer ikke");
-                    else fillMedia(sectionResume, "FORTSÆT AT SE", items, true, true);
+                    else {
+                        fillMedia(sectionResume, "FORTSÆT AT SE", items, true, true);
+                        if (items != null) RemoteCache.saveItems(this, "resume", items);
+                    }
                     // Serveren svarer ikke på den gemte adresse: prøv LAN og Tailscale til næste gang
                     if (err instanceof java.io.IOException) Net.async(jf::findServer, null);
                 });
             } else sectionResume.removeAllViews();
             if (Features.on(prefs, Features.LATEST)) {
-                Net.async(jf::latest, (items, err) -> fillMedia(sectionLatest, "NYT PÅ SERVEREN", items, false, false));
+                Net.async(jf::latest, (items, err) -> {
+                    fillMedia(sectionLatest, "NYT PÅ SERVEREN", items, false, false);
+                    if (items != null) RemoteCache.saveItems(this, "latest", items);
+                });
             } else sectionLatest.removeAllViews();
         } else {
             sectionResume.removeAllViews();
@@ -873,7 +897,8 @@ public class MainActivity extends Activity {
         }
         if (ha.configured() && (Features.on(prefs, Features.HA_STATUS) || Features.on(prefs, Features.HA_BUTTONS)
                 || Features.on(prefs, Features.MODES))) {
-            Net.async(ha::states, (states, err) -> {
+            java.util.Set<String> needed = ha.needed();
+            Net.async(() -> ha.statesFor(needed), (states, err) -> {
                 if (states == null) {
                     status.setText(err == null ? "" : "Home Assistant svarer ikke");
                     sectionHa.removeAllViews();
@@ -886,6 +911,7 @@ public class MainActivity extends Activity {
                 fillStatus(states);
                 fillModes(states);
                 fillHaButtons(states);
+                RemoteCache.saveStates(this, states);
             });
         } else {
             status.setText("");
@@ -893,7 +919,10 @@ public class MainActivity extends Activity {
             sectionModes.removeAllViews();
         }
         if (ha.configured() && Features.on(prefs, Features.UPCOMING)) {
-            Net.async(ha::upcoming, (list, err) -> fillUpcoming(list));
+            Net.async(ha::upcoming, (list, err) -> {
+                fillUpcoming(list);
+                if (list != null) RemoteCache.saveUpcoming(this, list);
+            });
         } else {
             sectionUpcoming.removeAllViews();
         }
@@ -917,9 +946,9 @@ public class MainActivity extends Activity {
         });
     }
 
-    /** Tilstande: én flise pr. valg i input_select.vaerelset; den aktive lyser i accentfarven. */
+    /** Tilstande: ét card pr. valg i den valgte input_select; den aktive lyser i accentfarven. */
     private void fillModes(Map<String, JSONObject> states) {
-        JSONObject st = states.get(MODES_ENTITY);
+        JSONObject st = states.get(prefs.haModes());
         JSONObject attrs = st == null ? null : st.optJSONObject("attributes");
         JSONArray options = attrs == null ? null : attrs.optJSONArray("options");
         if (!Features.on(prefs, Features.MODES) || options == null || options.length() == 0) {
@@ -945,7 +974,7 @@ public class MainActivity extends Activity {
                 if (on) return;
                 t.setText("...");
                 Net.async(() -> {
-                    ha.selectOption(MODES_ENTITY, option);
+                    ha.selectOption(prefs.haModes(), option);
                     return true;
                 }, (ok, err) -> {
                     if (err != null) Toast.makeText(this, "HA: " + err.getMessage(), Toast.LENGTH_SHORT).show();
@@ -1082,7 +1111,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void openInWholphin(String itemId) {
+    void openInWholphin(String itemId) {
         Intent deep = new Intent(Intent.ACTION_VIEW, Uri.parse("wholphin://item/" + itemId))
                 .setPackage(WHOLPHIN)
                 .putExtra("itemId", itemId)
@@ -1103,38 +1132,51 @@ public class MainActivity extends Activity {
             return;
         }
         List<String> parts = new ArrayList<>();
-        JSONObject weather = states.get("weather.forecast_home");
-        if (weather == null) {
-            for (Map.Entry<String, JSONObject> e : states.entrySet()) {
-                if (e.getKey().startsWith("weather.")) {
-                    weather = e.getValue();
+        for (String id : statusEntities(states)) {
+            JSONObject st = states.get(id);
+            if (st == null) continue;
+            String part = statusText(id, st);
+            if (part != null) parts.add(part);
+        }
+        status.setText(String.join("  ·  ", parts));
+        ambientText = String.join("  ·  ", parts.subList(0, Math.min(2, parts.size())));
+        if (ambient) ambientInfo.setText(ambientText);
+    }
+
+    /** De valgte entiteter; "auto" er det første vejr, HA har. */
+    private List<String> statusEntities(Map<String, JSONObject> states) {
+        List<String> out = new ArrayList<>();
+        for (String id : prefs.haStatus()) {
+            if (!"auto".equals(id)) {
+                out.add(id);
+                continue;
+            }
+            for (String k : states.keySet()) {
+                if (k.startsWith("weather.")) {
+                    out.add(k);
                     break;
                 }
             }
         }
-        if (weather != null) {
-            JSONObject a = weather.optJSONObject("attributes");
+        return out;
+    }
+
+    /** Kort tekst til statuslinjen: vejr som "Sol 12°", til/fra som "Lys sync til", tal med enhed. */
+    static String statusText(String id, JSONObject st) {
+        String state = st.optString("state");
+        if (state.isEmpty() || state.equals("unknown") || state.equals("unavailable")) return null;
+        JSONObject a = st.optJSONObject("attributes");
+        if (id.startsWith("weather.")) {
             String temp = a == null ? "" : a.optString("temperature", "");
-            parts.add(HomeAssistant.weatherDa(weather.optString("state")) + (temp.isEmpty() ? "" : " " + temp + "°"));
+            return HomeAssistant.weatherDa(state) + (temp.isEmpty() ? "" : " " + temp + "°");
         }
-        JSONObject el = states.get("sensor.elpris_overblik");
-        if (el != null) {
-            String s = el.optString("state");
-            JSONObject a = el.optJSONObject("attributes");
-            String unit = a == null ? "" : a.optString("unit_of_measurement", "");
-            if (s.length() <= 10 && !s.equals("unknown")) parts.add("Elpris " + s + (unit.isEmpty() ? "" : " " + unit));
-        }
-        JSONObject sync = states.get("switch.lys_sync");
-        if (sync != null) parts.add("Lys sync " + ("on".equals(sync.optString("state")) ? "til" : "fra"));
-        JSONObject pakker = states.get("sensor.pakker");
-        if (pakker != null) {
-            try {
-                int n = (int) Double.parseDouble(pakker.optString("state"));
-                if (n > 0) parts.add(n + (n == 1 ? " pakke" : " pakker") + " på vej");
-            } catch (NumberFormatException ignored) {
-            }
-        }
-        status.setText(String.join("  ·  ", parts));
+        String name = HomeAssistant.friendly(st, id);
+        if (state.equals("on") || state.equals("off")) return name + " " + (state.equals("on") ? "til" : "fra");
+        // En tæller på 0 (fx pakker på vej) fylder bare
+        if (state.equals("0")) return null;
+        if (state.length() > 14) return null;
+        String unit = a == null ? "" : a.optString("unit_of_measurement", "");
+        return name + " " + state + (unit.isEmpty() ? "" : " " + unit);
     }
 
     private void fillHaButtons(Map<String, JSONObject> states) {
@@ -1188,7 +1230,7 @@ public class MainActivity extends Activity {
     }
 
     /** Valglister (fx tilstande) åbner en liste med det aktive valg markeret. */
-    private void chooseOption(String id, String name, JSONArray options, String active) {
+    void chooseOption(String id, String name, JSONArray options, String active) {
         String[] names = new String[options.length()];
         int checked = -1;
         for (int i = 0; i < names.length; i++) {
@@ -1222,7 +1264,7 @@ public class MainActivity extends Activity {
 
     // Baggrund
 
-    private void loadBackground(boolean homePressed) {
+    void loadBackground(boolean homePressed) {
         String source = prefs.str("bg_source", "billeder");
         // Ældre værdier (tegnede scener) bruger nu temaets fotos
         boolean themed = "tema".equals(source) || "scene".equals(source) || "ternet".equals(source);
@@ -1269,7 +1311,7 @@ public class MainActivity extends Activity {
             }
             // En diskret skygge, så uret kan læses på lyse fotos
             clock.setShadowLayer(dp(6), 0, dp(1), Color.argb(110, 0, 0, 0));
-            startKenBurns(bmp != null && Features.on(prefs, Features.KEN_BURNS));
+            startKenBurns(bmp != null && Features.on(prefs, Features.KEN_BURNS) && !Motion.NONE.equals(motion));
         });
     }
 
@@ -1291,62 +1333,19 @@ public class MainActivity extends Activity {
         kenBurns.start();
     }
 
-    private int currentAccent() {
+    int currentAccent() {
         return System.currentTimeMillis() < ironManUntil ? Color.parseColor("#FFC640") : accent;
     }
 
     // Gimmicks
 
     private String greetingText() {
-        int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        String custom = prefs.customGreeting();
-        if (!custom.isEmpty()) return custom;
-        String g = h < 5 ? "Godnat" : h < 10 ? "Godmorgen" : h < 17 ? "Goddag" : h < 23 ? "Godaften" : "Godnat";
-        String name = prefs.profileName();
-        return name.isEmpty() ? g : g + ", " + name;
+        return Greeting.text(prefs);
     }
 
     private void updateGreeting() {
         set(greeting, greetingText());
-        if (!Features.on(prefs, Features.TOGETHER)) {
-            set(together, "");
-            return;
-        }
-        int[] since = prefs.togetherSince();
-        Calendar start = Calendar.getInstance();
-        start.clear();
-        start.set(since[0], since[1], since[2]);
-        Calendar today = Calendar.getInstance();
-        Calendar todayMidnight = Calendar.getInstance();
-        todayMidnight.clear();
-        todayMidnight.set(today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH));
-        long days = Math.round((todayMidnight.getTimeInMillis() - start.getTimeInMillis()) / (double) TimeUnit.DAYS.toMillis(1));
-
-        Calendar anniversary = Calendar.getInstance();
-        anniversary.clear();
-        anniversary.set(today.get(Calendar.YEAR), since[1], since[2]);
-        if (anniversary.before(todayMidnight)) anniversary.add(Calendar.YEAR, 1);
-        long toAnniversary = Math.round((anniversary.getTimeInMillis() - todayMidnight.getTimeInMillis()) / (double) TimeUnit.DAYS.toMillis(1));
-        int years = anniversary.get(Calendar.YEAR) - since[0];
-        long nextHundred = (days / 100 + 1) * 100;
-        long toHundred = nextHundred - days;
-
-        String extra;
-        if (toAnniversary == 0) extra = "I dag: " + years + " år sammen!";
-        else if (days % 100 == 0 && days > 0) extra = "I dag: " + days + " dage!";
-        else if (toHundred <= toAnniversary) extra = nextHundred + " dage " + when(toHundred);
-        else extra = years + " år " + when(toAnniversary);
-        String partner = prefs.partnerName();
-        String who = partner.isEmpty() ? "" : " med " + partner;
-        if (days < 0) {
-            set(together, "");
-            return;
-        }
-        set(together, "♥ " + days + " dage sammen" + who + "  ·  " + extra);
-    }
-
-    private static String when(long days) {
-        return days == 1 ? "i morgen" : "om " + days + " dage";
+        set(together, Greeting.together(prefs));
     }
 
     private void updateSeason() {
@@ -1355,6 +1354,9 @@ public class MainActivity extends Activity {
         int themed = themedParticles(prefs.particles());
         if ((mode == ParticleView.NONE || mode == ParticleView.EMBERS) && themed != ParticleView.NONE) mode = themed;
         if ("ingen".equals(prefs.particles()) && mode != ParticleView.FIREWORKS) mode = ParticleView.NONE;
+        // Let: kun nytårets fyrværkeri. Ingen: slet ingenting
+        if (Motion.LIGHT.equals(motion) && mode != ParticleView.FIREWORKS) mode = ParticleView.NONE;
+        if (Motion.NONE.equals(motion)) mode = ParticleView.NONE;
         if (System.currentTimeMillis() < ironManUntil) mode = ParticleView.FIREWORKS;
         particles.setMode(mode);
     }
@@ -1383,17 +1385,19 @@ public class MainActivity extends Activity {
     }
 
     /** Rolig tilstand: kun baggrunden og et lille ur, som en pauseskærm inde i forsiden. */
-    private void setAmbient(boolean on) {
+    void setAmbient(boolean on) {
         ambient = on;
         column.animate().alpha(on ? 0f : 1f).setDuration(on ? 1500 : 250).start();
         ambientClock.setText(timeFormat.format(new Date()));
         ambientClock.animate().alpha(on ? 1f : 0f).setDuration(on ? 1500 : 250).start();
+        ambientInfo.setText(ambientText);
+        ambientInfo.animate().alpha(on ? 0.85f : 0f).setDuration(on ? 1500 : 250).start();
         if (!on) lastKey = System.currentTimeMillis();
     }
 
     /** Baggrunden glider en smule modsat fokus, så forsiden føles som et rum. */
     private void parallax(View focused) {
-        if (!Features.on(prefs, Features.PARALLAX)) {
+        if (!Features.on(prefs, Features.PARALLAX) || !Motion.FULL.equals(motion)) {
             bgFrame.setTranslationX(0);
             bgFrame.setTranslationY(0);
             return;
@@ -1410,7 +1414,7 @@ public class MainActivity extends Activity {
     private void bootIfWoken() {
         if (!wokeUp || visible != this) return;
         wokeUp = false;
-        if (Features.on(prefs, Features.BOOT)) HudView.forPrefs(this, prefs, greetingText(), currentAccent()).play(root);
+        if (Features.on(prefs, Features.BOOT) && !Motion.NONE.equals(motion)) HudView.forPrefs(this, prefs, greetingText(), currentAccent()).play(root);
         speakGreeting();
     }
 
@@ -1424,11 +1428,7 @@ public class MainActivity extends Activity {
         String name = prefs.profileName();
         String message = part + (name.isEmpty() ? "" : ", " + name) + ". All systems online.";
         Net.async(() -> {
-            String engine = null;
-            for (String id : ha.states().keySet()) {
-                if (!id.startsWith("tts.")) continue;
-                if (engine == null || id.contains("edge")) engine = id;
-            }
+            String engine = ha.ttsEngine();
             if (engine == null) return null;
             return ha.ttsUrl(message, engine);
         }, (url, err) -> {
@@ -1458,9 +1458,71 @@ public class MainActivity extends Activity {
         }
     }
 
+    private AlphaVideoView konamiVideo;
+    private boolean suitUp;
+
+    /**
+     * Konami sekvensen: klippet fra telefonsiden spiller oven på forsiden, og midt i (under blitzet)
+     * skifter forsiden til rød og guld og åbner sig som en cirkel. Uden klip: et guld blitz.
+     */
     private void ironMan() {
+        if (konamiVideo != null || suitUp) return;
+        java.io.File clip = KonamiClip.file(this);
+        if (Motion.NONE.equals(motion)) {
+            ironManSwitch(true);
+            return;
+        }
+        if (!clip.isFile()) {
+            // Uden klip: appens egen hjelm sekvens (Fuld) eller bare et blitz (Let)
+            if (Motion.FULL.equals(motion)) {
+                suitUp = true;
+                new SuitUpView(this, () -> ironManSwitch(false), () -> suitUp = false).play(root);
+            } else flash(() -> ironManSwitch(true));
+            return;
+        }
+        boolean[] switched = {false};
+        AlphaVideoView video = new AlphaVideoView(this, clip, () -> {
+            if (konamiVideo != null) root.removeView(konamiVideo);
+            konamiVideo = null;
+            if (!switched[0]) ironManSwitch(true);
+        });
+        konamiVideo = video;
+        root.addView(video, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        Runnable watch = new Runnable() {
+            @Override
+            public void run() {
+                if (konamiVideo != video) return;
+                if (!switched[0] && video.progress() >= 0.45f) {
+                    switched[0] = true;
+                    ironManSwitch(false);
+                    return;
+                }
+                handler.postDelayed(this, 40);
+            }
+        };
+        handler.postDelayed(watch, 200);
+        // Sikkerhed: et klip der hænger, fjernes efter 30 sekunder
+        handler.postDelayed(() -> {
+            if (konamiVideo == video) video.stop();
+        }, 30_000);
+    }
+
+    /** Hvidt-guld blitz over hele skærmen; skiftet sker midt i, når skærmen er helt dækket. */
+    private void flash(Runnable then) {
+        View f = new View(this);
+        f.setBackgroundColor(Color.parseColor("#FFF3D0"));
+        f.setAlpha(0f);
+        root.addView(f, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        f.animate().alpha(1f).setDuration(120).withEndAction(() -> {
+            then.run();
+            f.animate().alpha(0f).setDuration(Motion.LIGHT.equals(motion) ? 300 : 700).withEndAction(() -> root.removeView(f)).start();
+        }).start();
+    }
+
+    private void ironManSwitch(boolean hud) {
         ironManUntil = System.currentTimeMillis() + 60_000;
-        new HudView(this, "Iron Man mode", currentAccent()).play(root);
+        if (hud) new HudView(this, "Iron Man mode", currentAccent()).play(root);
+        if (Motion.FULL.equals(motion)) Motion.reveal(column, motion, -1, -1);
         refreshApps();
         updateSeason();
         if (ha.configured()) {
@@ -1558,69 +1620,10 @@ public class MainActivity extends Activity {
                 if (trace.length() > 2000) trace = trace.substring(0, 2000);
                 String when = new SimpleDateFormat("d. MMM HH:mm", DANISH).format(new Date());
                 new Prefs(app).setLastCrash(when + " (version " + Updater.installedName(app) + ")\n\n" + trace);
+                ErrorLog.note("Nedbrud", error);
             } catch (Throwable ignored) {
             }
             if (previous != null) previous.uncaughtException(thread, error);
-        });
-    }
-
-    private void maybeShowChangelog() {
-        int installed = Updater.installedVersion(this);
-        if (installed <= prefs.lastSeenVersion()) return;
-        prefs.setLastSeenVersion(installed);
-        showChangelog(this, installed);
-    }
-
-    /** Viser release noterne for en version, hentet fra GitHub. */
-    static void showChangelog(Activity a, int version) {
-        Net.async(() -> {
-            try {
-                return new JSONObject(Net.request("GET",
-                        "https://api.github.com/repos/" + Updater.REPO + "/releases/tags/launcher-v" + version, null, null))
-                        .optString("body", "");
-            } catch (java.io.IOException e) {
-                return new JSONObject(Net.request("GET",
-                        "https://api.github.com/repos/" + Updater.OLD_REPO + "/releases/tags/launcher-v" + version, null, null))
-                        .optString("body", "");
-            }
-        }, (body, err) -> {
-            if (a.isFinishing()) return;
-            if (body == null || body.trim().isEmpty()) {
-                if (err != null) Toast.makeText(a, "Kunne ikke hente noterne", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle("Nyt i " + new Prefs(a).appName() + " " + version)
-                    .setMessage(body.trim())
-                    .setPositiveButton("Fedt", null)
-                    .show();
-        });
-    }
-
-    // Selvopdatering
-
-    private void maybeCheckUpdate() {
-        if (!Features.on(prefs, Features.AUTO_UPDATE)) return;
-        if (System.currentTimeMillis() - prefs.lastUpdateCheck() < 20L * 60 * 60 * 1000) return;
-        prefs.setLastUpdateCheck(System.currentTimeMillis());
-        Net.async(() -> Updater.check(this), (r, err) -> {
-            if (r == null || isFinishing()) return;
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle("Ny version af " + prefs.appName())
-                    .setMessage("Version " + r.number + " er klar. Installér nu?")
-                    .setPositiveButton("Installér", (d, w) -> installUpdate(this, r))
-                    .setNegativeButton("Senere", null)
-                    .show();
-        });
-    }
-
-    static void installUpdate(Context context, Updater.Release r) {
-        Toast.makeText(context, "Henter version " + r.number + "...", Toast.LENGTH_SHORT).show();
-        Net.async(() -> {
-            Updater.install(context, r);
-            return true;
-        }, (ok, err) -> {
-            if (err != null) Toast.makeText(context, "Opdatering fejlede: " + err.getMessage(), Toast.LENGTH_LONG).show();
         });
     }
 
@@ -1628,7 +1631,7 @@ public class MainActivity extends Activity {
         return new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
     }
 
-    private int dp(int value) {
+    int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 }

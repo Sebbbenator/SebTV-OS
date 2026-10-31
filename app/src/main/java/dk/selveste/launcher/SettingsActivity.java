@@ -31,6 +31,7 @@ public class SettingsActivity extends Activity {
     static final String PAGE_ABOUT = "about";
     static final String PAGE_PROFILE = "profile";
     static final String PAGE_LOOK = "look";
+    static final String PAGE_HA = "ha";
 
     /** Domæner der giver mening som hurtigknap. */
     private static final List<String> BUTTON_DOMAINS = Arrays.asList(
@@ -98,6 +99,7 @@ public class SettingsActivity extends Activity {
             case PAGE_ABOUT: buildAbout(); break;
             case PAGE_PROFILE: buildProfile(); break;
             case PAGE_LOOK: buildLook(); break;
+            case PAGE_HA: buildHa(); break;
             default: buildMain();
         }
         View first = null;
@@ -137,20 +139,17 @@ public class SettingsActivity extends Activity {
         if (jf.configured()) {
             list.addView(Ui.row(this, "Jellyfin", "Forbundet, tryk for at logge ud", c, v -> {
                 prefs.clearJellyfin();
+                RemoteCache.clear(this);
                 build();
             }));
         } else {
             list.addView(Ui.row(this, "Jellyfin", "Forbind med Quick Connect", c, v -> quickConnect()));
+            list.addView(Ui.row(this, "Jellyfin adresse", prefs.jfUrl().isEmpty() ? "Findes selv på wifi'et" : prefs.jfUrl(), c,
+                    v -> ask("Jellyfin adresse", prefs.jfUrl(), "http://192.168.1.10:8096",
+                            t -> prefs.setJfUrl(t.trim().replaceAll("/+$", "")))));
         }
         boolean ha = new HomeAssistant(prefs).configured();
-        list.addView(Ui.row(this, "Home Assistant", ha ? "Forbundet" : "Indsæt token via telefonsiden", c,
-                v -> startActivity(new Intent(this, UploadActivity.class))));
-        if (ha) list.addView(Ui.row(this, "Hurtigknapper", buttonCount() + " af 4 valgt", c, v -> open(PAGE_BUTTONS)));
-        if (ha) list.addView(Ui.row(this, "Besked på tv'et", "Send en prøve", c, v -> {
-            if (!HomeService.testMessage("Test | Beskeder virker. Home Assistant skriver i " + JarvisMessages.ENTITY + ".")) {
-                Toast.makeText(this, "Home knap tjenesten kører ikke", Toast.LENGTH_SHORT).show();
-            }
-        }));
+        list.addView(Ui.row(this, "Home Assistant", ha ? "Forbundet" : "Ikke forbundet", c, v -> open(PAGE_HA)));
 
         list.addView(Ui.header(this, "APPS", c));
         Set<String> hidden = prefs.hidden();
@@ -167,7 +166,7 @@ public class SettingsActivity extends Activity {
         title("Profil");
         list.addView(Ui.text(this, "Bruges til hilsenen, stemmen og dage sammen. Kan også rettes på telefonsiden.", 16, Ui.TEXT_DIM));
         list.addView(Ui.header(this, "PROFIL", c));
-        list.addView(Ui.row(this, "Navn", prefs.profileName(), c, v -> ask("Navn", prefs.profileName(), "Seb",
+        list.addView(Ui.row(this, "Navn", prefs.profileName(), c, v -> ask("Navn", prefs.profileName(), "Dit navn",
                 t -> prefs.setProfile(t, null, null, null))));
         list.addView(Ui.row(this, "Hilsen", prefs.customGreeting().isEmpty() ? "Efter tidspunktet" : prefs.customGreeting(), c,
                 v -> ask("Egen hilsen (tom = efter tidspunktet)", prefs.customGreeting(), "Velkommen hjem, sir",
@@ -182,6 +181,30 @@ public class SettingsActivity extends Activity {
                     }
                     prefs.setProfile(null, null, null, t);
                 })));
+        list.addView(Ui.header(this, "PROFILER", c));
+        list.addView(Ui.text(this, "Flere opsætninger på samme tv, fx en til film aften og en til gæster. Skift også fra hurtigpanelet (hold ☰ nede).", 16, Ui.TEXT_DIM));
+        String activeProfile = Profiles.active(prefs);
+        for (String name : Profiles.names(prefs)) {
+            list.addView(Ui.row(this, name, name.equals(activeProfile) ? "I brug" : "Skift", c, v -> profileMenu(name)));
+        }
+        list.addView(Ui.row(this, "Gem nuværende som profil", "", c,
+                v -> ask("Navn på profilen", activeProfile, "Film aften", t -> {
+                    String n = t.trim();
+                    if (n.isEmpty()) return;
+                    try {
+                        Profiles.save(this, n);
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Kunne ikke gemme: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                })));
+        list.addView(Ui.header(this, "PROFILKODE", c));
+        list.addView(Ui.text(this, "Alle dine indstillinger i én kode. Gem den på telefonen, så er alt tilbage på et øjeblik på en ny stick. Login er aldrig med i koden.", 16, Ui.TEXT_DIM));
+        list.addView(Ui.row(this, "Vis min profilkode", "QR til telefonen", c, v -> showProfileCode()));
+        list.addView(Ui.row(this, "Indlæs en profilkode", "Via telefonsiden", c, v -> startActivity(new Intent(this, UploadActivity.class))));
+        if (new Jellyfin(prefs).configured()) {
+            list.addView(Ui.row(this, "Hent profil fra Jellyfin", "Gemmes der automatisk", c, v -> pullProfile(true)));
+        }
+        list.addView(Ui.header(this, "MERE", c));
         list.addView(Ui.row(this, "Velkomstguide", "Kør den igen", c, v -> {
             startActivity(new Intent(this, SetupActivity.class));
             finish();
@@ -189,6 +212,89 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.row(this, "Profilbillede", ProfilePicture.file(this).exists() ? "Sat, skift via telefonen" : "Læg op via telefonen", c,
                 v -> startActivity(new Intent(this, UploadActivity.class))));
 
+    }
+
+    private void profileMenu(String name) {
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(name)
+                .setItems(new String[]{"Skift til " + name, "Gem nuværende indstillinger her", "Slet profilen"}, (d, which) -> {
+                    try {
+                        if (which == 0) {
+                            Profiles.load(this, name);
+                            MainActivity.appsDirty = true;
+                            Toast.makeText(this, name + " er i brug", Toast.LENGTH_SHORT).show();
+                        } else if (which == 1) {
+                            Profiles.save(this, name);
+                        } else {
+                            Profiles.delete(this, name);
+                        }
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Det lykkedes ikke: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                    build();
+                })
+                .show();
+    }
+
+    /** QR'en åbner telefonsiden med koden i adressens #-del, som aldrig sendes nogen steder hen. */
+    private void showProfileCode() {
+        Net.async(() -> ProfileCode.export(this), (code, err) -> {
+            if (code == null) {
+                Toast.makeText(this, "Kunne ikke lave koden", Toast.LENGTH_LONG).show();
+                return;
+            }
+            // Telefonsiden skal køre, mens QR'en vises; QR'en har kun en kort nøgle, så den er let at scanne
+            UploadServer server = new UploadServer(this, null);
+            try {
+                server.start();
+            } catch (Exception e) {
+                server = null;
+            }
+            UploadServer running = server;
+            String url = "http://" + UploadActivity.ip() + ":" + UploadServer.PORT + "/#kode=" + UploadServer.offerProfileCode(code);
+            android.widget.ImageView qr = new android.widget.ImageView(this);
+            qr.setImageBitmap(UploadActivity.qrBitmap(url, Ui.dp(this, 360)));
+            LinearLayout box = new LinearLayout(this);
+            box.setOrientation(LinearLayout.VERTICAL);
+            box.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+            int pad = Ui.dp(this, 16);
+            box.setPadding(pad, pad, pad, pad);
+            box.addView(qr, new LinearLayout.LayoutParams(Ui.dp(this, 360), Ui.dp(this, 360)));
+            box.addView(Ui.text(this, "Scan med telefonen (samme wifi) og tryk Del eller gem.", 16, Ui.TEXT_DIM));
+            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle("Din profilkode")
+                    .setView(box)
+                    .setPositiveButton("Luk", null)
+                    .setOnDismissListener(d -> {
+                        if (running != null) running.stop();
+                    })
+                    .show();
+        });
+    }
+
+    /** Henter profilen fra Jellyfin og spørger, før den lægges ind. */
+    private void pullProfile(boolean tellIfNone) {
+        Net.async(() -> ProfileCode.pullFromJellyfin(this), (code, err) -> {
+            if (code == null) {
+                if (tellIfNone) Toast.makeText(this, "Der ligger ingen profil på Jellyfin endnu", Toast.LENGTH_LONG).show();
+                return;
+            }
+            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle("Profil fundet på Jellyfin")
+                    .setMessage("Vil du hente tema, rækker og indstillinger fra din profil? Det du har nu, bliver overskrevet.")
+                    .setPositiveButton("Hent", (d, w) -> {
+                        try {
+                            ProfileCode.apply(this, code);
+                            prefs.setStr("jf_profile_pushed", code);
+                            Toast.makeText(this, "Profilen er hentet", Toast.LENGTH_SHORT).show();
+                        } catch (Exception e) {
+                            Toast.makeText(this, "Koden kunne ikke læses: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        }
+                        build();
+                    })
+                    .setNegativeButton("Nej tak", null)
+                    .show();
+        });
     }
 
     private void buildLook() {
@@ -213,6 +319,131 @@ public class SettingsActivity extends Activity {
                         v -> choose(o.title, o.values, Looks.get(prefs, o), value -> Looks.set(prefs, o, value))));
             }
         }
+    }
+
+    private void buildHa() {
+        int c = accent;
+        title("Home Assistant");
+        HomeAssistant ha = new HomeAssistant(prefs);
+        list.addView(Ui.text(this, "Alt her er slået fra, indtil du vælger det. Intet af det kræver andet end din egen Home Assistant.", 16, Ui.TEXT_DIM));
+        list.addView(Ui.header(this, "FORBINDELSE", c));
+        list.addView(Ui.row(this, "Adresse", prefs.haUrl().isEmpty() ? "Ikke sat" : prefs.haUrl(), c,
+                v -> ask("Home Assistant adresse", prefs.haUrl(), "http://homeassistant.local:8123", t -> prefs.setHa(t, null, null))));
+        String how = HaLogin.loggedIn(prefs) ? "Logget ind" : !prefs.haToken().isEmpty() ? "Med token" : "Log ind via telefonen";
+        list.addView(Ui.row(this, "Login", how, c, v -> startActivity(new Intent(this, UploadActivity.class))));
+        if (ha.configured()) {
+            list.addView(Ui.row(this, "Log ud", "", c, v -> {
+                prefs.clearHaToken();
+                HaLogin.forget(prefs);
+                RemoteCache.clear(this);
+                build();
+            }));
+        }
+        if (!ha.configured()) return;
+        list.addView(Ui.header(this, "PÅ FORSIDEN", c));
+        list.addView(Ui.row(this, "Statuslinje", statusLabel(), c,
+                v -> pickEntities("Statuslinje (op til 5)", Arrays.asList("weather", "sensor", "binary_sensor", "switch", "input_boolean", "light", "person"),
+                        5, prefs.haStatus(), ids -> prefs.setHaStatus(ids))));
+        list.addView(Ui.row(this, "Hurtigknapper", buttonCount() + " af 4 valgt", c, v -> open(PAGE_BUTTONS)));
+        list.addView(Ui.row(this, "Tilstande", prefs.haModes().isEmpty() ? "Ingen" : prefs.haModes(), c,
+                v -> pickEntities("Rækken Tilstande (én input_select)", Arrays.asList("input_select", "select"), 1,
+                        single(prefs.haModes()), ids -> prefs.setHaModes(ids.isEmpty() ? "" : ids.get(0)))));
+        list.addView(Ui.header(this, "BESKEDER OG STEMME", c));
+        list.addView(Ui.row(this, "Beskeder fra HA", prefs.haMessage().isEmpty() ? "Fra" : prefs.haMessage(), c,
+                v -> pickEntities("Beskeder (én input_text, som HA skriver i)", Arrays.asList("input_text"), 1,
+                        single(prefs.haMessage()), ids -> prefs.setHaMessage(ids.isEmpty() ? "" : ids.get(0)))));
+        list.addView(Ui.row(this, "Send en prøve", "", c, v -> {
+            if (!HomeService.testMessage("Test | Beskeder virker.")) {
+                Toast.makeText(this, "Home knap tjenesten kører ikke", Toast.LENGTH_SHORT).show();
+            }
+        }));
+        list.addView(Ui.row(this, "Stemme", prefs.ttsVoice().isEmpty() ? "HA's standard" : prefs.ttsVoice(), c,
+                v -> ask("Stemme til TTS (tom = standard)", prefs.ttsVoice(), "en-GB-RyanNeural", t -> {
+                    prefs.setTtsVoice(t);
+                    prefs.setStr("tts_engine", "");
+                })));
+    }
+
+    private String statusLabel() {
+        List<String> s = prefs.haStatus();
+        if (s.isEmpty()) return "Tom";
+        if (s.size() == 1 && s.get(0).equals("auto")) return "Vejret";
+        return s.size() + " valgt";
+    }
+
+    private static List<String> single(String id) {
+        List<String> out = new ArrayList<>();
+        if (!id.isEmpty()) out.add(id);
+        return out;
+    }
+
+    interface Picked {
+        void picked(List<String> ids);
+    }
+
+    /** Vælg entiteter fra brugerens egen HA. max 1 giver et enkelt valg med "Ingen" øverst. */
+    private void pickEntities(String title, List<String> domains, int max, List<String> current, Picked picked) {
+        Toast.makeText(this, "Henter fra Home Assistant...", Toast.LENGTH_SHORT).show();
+        HomeAssistant ha = new HomeAssistant(prefs);
+        Net.async(ha::states, (states, err) -> {
+            if (states == null) {
+                Toast.makeText(this, "Home Assistant svarer ikke", Toast.LENGTH_LONG).show();
+                return;
+            }
+            List<String[]> cands = new ArrayList<>();
+            for (Map.Entry<String, JSONObject> e : states.entrySet()) {
+                String id = e.getKey();
+                if (!domains.contains(id.substring(0, id.indexOf('.')))) continue;
+                cands.add(new String[]{id, HomeAssistant.friendly(e.getValue(), id) + "  ·  " + id});
+            }
+            Collections.sort(cands, (a, b) -> {
+                boolean ca = current.contains(a[0]), cb = current.contains(b[0]);
+                if (ca != cb) return ca ? -1 : 1;
+                return a[1].compareToIgnoreCase(b[1]);
+            });
+            AlertDialog.Builder b = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle(title);
+            if (max == 1) {
+                String[] names = new String[cands.size() + 1];
+                names[0] = "Ingen";
+                int checked = 0;
+                for (int i = 0; i < cands.size(); i++) {
+                    names[i + 1] = cands.get(i)[1];
+                    if (current.contains(cands.get(i)[0])) checked = i + 1;
+                }
+                b.setSingleChoiceItems(names, checked, (d, which) -> {
+                    List<String> out = new ArrayList<>();
+                    if (which > 0) out.add(cands.get(which - 1)[0]);
+                    picked.picked(out);
+                    d.dismiss();
+                    build();
+                });
+            } else {
+                String[] names = new String[cands.size()];
+                boolean[] on = new boolean[cands.size()];
+                List<String> chosen = new ArrayList<>(current);
+                chosen.remove("auto");
+                for (int i = 0; i < cands.size(); i++) {
+                    names[i] = cands.get(i)[1];
+                    on[i] = chosen.contains(cands.get(i)[0]);
+                }
+                b.setMultiChoiceItems(names, on, (d, which, isChecked) -> {
+                    String id = cands.get(which)[0];
+                    if (isChecked && chosen.size() >= max) {
+                        ((AlertDialog) d).getListView().setItemChecked(which, false);
+                        Toast.makeText(this, "Højst " + max + ". Fravælg en først.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (isChecked) chosen.add(id);
+                    else chosen.remove(id);
+                });
+                b.setPositiveButton("Gem", (d, w) -> {
+                    picked.picked(chosen);
+                    build();
+                });
+                b.setNegativeButton("Annullér", null);
+            }
+            b.show();
+        });
     }
 
     private void buildFeatures() {
@@ -289,19 +520,95 @@ public class SettingsActivity extends Activity {
         return i < 0 ? "" : "Knap " + (i + 1);
     }
 
+    /** Home knappen: via tilladelsen, hvis appen har den, ellers via tv'ets egen ADB (én gang). */
+    private void makeHome() {
+        if (HomeService.isRunning()) return;
+        if (HomeSetup.repair(this)) {
+            Toast.makeText(this, "Home knappen er slået til", Toast.LENGTH_LONG).show();
+            handler.postDelayed(this::build, 1500);
+            return;
+        }
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Gør til forside")
+                .setMessage("Tv'et giver sig selv lov via sin egen fejlfinding (ADB), så der skal ikke bruges en pc.\n\n"
+                        + "1. Slå ADB debugging til under Indstillinger > My Fire TV > Developer options.\n"
+                        + "2. Tryk Start. Spørger tv'et \"Allow USB debugging?\", så vælg Always allow og OK.\n\n"
+                        + "Bagefter kan ADB slås fra igen; Home knappen bliver ved med at virke.")
+                .setPositiveButton("Start", (d, w) -> {
+                    Toast.makeText(this, "Forbinder til tv'ets ADB...", Toast.LENGTH_LONG).show();
+                    Net.async(() -> {
+                        HomeSetup.makeHome(this);
+                        return true;
+                    }, (ok, err) -> {
+                        if (err != null) {
+                            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                                    .setTitle("Det lykkedes ikke").setMessage(String.valueOf(err.getMessage()))
+                                    .setPositiveButton("OK", null).show();
+                            return;
+                        }
+                        Toast.makeText(this, "Færdig. Home knappen åbner nu " + prefs.appName(), Toast.LENGTH_LONG).show();
+                        handler.postDelayed(this::build, 1500);
+                    });
+                })
+                .setNegativeButton("Annullér", null)
+                .show();
+    }
+
+    /** Vælg hvilke af Amazons apps der skal slås fra. Alt kan slås til igen samme sted. */
+    private void cleanUp() {
+        java.util.List<HomeSetup.Item> items = HomeSetup.bloat(this);
+        String[] names = new String[items.size()];
+        boolean[] off = new boolean[items.size()];
+        for (int i = 0; i < items.size(); i++) {
+            names[i] = items.get(i).label;
+            off[i] = items.get(i).disabled;
+        }
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Slå fra (flueben = slået fra)")
+                .setMultiChoiceItems(names, off, (d, which, checked) -> off[which] = checked)
+                .setPositiveButton("Gem", (d, w) -> {
+                    Toast.makeText(this, "Forbinder til tv'ets ADB...", Toast.LENGTH_LONG).show();
+                    Net.async(() -> {
+                        HomeSetup.applyBloat(this, items, off);
+                        return true;
+                    }, (ok, err) -> Toast.makeText(this, err == null ? "Gemt" : "Det lykkedes ikke: " + err.getMessage(),
+                            Toast.LENGTH_LONG).show());
+                })
+                .setNegativeButton("Annullér", null)
+                .show();
+    }
+
     private void buildAbout() {
         int c = accent;
         title("Om " + prefs.appName());
         list.addView(Ui.header(this, "VERSION", c));
         list.addView(Ui.row(this, "Installeret", Updater.installedName(this), c, v -> { }));
         list.addView(Ui.row(this, "Nyt i denne version", "Vis", c,
-                v -> MainActivity.showChangelog(this, Updater.installedVersion(this))));
+                v -> AppUpdates.showChangelog(this, Updater.installedVersion(this))));
         list.addView(Ui.row(this, "Søg efter opdatering", "", c, v -> checkUpdate()));
+        list.addView(Ui.row(this, "Opdateringskanal", Updater.testChannel(this) ? "Test (nyeste, før andre)" : "Stabil", c, v -> {
+            prefs.setTestChannel(!Updater.testChannel(this));
+            build();
+        }));
         list.addView(Ui.header(this, "TILSTAND", c));
-        list.addView(Ui.row(this, "Home knap", HomeService.isRunning() ? "Aktiv" : "Ikke aktiv, kør install scriptet", c, v -> { }));
+        list.addView(Ui.row(this, "Home knap", HomeService.isRunning() ? "Aktiv" : "Ikke aktiv, tryk for at slå til", c, v -> makeHome()));
+        if (!HomeSetup.bloat(this).isEmpty()) list.addView(Ui.row(this, "Ryd op i Fire TV", "Slå Amazons ekstra apps fra", c, v -> cleanUp()));
         list.addView(Ui.row(this, "Jellyfin", new Jellyfin(prefs).configured() ? "Forbundet via " + prefs.jfUrl() : "Ikke forbundet", c, v -> { }));
         list.addView(Ui.row(this, "Natlig opdatering", Features.on(prefs, Features.NIGHT_UPDATE) ? "Kl. ca. 4" : "Fra", c, v -> { }));
         list.addView(Ui.row(this, "Home Assistant", new HomeAssistant(prefs).configured() ? "Forbundet" : "Ikke forbundet", c, v -> { }));
+        String log = ErrorLog.text();
+        list.addView(Ui.row(this, "Fejl-log", log.isEmpty() ? "Ingen fejl" : log.split("\n").length + " linjer, vis", c, v -> {
+            if (log.isEmpty()) return;
+            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle("Fejl-log (nyeste først)")
+                    .setMessage(log)
+                    .setPositiveButton("Ryd", (d, w) -> {
+                        ErrorLog.clear();
+                        build();
+                    })
+                    .setNegativeButton("Luk", null)
+                    .show();
+        }));
         String crash = prefs.lastCrash();
         list.addView(Ui.row(this, "Seneste fejl", crash.isEmpty() ? "Ingen" : "Vis", c, v -> {
             if (crash.isEmpty()) return;
@@ -500,8 +807,8 @@ public class SettingsActivity extends Activity {
     private void quickConnect() {
         Jellyfin jf = new Jellyfin(prefs);
         Net.async(() -> {
-            // Hjemme: LAN adressen. Ude (fx kærestens stick): samme server over Tailscale
-            if (jf.findServer() == null) throw new java.io.IOException("ingen server svarer på LAN eller Tailscale");
+            // Gemt adresse, ekstra adresser (fx Tailscale), ellers søges der på wifi'et
+            if (jf.findServer() == null) throw new java.io.IOException("ingen Jellyfin fundet. Skriv adressen under Jellyfin adresse");
             return jf.initiateQuickConnect();
         }, (res, err) -> {
             if (err != null || res == null) {
@@ -530,6 +837,7 @@ public class SettingsActivity extends Activity {
                             dialog.dismiss();
                             Toast.makeText(SettingsActivity.this, "Jellyfin forbundet", Toast.LENGTH_SHORT).show();
                             build();
+                            pullProfile(false);
                         } else {
                             handler.postDelayed(this, 3000);
                         }
@@ -548,7 +856,7 @@ public class SettingsActivity extends Activity {
             } else if (r == null) {
                 Toast.makeText(this, "Du har den nyeste version", Toast.LENGTH_SHORT).show();
             } else {
-                MainActivity.installUpdate(this, r);
+                AppUpdates.installUpdate(this, r);
             }
         });
     }

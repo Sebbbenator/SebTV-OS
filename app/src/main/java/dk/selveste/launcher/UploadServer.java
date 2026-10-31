@@ -43,7 +43,31 @@ final class UploadServer {
     private final Handler main = new Handler(Looper.getMainLooper());
     private ServerSocket socket;
     private volatile boolean running;
-    private int wrongPins;
+    private final java.util.concurrent.atomic.AtomicInteger wrongPins = new java.util.concurrent.atomic.AtomicInteger();
+    /** Egne tråde, så en langsom telefon aldrig blokerer forsidens Jellyfin og HA kald i Net.POOL. */
+    private final java.util.concurrent.ExecutorService workers = java.util.concurrent.Executors.newFixedThreadPool(2);
+
+    private static String onceKey;
+    private static String onceCode;
+    private static long onceUntil;
+
+    /** Giver en nøgle, som telefonen kan bytte til koden én gang inden for 10 minutter. */
+    static synchronized String offerProfileCode(String code) {
+        byte[] b = new byte[9];
+        new SecureRandom().nextBytes(b);
+        onceKey = android.util.Base64.encodeToString(b, android.util.Base64.URL_SAFE | android.util.Base64.NO_WRAP | android.util.Base64.NO_PADDING);
+        onceCode = code;
+        onceUntil = System.currentTimeMillis() + 10 * 60 * 1000;
+        return onceKey;
+    }
+
+    private static synchronized String takeProfileCode(String key) {
+        if (key == null || onceKey == null || !onceKey.equals(key) || System.currentTimeMillis() > onceUntil) return null;
+        String c = onceCode;
+        onceKey = null;
+        onceCode = null;
+        return c;
+    }
 
     UploadServer(Context context, Listener listener) {
         this.context = context.getApplicationContext();
@@ -60,7 +84,7 @@ final class UploadServer {
             while (running) {
                 try {
                     Socket client = socket.accept();
-                    Net.POOL.execute(() -> handle(client));
+                    workers.execute(() -> handle(client));
                 } catch (IOException e) {
                     if (!running) return;
                 }
@@ -72,6 +96,7 @@ final class UploadServer {
 
     void stop() {
         running = false;
+        workers.shutdownNow();
         try {
             if (socket != null) socket.close();
         } catch (IOException ignored) {
@@ -80,7 +105,7 @@ final class UploadServer {
 
     private void handle(Socket client) {
         try (Socket s = client) {
-            s.setSoTimeout(30000);
+            s.setSoTimeout(60000);
             InputStream in = new BufferedInputStream(s.getInputStream());
             OutputStream out = s.getOutputStream();
 
@@ -97,23 +122,6 @@ final class UploadServer {
                 int i = line.indexOf(':');
                 if (i > 0) headers.put(line.substring(0, i).trim().toLowerCase(Locale.ROOT), line.substring(i + 1).trim());
             }
-            int length = 0;
-            try {
-                length = Integer.parseInt(headers.getOrDefault("content-length", "0"));
-            } catch (NumberFormatException ignored) {
-            }
-            if (length > MAX_BODY) {
-                send(out, 413, "text/plain", bytes("For stort billede"));
-                return;
-            }
-            byte[] body = new byte[length];
-            int read = 0;
-            while (read < length) {
-                int n = in.read(body, read, length - read);
-                if (n < 0) break;
-                read += n;
-            }
-
             String path = target;
             Map<String, String> query = new HashMap<>();
             int q = target.indexOf('?');
@@ -131,12 +139,58 @@ final class UploadServer {
                         .replace("<title>Jarvis TV</title>", "<title>" + prefs.appName() + "</title>")));
                 return;
             }
+            if (path.equals("/api/profile-once")) {
+                // QR'en fra tv'et: koden hentes én gang med en tilfældig nøgle, uden PIN
+                String code = takeProfileCode(query.get("key"));
+                if (code == null) send(out, 404, "text/plain", bytes("QR koden er udløbet. Vis den igen på tv'et."));
+                else send(out, 200, "application/json", bytes(new JSONObject().put("code", code).toString()));
+                return;
+            }
+            if (path.equals("/ha-login")) {
+                // HA sender brugeren tilbage hertil efter login; koden byttes til et token på tv'et
+                send(out, 200, "text/html; charset=utf-8", bytes(haLogin(query)));
+                return;
+            }
 
+            // Koden tjekkes, før noget af indholdet læses, så en fremmed ikke kan fylde hukommelsen
             String given = headers.getOrDefault("x-pin", query.getOrDefault("pin", ""));
             if (!pin.equals(given)) {
-                if (++wrongPins > 20) stop();
+                if (wrongPins.incrementAndGet() > 20) stop();
                 send(out, 403, "text/plain", bytes("Forkert kode"));
                 return;
+            }
+
+            int length = 0;
+            try {
+                length = Integer.parseInt(headers.getOrDefault("content-length", "0"));
+            } catch (NumberFormatException ignored) {
+            }
+            if (path.equals("/api/konami-clip") && method.equals("POST")) {
+                // Video skrives direkte til disken i stedet for at ligge i hukommelsen
+                if (length > KonamiClip.MAX || length < 0) {
+                    send(out, 413, "text/plain", bytes("Klippet må højst fylde 60 MB"));
+                    return;
+                }
+                try {
+                    if (length == 0) KonamiClip.delete(context);
+                    else KonamiClip.save(context, in, length);
+                } catch (IOException e) {
+                    send(out, 400, "text/plain", bytes(String.valueOf(e.getMessage())));
+                    return;
+                }
+                send(out, 200, "application/json", bytes(state().toString()));
+                return;
+            }
+            if (length < 0 || length > MAX_BODY) {
+                send(out, 413, "text/plain", bytes("For stort billede"));
+                return;
+            }
+            byte[] body = new byte[length];
+            int read = 0;
+            while (read < length) {
+                int n = in.read(body, read, length - read);
+                if (n < 0) break;
+                read += n;
             }
 
             route(method, path, query, body, out);
@@ -157,11 +211,19 @@ final class UploadServer {
                 send(out, 200, "image/jpeg", Net.readAll(fin));
             }
         } else if (path.equals("/api/upload") && method.equals("POST")) {
+            if (!isImage(body)) {
+                send(out, 415, "text/plain", bytes("Ikke et billede"));
+                return;
+            }
             String name = backgrounds.save(body);
             backgrounds.select(name);
             notifyChanged();
             send(out, 200, "application/json", bytes(state().toString()));
         } else if (path.equals("/api/profile-picture") && method.equals("POST")) {
+            if (body.length > 0 && !isImage(body)) {
+                send(out, 415, "text/plain", bytes("Ikke et billede"));
+                return;
+            }
             if (body.length == 0) ProfilePicture.delete(context);
             else ProfilePicture.save(context, body);
             notifyChanged();
@@ -183,6 +245,26 @@ final class UploadServer {
             backgrounds.delete(query.get("name"));
             notifyChanged();
             send(out, 200, "application/json", bytes(state().toString()));
+        } else if (path.equals("/api/profile-code")) {
+            send(out, 200, "application/json", bytes(new JSONObject().put("code", ProfileCode.export(context)).toString()));
+        } else if (path.equals("/api/profile-import") && method.equals("POST")) {
+            try {
+                ProfileCode.apply(context, new String(body, StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                send(out, 400, "text/plain", bytes("Koden kunne ikke læses: " + e.getMessage()));
+                return;
+            }
+            notifyChanged();
+            send(out, 200, "application/json", bytes(state().toString()));
+        } else if (path.equals("/api/ha-login-url")) {
+            String haUrl = query.getOrDefault("haUrl", prefs.haUrl());
+            if (haUrl == null || haUrl.trim().isEmpty()) {
+                send(out, 400, "text/plain", bytes("Skriv Home Assistant adressen først"));
+                return;
+            }
+            String host = query.getOrDefault("host", "");
+            if (!host.matches("[0-9a-zA-Z.:\\[\\]-]+")) host = UploadActivity.ip() + ":" + PORT;
+            send(out, 200, "application/json", bytes(new JSONObject().put("url", HaLogin.startUrl(haUrl, "http://" + host)).toString()));
         } else if (path.equals("/api/settings") && method.equals("POST")) {
             JSONObject j = new JSONObject(new String(body, StandardCharsets.UTF_8));
             if (j.has("mode")) prefs.setBgMode(j.getString("mode"));
@@ -221,6 +303,7 @@ final class UploadServer {
 
     private JSONObject state() throws Exception {
         JSONObject j = new JSONObject();
+        j.put("konamiClip", KonamiClip.exists(context));
         JSONArray imgs = new JSONArray();
         for (String n : backgrounds.list()) imgs.put(n);
         j.put("images", imgs);
@@ -257,6 +340,19 @@ final class UploadServer {
         return j;
     }
 
+    /** Kun rigtige billeder gemmes: Android skal kunne læse deres størrelse. */
+    private static boolean isImage(byte[] data) {
+        android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+        o.inJustDecodeBounds = true;
+        android.graphics.BitmapFactory.decodeByteArray(data, 0, data.length, o);
+        return o.outWidth > 0 && o.outHeight > 0;
+    }
+
+    /** Svar på HA login; fyldes af HaLogin (QR login), indtil da en kort tekst. */
+    private String haLogin(Map<String, String> query) {
+        return HaLogin.finish(context, query);
+    }
+
     private void notifyChanged() {
         if (listener != null) main.post(listener::changed);
     }
@@ -278,7 +374,7 @@ final class UploadServer {
     }
 
     private static void send(OutputStream out, int code, String type, byte[] body) throws IOException {
-        String status = code == 200 ? "OK" : code == 403 ? "Forbidden" : code == 404 ? "Not Found" : "Error";
+        String status = code == 200 ? "OK" : code == 403 ? "Forbidden" : code == 404 ? "Not Found" : code == 413 ? "Too Large" : "Error";
         String head = "HTTP/1.1 " + code + " " + status + "\r\n"
                 + "Content-Type: " + type + "\r\n"
                 + "Content-Length: " + body.length + "\r\n"

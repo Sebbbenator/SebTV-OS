@@ -46,11 +46,12 @@ public class UploadActivity extends Activity {
         col.addView(Ui.header(this, "TELEFONSIDEN", Ui.CYAN));
         TextView url = Ui.text(this, "", 28, Ui.TEXT);
         col.addView(url);
-        // Hjemme hos Seb (192.168.111.x) virker wifi. Ude, fx hos kæresten, kan wifi'et blokere
-        // telefonen, men begge har Tailscale, så QR koden peger på Tailscale adressen
+        // Hjemme virker wifi. Er tv'et på et andet net end hjemmenettet (fx hos kæresten), kan wifi'et
+        // blokere telefonen, så QR koden peger på Tailscale, hvis tv'et har det
         String wifi = ip();
         String ts = tailscaleIp();
-        boolean useTailscale = ts != null && !wifi.startsWith("192.168.111.");
+        String home = new Prefs(this).homeSubnet();
+        boolean useTailscale = ts != null && !home.isEmpty() && !wifi.startsWith(home);
         String primary = useTailscale ? ts : wifi;
         String other = useTailscale ? wifi : ts;
         col.addView(Ui.text(this, useTailscale
@@ -65,7 +66,7 @@ public class UploadActivity extends Activity {
         pin.setTypeface(Typeface.MONOSPACE);
         pin.setLetterSpacing(0.3f);
         col.addView(pin);
-        status = Ui.text(this, "Her lægger du baggrunde op, slår funktioner til og fra og indsætter Home Assistant token.", 16, Ui.TEXT_DIM);
+        status = Ui.text(this, "Her lægger du baggrunde op, logger ind på Home Assistant og gemmer eller indlæser din profilkode.", 16, Ui.TEXT_DIM);
         status.setPadding(0, Ui.dp(this, 24), 0, 0);
         col.addView(status);
         setContentView(root);
@@ -109,7 +110,7 @@ public class UploadActivity extends Activity {
             }
         } catch (Exception ignored) {
         }
-        return fallback != null ? fallback : "192.168.111.5";
+        return fallback != null ? fallback : "127.0.0.1";
     }
 
     /** Tailscale adressen (100.64-127.x), hvis tv'et har en, til en telefon uden for wifi'et. */

@@ -55,23 +55,72 @@ final class Jellyfin {
     }
 
     /**
-     * Finder serveren: først den gemte adresse, så LAN og til sidst Tailscale.
-     * Gør at samme app virker hjemme og på en stick uden for huset.
+     * Finder serveren: først den gemte adresse, så de ekstra adresser (fx Tailscale) og til sidst
+     * en søgning på netværket. Gør at samme app virker hjemme, ude og hos venner uden opsætning.
      */
     String findServer() {
         java.util.LinkedHashSet<String> tries = new java.util.LinkedHashSet<>();
-        tries.add(prefs.jfUrl());
-        tries.add(Prefs.DEFAULT_JF_URL);
-        tries.add(Prefs.TAILSCALE_JF_URL);
+        if (!prefs.jfUrl().isEmpty()) tries.add(prefs.jfUrl());
+        tries.addAll(prefs.jfFallbacks());
         for (String base : tries) {
-            try {
-                Net.request("GET", base + "/System/Info/Public", null, null);
+            if (answers(base)) {
                 if (!base.equals(prefs.jfUrl())) prefs.setJfUrl(base);
                 return base;
-            } catch (IOException ignored) {
+            }
+        }
+        for (String base : discover()) {
+            if (answers(base)) {
+                prefs.setJfUrl(base);
+                return base;
             }
         }
         return null;
+    }
+
+    private static boolean answers(String base) {
+        try {
+            Net.request("GET", base + "/System/Info/Public", null, null);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Jellyfin svarer på UDP broadcast "who is JellyfinServer?" på port 7359 med sin adresse.
+     * Det er sådan Jellyfins egne apps finder serveren på wifi'et.
+     */
+    static List<String> discover() {
+        List<String> found = new ArrayList<>();
+        try (java.net.DatagramSocket socket = new java.net.DatagramSocket()) {
+            socket.setBroadcast(true);
+            socket.setSoTimeout(1500);
+            byte[] ask = "who is JellyfinServer?".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+            socket.send(new java.net.DatagramPacket(ask, ask.length, java.net.InetAddress.getByName("255.255.255.255"), 7359));
+            long until = System.currentTimeMillis() + 1500;
+            byte[] buf = new byte[2048];
+            while (System.currentTimeMillis() < until) {
+                java.net.DatagramPacket p = new java.net.DatagramPacket(buf, buf.length);
+                try {
+                    socket.receive(p);
+                } catch (java.net.SocketTimeoutException e) {
+                    break;
+                }
+                try {
+                    JSONObject j = new JSONObject(new String(p.getData(), 0, p.getLength(), java.nio.charset.StandardCharsets.UTF_8));
+                    String address = j.optString("Address", "").replaceAll("/+$", "");
+                    if (!address.isEmpty() && !found.contains(address)) found.add(address);
+                } catch (Exception ignored) {
+                }
+            }
+        } catch (IOException ignored) {
+        }
+        return found;
+    }
+
+    /** Rå kald til serveren med brugerens login (bruges af profil synk). */
+    String raw(String method, String path, String body) throws IOException {
+        return Net.request(method, prefs.jfUrl() + path, headers(), body);
     }
 
     // Quick Connect
@@ -139,6 +188,14 @@ final class Jellyfin {
             out.add(it);
         }
         return out;
+    }
+
+    /** Søgning i film, serier og afsnit. */
+    List<Item> search(String term) throws Exception {
+        String u = prefs.jfUser();
+        String q = "searchTerm=" + java.net.URLEncoder.encode(term, "UTF-8")
+                + "&includeItemTypes=Movie,Series,Episode&recursive=true&limit=12&fields=Overview";
+        return items(get("/Items?userId=" + u + "&" + q, "/Users/" + u + "/Items?" + q));
     }
 
     Item randomUnwatchedMovie() throws Exception {

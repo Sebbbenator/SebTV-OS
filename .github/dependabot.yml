@@ -1,0 +1,10 @@
+# Holder GitHub Actions opdateret (sikkerhedsrettelser), med en samlet pull request om ugen
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

@@ -22,6 +22,8 @@ final class Updater {
     /** Hvor launcheren boede til og med version 9; bruges kun til gamle release noter. */
     static final String OLD_REPO = "Sebbbenator/CSS-Jellyfin";
     static final String RELEASES = "https://api.github.com/repos/" + REPO + "/releases/latest";
+    /** Alle udgivelser, også test (pre-release) versioner fra udviklingsgrenen. */
+    static final String ALL_RELEASES = "https://api.github.com/repos/" + REPO + "/releases?per_page=15";
 
     /** Sat ved natlig opdatering: indtil da trykker HomeService selv på Installér i Fire OS dialogen. */
     static volatile long autoConfirmUntil;
@@ -47,20 +49,48 @@ final class Updater {
         }
     }
 
-    /** Nyere release end den installerede, ellers null. Kaldes fra en baggrundstråd. */
+    /**
+     * Nyere release end den installerede, ellers null. Kaldes fra en baggrundstråd.
+     * Kanal "stabil" følger kun den udgivelse, der er markeret som nyeste på GitHub.
+     * Kanal "test" tager også test versioner (pre-releases), så nyt kan prøves på én stick først.
+     */
     static Release check(Context context) throws Exception {
-        JSONObject j = new JSONObject(Net.request("GET", RELEASES, null, null));
+        Release best;
+        if (testChannel(context)) {
+            best = null;
+            JSONArray all = new JSONArray(Net.request("GET", ALL_RELEASES, null, null));
+            for (int i = 0; i < all.length(); i++) {
+                Release r = parse(all.getJSONObject(i));
+                if (r != null && (best == null || r.number > best.number)) best = r;
+            }
+        } else {
+            best = parse(new JSONObject(Net.request("GET", RELEASES, null, null)));
+        }
+        if (best == null || best.number <= installedVersion(context)) return null;
+        return best;
+    }
+
+    /** Test kanal er valgt, eller (indtil der vælges) appen selv er en test version. */
+    static boolean testChannel(Context context) {
+        Prefs p = new Prefs(context);
+        return p.channelChosen() ? p.testChannel() : installedName(context).endsWith("-test");
+    }
+
+    private static Release parse(JSONObject j) {
         String tag = j.optString("tag_name", "");
-        if (!tag.startsWith("launcher-v")) return null;
+        if (!tag.startsWith("launcher-v") || j.optBoolean("draft", false)) return null;
         Release r = new Release();
-        r.number = Integer.parseInt(tag.substring("launcher-v".length()));
+        try {
+            r.number = Integer.parseInt(tag.substring("launcher-v".length()));
+        } catch (NumberFormatException e) {
+            return null;
+        }
         JSONArray assets = j.optJSONArray("assets");
         for (int i = 0; assets != null && i < assets.length(); i++) {
-            JSONObject a = assets.getJSONObject(i);
-            if ("jarvis-tv.apk".equals(a.optString("name"))) r.apkUrl = a.optString("browser_download_url");
+            JSONObject a = assets.optJSONObject(i);
+            if (a != null && "jarvis-tv.apk".equals(a.optString("name"))) r.apkUrl = a.optString("browser_download_url");
         }
-        if (r.apkUrl == null || r.number <= installedVersion(context)) return null;
-        return r;
+        return r.apkUrl == null ? null : r;
     }
 
     /**
@@ -72,9 +102,19 @@ final class Updater {
         install(context, r);
     }
 
+    static File apkFile(Context context) {
+        return new File(context.getCacheDir(), "jarvis-tv-update.apk");
+    }
+
+    /** Den hentede APK fylder ca. 1 MB; den slettes, når den nye version kører. */
+    static void cleanUp(Context context) {
+        File apk = apkFile(context);
+        if (apk.isFile()) apk.delete();
+    }
+
     /** Hent og installer. Fire OS viser selv en bekræftelse, som InstallReceiver åbner. */
     static void install(Context context, Release r) throws Exception {
-        File apk = new File(context.getCacheDir(), "jarvis-tv-update.apk");
+        File apk = apkFile(context);
         Net.download(r.apkUrl, apk);
 
         PackageInstaller installer = context.getPackageManager().getPackageInstaller();
