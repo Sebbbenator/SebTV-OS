@@ -243,7 +243,15 @@ public class SettingsActivity extends Activity {
                 Toast.makeText(this, "Kunne ikke lave koden", Toast.LENGTH_LONG).show();
                 return;
             }
-            String url = "http://" + UploadActivity.ip() + ":" + UploadServer.PORT + "/#profil=" + code;
+            // Telefonsiden skal køre, mens QR'en vises; QR'en har kun en kort nøgle, så den er let at scanne
+            UploadServer server = new UploadServer(this, null);
+            try {
+                server.start();
+            } catch (Exception e) {
+                server = null;
+            }
+            UploadServer running = server;
+            String url = "http://" + UploadActivity.ip() + ":" + UploadServer.PORT + "/#kode=" + UploadServer.offerProfileCode(code);
             android.widget.ImageView qr = new android.widget.ImageView(this);
             qr.setImageBitmap(UploadActivity.qrBitmap(url, Ui.dp(this, 360)));
             LinearLayout box = new LinearLayout(this);
@@ -252,11 +260,14 @@ public class SettingsActivity extends Activity {
             int pad = Ui.dp(this, 16);
             box.setPadding(pad, pad, pad, pad);
             box.addView(qr, new LinearLayout.LayoutParams(Ui.dp(this, 360), Ui.dp(this, 360)));
-            box.addView(Ui.text(this, "Scan med telefonen og tryk Gem eller Del. Koden er " + code.length() + " tegn.", 16, Ui.TEXT_DIM));
+            box.addView(Ui.text(this, "Scan med telefonen (samme wifi) og tryk Del eller gem.", 16, Ui.TEXT_DIM));
             new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                     .setTitle("Din profilkode")
                     .setView(box)
                     .setPositiveButton("Luk", null)
+                    .setOnDismissListener(d -> {
+                        if (running != null) running.stop();
+                    })
                     .show();
         });
     }

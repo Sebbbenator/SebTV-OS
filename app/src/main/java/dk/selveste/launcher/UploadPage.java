@@ -144,6 +144,9 @@ final class UploadPage {
             + " try{const r=await fetch('/api/profile-import',{method:'POST',headers:{'X-Pin':PIN},body:c});if(!r.ok)throw new Error(await r.text());\n"
             + " S=await r.json();render();$('importCode').value='';say('Profilen er lagt ind. Tryk Tilbage på tv\\'et.')}catch(e){say(e.message)}}\n"
             + "if(location.hash.startsWith('#profil=')){$('saved').hidden=false;$('savedCode').value=decodeURIComponent(location.hash.slice(8))}\n"
+            + "if(location.hash.startsWith('#kode=')){fetch('/api/profile-once?key='+encodeURIComponent(location.hash.slice(6))).then(async r=>{\n"
+            + " if(!r.ok)throw new Error(await r.text());const j=await r.json();$('saved').hidden=false;$('savedCode').value=j.code;\n"
+            + " history.replaceState(null,'','#profil='+encodeURIComponent(j.code))}).catch(e=>say(e.message))}\n"
             + "if(PIN)go(true);\n"
             + "</script></body></html>\n";
 }

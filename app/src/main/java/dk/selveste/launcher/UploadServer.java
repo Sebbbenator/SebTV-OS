@@ -47,6 +47,28 @@ final class UploadServer {
     /** Egne tråde, så en langsom telefon aldrig blokerer forsidens Jellyfin og HA kald i Net.POOL. */
     private final java.util.concurrent.ExecutorService workers = java.util.concurrent.Executors.newFixedThreadPool(2);
 
+    private static String onceKey;
+    private static String onceCode;
+    private static long onceUntil;
+
+    /** Giver en nøgle, som telefonen kan bytte til koden én gang inden for 10 minutter. */
+    static synchronized String offerProfileCode(String code) {
+        byte[] b = new byte[9];
+        new SecureRandom().nextBytes(b);
+        onceKey = android.util.Base64.encodeToString(b, android.util.Base64.URL_SAFE | android.util.Base64.NO_WRAP | android.util.Base64.NO_PADDING);
+        onceCode = code;
+        onceUntil = System.currentTimeMillis() + 10 * 60 * 1000;
+        return onceKey;
+    }
+
+    private static synchronized String takeProfileCode(String key) {
+        if (key == null || onceKey == null || !onceKey.equals(key) || System.currentTimeMillis() > onceUntil) return null;
+        String c = onceCode;
+        onceKey = null;
+        onceCode = null;
+        return c;
+    }
+
     UploadServer(Context context, Listener listener) {
         this.context = context.getApplicationContext();
         this.backgrounds = new Backgrounds(context);
@@ -115,6 +137,13 @@ final class UploadServer {
                 send(out, 200, "text/html; charset=utf-8", bytes(UploadPage.HTML
                         .replace("JARVIS TV", prefs.appName().toUpperCase(Locale.ROOT))
                         .replace("<title>Jarvis TV</title>", "<title>" + prefs.appName() + "</title>")));
+                return;
+            }
+            if (path.equals("/api/profile-once")) {
+                // QR'en fra tv'et: koden hentes én gang med en tilfældig nøgle, uden PIN
+                String code = takeProfileCode(query.get("key"));
+                if (code == null) send(out, 404, "text/plain", bytes("QR koden er udløbet. Vis den igen på tv'et."));
+                else send(out, 200, "application/json", bytes(new JSONObject().put("code", code).toString()));
                 return;
             }
             if (path.equals("/ha-login")) {
