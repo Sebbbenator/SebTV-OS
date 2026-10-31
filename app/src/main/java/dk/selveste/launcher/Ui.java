@@ -28,7 +28,26 @@ final class Ui {
             {"kold", "#02080D", "#061722", "#0B2633", "#D8F6FF", "#8FC3D1"},
             {"varm", "#0D0807", "#1E1412", "#2E1E1A", "#FBEFEA", "#CDB2A8"},
             {"nat", "#07061A", "#13112E", "#1F1B45", "#ECE8FF", "#ADA5D6"},
+            {"chokolade", "#1A0F0A", "#2B1A12", "#3F2719", "#F7EADC", "#CFB49A"},
+            {"creme", "#EFE3D3", "#E6D5C0", "#DCC4A6", "#3B2416", "#7A5A44"},
     };
+
+    static float radiusDp = 10;
+    private static String style = "";
+
+    /** Tone, kortstil og hjørner. Billig at kalde ofte: gør kun noget, når noget er ændret. */
+    static void applyStyle(String toneKey, String cards, String corners) {
+        String sig = toneKey + "|" + cards + "|" + corners;
+        if (sig.equals(style)) return;
+        style = sig;
+        applyTone(toneKey);
+        if ("glas".equals(cards)) {
+            CARD = HudView.withAlpha(CARD, 0.42f);
+            CARD_FOCUS = HudView.withAlpha(CARD_FOCUS, 0.7f);
+            CARD_STROKE = HudView.withAlpha(TEXT, 0.35f);
+        }
+        radiusDp = "ekstra".equals(corners) ? 26 : "rund".equals(corners) ? 18 : 10;
+    }
 
     static void applyTone(String key) {
         String[] t = TONES[0];
@@ -93,7 +112,7 @@ final class Ui {
 
     static GradientDrawable card(Context c, int fill, int stroke, int strokeDp) {
         GradientDrawable g = new GradientDrawable();
-        g.setCornerRadius(dp(c, 10));
+        g.setCornerRadius(dp(c, radiusDp));
         g.setColor(fill);
         g.setStroke(dp(c, strokeDp), stroke);
         return g;

@@ -16,6 +16,14 @@ final class ParticleView extends View {
     static final int SNOW = 1;
     static final int EMBERS = 2;
     static final int FIREWORKS = 3;
+    /** Blade der daler og svajer, til efterårstemaet. */
+    static final int LEAVES = 4;
+    private static final int LEAF_COUNT = 16;
+    private static final int[] LEAF_COLORS = {
+            Color.rgb(196, 98, 45), Color.rgb(217, 148, 90), Color.rgb(160, 72, 38), Color.rgb(228, 176, 96), Color.rgb(122, 74, 44)};
+    private final android.graphics.Path leaf = new android.graphics.Path();
+    private final float[] spin = new float[COUNT];
+    private final float[] angle = new float[COUNT];
 
     private static final int COUNT = 40;
 
@@ -87,6 +95,17 @@ final class ParticleView extends View {
             case FIREWORKS:
                 life[i] = 0;
                 break;
+            case LEAVES:
+                x[i] = random.nextFloat() * w;
+                y[i] = anywhere ? random.nextFloat() * h : -20 * d;
+                vx[i] = (random.nextFloat() - 0.3f) * 18 * d;
+                vy[i] = (14 + random.nextFloat() * 22) * d;
+                size[i] = (7 + random.nextFloat() * 7) * d;
+                color[i] = Color.argb(140 + random.nextInt(90), 0, 0, 0) | (LEAF_COLORS[random.nextInt(LEAF_COLORS.length)] & 0xFFFFFF);
+                angle[i] = random.nextFloat() * 360f;
+                spin[i] = (random.nextFloat() - 0.5f) * 90f;
+                life[i] = random.nextFloat() * 6f;
+                break;
         }
     }
 
@@ -110,6 +129,26 @@ final class ParticleView extends View {
         }
     }
 
+    private void drawLeaf(Canvas c, int i) {
+        float s = size[i];
+        leaf.reset();
+        leaf.moveTo(0, -s);
+        leaf.quadTo(s * 0.75f, -s * 0.2f, 0, s);
+        leaf.quadTo(-s * 0.75f, -s * 0.2f, 0, -s);
+        c.save();
+        c.translate(x[i], y[i]);
+        c.rotate(angle[i]);
+        // Bladet vender sig i luften: smallere, når det ses fra siden
+        c.scale(0.4f + 0.6f * Math.abs((float) Math.cos(life[i] * 0.9f)), 1f);
+        paint.setColor(color[i]);
+        paint.setStyle(Paint.Style.FILL);
+        c.drawPath(leaf, paint);
+        paint.setColor(HudView.withAlpha(Color.rgb(70, 40, 22), Color.alpha(color[i]) / 255f));
+        paint.setStrokeWidth(Math.max(1f, s * 0.08f));
+        c.drawLine(0, -s * 0.8f, 0, s * 1.25f, paint);
+        c.restore();
+    }
+
     @Override
     protected void onDraw(Canvas c) {
         if (mode == NONE) return;
@@ -119,7 +158,18 @@ final class ParticleView extends View {
         float h = getHeight();
         float w = getWidth();
         boolean alive = false;
-        for (int i = 0; i < COUNT; i++) {
+        int n = mode == LEAVES ? LEAF_COUNT : COUNT;
+        for (int i = 0; i < n; i++) {
+            if (mode == LEAVES) {
+                life[i] += dt;
+                // Svajer fra side til side, mens det daler
+                x[i] += (vx[i] + (float) Math.sin(life[i] * 1.3f) * 22 * getResources().getDisplayMetrics().density) * dt;
+                y[i] += vy[i] * dt;
+                angle[i] += spin[i] * dt;
+                if (y[i] > h + 30 || x[i] < -30 || x[i] > w + 30) reset(i, false);
+                drawLeaf(c, i);
+                continue;
+            }
             x[i] += vx[i] * dt;
             y[i] += vy[i] * dt;
             if (mode == FIREWORKS) {

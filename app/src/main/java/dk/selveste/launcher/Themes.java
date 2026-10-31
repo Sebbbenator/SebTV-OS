@@ -5,6 +5,7 @@ final class Themes {
 
     /** nøgle, navn, beskrivelse, udgave */
     static final String[][] ALL = {
+            {"efteraar", "Efterår", "Lys creme, karamel, ternet stof og faldende blade", Prefs.EDITION_HOME},
             {"rose", "Rosé", "Varm og blød med rosa", Prefs.EDITION_HOME},
             {"hygge", "Hygge", "Varme farver som levende lys", Prefs.EDITION_HOME},
             {"salvie", "Salvie", "Rolig grøn og elegant skrift", Prefs.EDITION_HOME},
@@ -18,6 +19,16 @@ final class Themes {
     static void apply(Prefs prefs, String key) {
         prefs.setTheme(key);
         switch (key) {
+            case "efteraar":
+                look(prefs, "creme", "karamel", "analog", "serif", "normal");
+                effects(prefs, true);
+                prefs.setFlag(Features.PARALLAX, false);
+                prefs.setParticles("blade");
+                prefs.setStr("bg_source", "ternet");
+                prefs.setStr("corners", "ekstra");
+                prefs.setStr("cards", "glas");
+                prefs.setStr("shade", "let");
+                break;
             case "rose":
                 look(prefs, "varm", "rosa", "tynd", "serif", "normal");
                 effects(prefs, true);
@@ -59,6 +70,11 @@ final class Themes {
     }
 
     private static void look(Prefs prefs, String tone, String accent, String clock, String font, String tiles) {
+        prefs.setParticles("auto");
+        prefs.setStr("bg_source", "billeder");
+        prefs.setStr("corners", "normal");
+        prefs.setStr("cards", "fast");
+        prefs.setStr("shade", "normal");
         prefs.setTone(tone);
         prefs.setAccentKey(accent);
         prefs.setClockStyle(clock);

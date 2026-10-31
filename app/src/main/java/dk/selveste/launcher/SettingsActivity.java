@@ -78,7 +78,7 @@ public class SettingsActivity extends Activity {
 
     private void build() {
         list.removeAllViews();
-        if (!prefs.tone().equals(Ui.tone)) Ui.applyTone(prefs.tone());
+        Ui.applyStyle(prefs.tone(), prefs.str("cards", "fast"), prefs.str("corners", "normal"));
         ((View) list.getParent()).setBackgroundColor(Ui.BG);
         accent = prefs.accentColor();
         Ui.loadFont(this, prefs.font());
@@ -193,13 +193,16 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.row(this, "Assistentens navn", prefs.assistantName().isEmpty() ? "Intet" : prefs.assistantName(), c,
                 v -> ask("Assistentens navn (tom = intet)", prefs.assistantName(), prefs.isJarvis() ? "Jarvis" : "Luna",
                         prefs::setAssistantName)));
-        list.addView(Ui.header(this, "ENKELTVIS", c));
-        list.addView(Ui.row(this, "Ur", pick(Prefs.CLOCKS, prefs.clockStyle()), c,
-                v -> choose("Ur", Prefs.CLOCKS, prefs.clockStyle(), prefs::setClockStyle)));
-        list.addView(Ui.row(this, "Skrifttype", pick(Prefs.FONTS, prefs.font()), c,
-                v -> choose("Skrifttype", Prefs.FONTS, prefs.font(), prefs::setFont)));
-        list.addView(Ui.row(this, "Accentfarve", accentName(), c, v -> chooseAccent()));
-        list.addView(Ui.row(this, "Flisestørrelse", tileSizeName(), c, v -> chooseTileSize()));
+        list.addView(Ui.text(this, "Start med et tema og skru så på det enkelte. Det hele kan også ændres fra telefonsiden.", 16, Ui.TEXT_DIM));
+        // Samme liste som telefonsiden, delt i grupper
+        for (String group : Looks.GROUPS) {
+            list.addView(Ui.header(this, group.toUpperCase(java.util.Locale.ROOT), c));
+            for (Looks.Option o : Looks.ALL) {
+                if (!o.group.equals(group)) continue;
+                list.addView(Ui.row(this, o.title, Looks.name(o, Looks.get(prefs, o)), c,
+                        v -> choose(o.title, o.values, Looks.get(prefs, o), value -> Looks.set(prefs, o, value))));
+            }
+        }
     }
 
     private void buildFeatures() {

@@ -173,7 +173,7 @@ public class MainActivity extends Activity {
         ha = new HomeAssistant(prefs);
         jf = new Jellyfin(prefs);
         installCrashHandler(this);
-        builtTone = prefs.tone();
+        builtTone = Looks.layoutSignature(prefs);
         Ui.loadFont(this, prefs.font());
         setContentView(buildLayout());
         applyLook();
@@ -199,7 +199,7 @@ public class MainActivity extends Activity {
             startActivity(new Intent(this, SetupActivity.class));
             return;
         }
-        if (!prefs.tone().equals(builtTone)) {
+        if (!Looks.layoutSignature(prefs).equals(builtTone)) {
             // Ny farvetone: skyggerne og kortene er bygget med den gamle, så byg skærmen forfra
             recreate();
             return;
@@ -273,6 +273,8 @@ public class MainActivity extends Activity {
     private View buildLayout() {
         root = new FrameLayout(this);
         root.setBackgroundColor(Ui.BG);
+        String shadeKey = prefs.str("shade", "normal");
+        float shade = "let".equals(shadeKey) ? 0.55f : "kraftig".equals(shadeKey) ? 1.3f : 1f;
 
         // Rammen er en anelse større end skærmen, så den kan glide med fokus uden kanter
         bgFrame = new FrameLayout(this);
@@ -285,11 +287,11 @@ public class MainActivity extends Activity {
 
         View shadeBottom = new View(this);
         shadeBottom.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP,
-                new int[]{Ui.bg(0.95f), Ui.bg(0.6f), Ui.bg(0f)}));
+                new int[]{Ui.bg(Math.min(1f, 0.95f * shade)), Ui.bg(Math.min(1f, 0.6f * shade)), Ui.bg(0f)}));
         root.addView(shadeBottom, match());
         View shadeTop = new View(this);
         shadeTop.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{Ui.bg(0.6f), Ui.bg(0f), Ui.bg(0f)}));
+                new int[]{Ui.bg(Math.min(1f, 0.6f * shade)), Ui.bg(0f), Ui.bg(0f)}));
         root.addView(shadeTop, match());
 
         particles = new ParticleView(this);
@@ -396,7 +398,8 @@ public class MainActivity extends Activity {
         if (look.equals(appliedLook)) return;
         appliedLook = look;
         String style = prefs.clockStyle();
-        boolean ring = "hud".equals(style);
+        boolean ring = "hud".equals(style) || "analog".equals(style);
+        clockRing.setAnalog("analog".equals(style));
         clock.setVisibility(ring ? View.GONE : View.VISIBLE);
         clockRing.setVisibility(ring ? View.VISIBLE : View.GONE);
         Typeface thin = "system".equals(prefs.font()) ? Typeface.create("sans-serif-thin", Typeface.NORMAL) : Ui.display;
@@ -981,19 +984,22 @@ public class MainActivity extends Activity {
     // Baggrund
 
     private void loadBackground(boolean homePressed) {
-        String name = backgrounds.current(homePressed);
+        String source = prefs.str("bg_source", "billeder");
+        String name = "billeder".equals(source) ? backgrounds.current(homePressed) : "mønster:" + source + ":" + prefs.accentKey() + ":" + prefs.tone();
         if (name != null && name.equals(shownBackground)) {
             if (kenBurns != null) kenBurns.resume();
             return;
         }
         shownBackground = name;
-        File f = name == null ? null : backgrounds.file(name);
+        File f = name == null || name.startsWith("mønster:") ? null : backgrounds.file(name);
+        boolean plaid = "ternet".equals(source);
         int width = Math.max(getResources().getDisplayMetrics().widthPixels, 1280);
         boolean wantAccent = "auto".equals(prefs.accentKey());
         int fixedAccent = prefs.accentColor();
         // Billedet læses på en baggrundstråd, så Home ikke hakker, når baggrunden skifter
         Net.async(() -> {
-            Bitmap bmp = f == null ? null : Backgrounds.decode(f, width);
+            Bitmap bmp = plaid ? Patterns.plaid(width, width * 9 / 16, fixedAccent)
+                    : f == null ? null : Backgrounds.decode(f, width);
             return new Object[]{bmp, wantAccent ? Backgrounds.accent(bmp, Ui.CYAN) : fixedAccent};
         }, (res, err) -> {
             if (res == null || isDestroyed() || (name != null && !name.equals(shownBackground))) return;
@@ -1089,6 +1095,9 @@ public class MainActivity extends Activity {
 
     private void updateSeason() {
         int mode = Features.on(prefs, Features.SEASONS) ? ParticleView.modeFor(Calendar.getInstance()) : ParticleView.NONE;
+        // Efterårstemaet: blade resten af året, når der ikke er sne eller fyrværkeri
+        if ((mode == ParticleView.NONE || mode == ParticleView.EMBERS) && "blade".equals(prefs.particles())) mode = ParticleView.LEAVES;
+        if ("ingen".equals(prefs.particles()) && mode != ParticleView.FIREWORKS) mode = ParticleView.NONE;
         if (System.currentTimeMillis() < ironManUntil) mode = ParticleView.FIREWORKS;
         particles.setMode(mode);
     }

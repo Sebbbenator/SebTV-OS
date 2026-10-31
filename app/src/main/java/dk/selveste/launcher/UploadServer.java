@@ -197,6 +197,16 @@ final class UploadServer {
             }
             prefs.setHa(j.optString("haUrl", null), j.optString("haToken", null), j.optString("haButtons", null));
             if (j.optBoolean("haForget", false)) prefs.clearHaToken();
+            if (j.has("theme")) Themes.apply(prefs, j.getString("theme"));
+            JSONObject look = j.optJSONObject("look");
+            if (look != null) {
+                JSONArray keys = look.names();
+                for (int i = 0; keys != null && i < keys.length(); i++) {
+                    Looks.Option o = Looks.find(keys.getString(i));
+                    if (o != null) Looks.set(prefs, o, look.getString(keys.getString(i)));
+                }
+                MainActivity.appsDirty = true;
+            }
             JSONObject p = j.optJSONObject("profile");
             if (p != null) {
                 prefs.setProfile(p.optString("name", null), p.optString("greeting", null),
@@ -226,6 +236,18 @@ final class UploadServer {
         j.put("haUrl", prefs.haUrl());
         j.put("haTokenSet", !prefs.haToken().isEmpty());
         j.put("haButtons", prefs.haButtons());
+        JSONArray looks = new JSONArray();
+        for (Looks.Option o : Looks.ALL) {
+            JSONArray values = new JSONArray();
+            for (String[] v : o.values) values.put(new JSONArray().put(v[0]).put(v[1]));
+            looks.put(new JSONObject().put("key", o.key).put("title", o.title).put("group", o.group)
+                    .put("value", Looks.get(prefs, o)).put("values", values));
+        }
+        j.put("looks", looks);
+        JSONArray themes = new JSONArray();
+        for (String[] t : Themes.ALL) themes.put(new JSONArray().put(t[0]).put(t[1] + " · " + t[2]));
+        j.put("themes", themes);
+        j.put("theme", prefs.theme());
         j.put("profile", new JSONObject()
                 .put("name", prefs.profileName())
                 .put("greeting", prefs.customGreeting())

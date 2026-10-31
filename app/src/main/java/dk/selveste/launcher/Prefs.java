@@ -36,6 +36,7 @@ final class Prefs {
             {"fersken", "Fersken", "#FFB38A"},
             {"salvie", "Salvie", "#A8D8B0"},
             {"lavendel", "Lavendel", "#C3B1FF"},
+            {"karamel", "Karamel", "#D9945A"},
             {"auto", "Fra baggrunden", ""},
     };
 
@@ -51,7 +52,16 @@ final class Prefs {
     Prefs(Context context) {
         sp = context.getSharedPreferences("jarvis", Context.MODE_PRIVATE);
         // Alle skærme læser Prefs først, så tonen er altid sat, før noget tegnes
-        if (!tone().equals(Ui.tone)) Ui.applyTone(tone());
+        Ui.applyStyle(tone(), str("cards", "fast"), str("corners", "normal"));
+    }
+
+    /** Fri tekstværdi, bruges af Looks til udseendet. */
+    String str(String key, String def) {
+        return sp.getString(key, def);
+    }
+
+    void setStr(String key, String value) {
+        sp.edit().putString(key, value).apply();
     }
 
     // Rækker
@@ -324,6 +334,7 @@ final class Prefs {
             {"tynd", "Stor og tynd"},
             {"hud", "Jarvis ring med sekunder"},
             {"sekunder", "Digital med sekunder"},
+            {"analog", "Analogt ur"},
     };
 
     static final String[][] FONTS = {
@@ -347,6 +358,15 @@ final class Prefs {
 
     void setFont(String key) {
         sp.edit().putString("font", key).apply();
+    }
+
+    /** "auto" = kun højtider, "blade" = faldende blade (efterårstemaet). */
+    String particles() {
+        return sp.getString("particles", "auto");
+    }
+
+    void setParticles(String p) {
+        sp.edit().putString("particles", p).apply();
     }
 
     String theme() {

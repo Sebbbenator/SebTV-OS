@@ -17,6 +17,10 @@ final class ClockRingView extends View {
     private final Paint time = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF oval = new RectF();
     private int color = Ui.CYAN;
+    /** Analogt ur med visere (efterårstemaet) i stedet for Jarvis ringen. */
+    private boolean analog;
+    private final Paint hands = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint face = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     ClockRingView(Context context) {
         super(context);
@@ -26,6 +30,48 @@ final class ClockRingView extends View {
         ticks.setStyle(Paint.Style.STROKE);
         time.setTextAlign(Paint.Align.CENTER);
         time.setColor(Ui.TEXT);
+    }
+
+    void setAnalog(boolean a) {
+        if (a == analog) return;
+        analog = a;
+        invalidate();
+    }
+
+    private void drawAnalog(Canvas c, float cx, float cy, float r, Calendar now) {
+        float d = getResources().getDisplayMetrics().density;
+        face.setStyle(Paint.Style.FILL);
+        face.setColor(HudView.withAlpha(Ui.CARD_FOCUS, 0.85f));
+        c.drawCircle(cx, cy, r, face);
+        face.setStyle(Paint.Style.STROKE);
+        face.setStrokeWidth(3 * d);
+        face.setColor(color);
+        c.drawCircle(cx, cy, r, face);
+        ticks.setStrokeWidth(2 * d);
+        ticks.setStrokeCap(Paint.Cap.ROUND);
+        for (int i = 0; i < 12; i++) {
+            ticks.setColor(HudView.withAlpha(Ui.TEXT, i % 3 == 0 ? 0.9f : 0.45f));
+            double a = Math.toRadians(i * 30 - 90);
+            float r1 = r * 0.86f, r2 = r * (i % 3 == 0 ? 0.72f : 0.78f);
+            c.drawLine(cx + (float) Math.cos(a) * r1, cy + (float) Math.sin(a) * r1,
+                    cx + (float) Math.cos(a) * r2, cy + (float) Math.sin(a) * r2, ticks);
+        }
+        float min = now.get(Calendar.MINUTE) + now.get(Calendar.SECOND) / 60f;
+        float hour = now.get(Calendar.HOUR) + min / 60f;
+        hands.setStrokeCap(Paint.Cap.ROUND);
+        hand(c, cx, cy, hour * 30f, r * 0.45f, 5 * d, Ui.TEXT);
+        hand(c, cx, cy, min * 6f, r * 0.68f, 3.5f * d, Ui.TEXT);
+        hand(c, cx, cy, now.get(Calendar.SECOND) * 6f, r * 0.74f, 1.5f * d, color);
+        face.setStyle(Paint.Style.FILL);
+        face.setColor(color);
+        c.drawCircle(cx, cy, 4 * d, face);
+    }
+
+    private void hand(Canvas c, float cx, float cy, float deg, float len, float width, int col) {
+        double a = Math.toRadians(deg - 90);
+        hands.setStrokeWidth(width);
+        hands.setColor(col);
+        c.drawLine(cx, cy, cx + (float) Math.cos(a) * len, cy + (float) Math.sin(a) * len, hands);
     }
 
     void setColor(int c) {
@@ -44,6 +90,10 @@ final class ClockRingView extends View {
 
         Calendar now = Calendar.getInstance();
         int sec = now.get(Calendar.SECOND);
+        if (analog) {
+            drawAnalog(c, cx, cy, size / 2f - stroke, now);
+            return;
+        }
 
         track.setStrokeWidth(stroke);
         track.setColor(HudView.withAlpha(color, 0.18f));
