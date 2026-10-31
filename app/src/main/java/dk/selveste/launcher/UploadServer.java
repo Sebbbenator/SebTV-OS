@@ -83,7 +83,7 @@ final class UploadServer {
 
     private void handle(Socket client) {
         try (Socket s = client) {
-            s.setSoTimeout(30000);
+            s.setSoTimeout(60000);
             InputStream in = new BufferedInputStream(s.getInputStream());
             OutputStream out = s.getOutputStream();
 
@@ -135,6 +135,22 @@ final class UploadServer {
             try {
                 length = Integer.parseInt(headers.getOrDefault("content-length", "0"));
             } catch (NumberFormatException ignored) {
+            }
+            if (path.equals("/api/konami-clip") && method.equals("POST")) {
+                // Video skrives direkte til disken i stedet for at ligge i hukommelsen
+                if (length > KonamiClip.MAX || length < 0) {
+                    send(out, 413, "text/plain", bytes("Klippet må højst fylde 60 MB"));
+                    return;
+                }
+                try {
+                    if (length == 0) KonamiClip.delete(context);
+                    else KonamiClip.save(context, in, length);
+                } catch (IOException e) {
+                    send(out, 400, "text/plain", bytes(String.valueOf(e.getMessage())));
+                    return;
+                }
+                send(out, 200, "application/json", bytes(state().toString()));
+                return;
             }
             if (length < 0 || length > MAX_BODY) {
                 send(out, 413, "text/plain", bytes("For stort billede"));
@@ -258,6 +274,7 @@ final class UploadServer {
 
     private JSONObject state() throws Exception {
         JSONObject j = new JSONObject();
+        j.put("konamiClip", KonamiClip.exists(context));
         JSONArray imgs = new JSONArray();
         for (String n : backgrounds.list()) imgs.put(n);
         j.put("images", imgs);

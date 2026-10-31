@@ -295,6 +295,7 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         if (visible == this) visible = null;
+        if (konamiVideo != null) konamiVideo.stop();
         HaSocket.get(this).removeListener(haLive);
         handler.removeCallbacks(tick);
         if (kenBurns != null) kenBurns.pause();
@@ -334,6 +335,11 @@ public class MainActivity extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         int code = event.getKeyCode();
+        if (konamiVideo != null && code == KeyEvent.KEYCODE_BACK) {
+            // Tilbage stopper klippet; forsiden skifter alligevel
+            if (event.getAction() == KeyEvent.ACTION_UP) konamiVideo.stop();
+            return true;
+        }
         if (code == KeyEvent.KEYCODE_MENU) {
             // Kort tryk på ☰: indstillinger. Langt tryk: hurtigpanelet.
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
@@ -1434,9 +1440,66 @@ public class MainActivity extends Activity {
         }
     }
 
+    private AlphaVideoView konamiVideo;
+
+    /**
+     * Konami sekvensen: klippet fra telefonsiden spiller oven på forsiden, og midt i (under blitzet)
+     * skifter forsiden til rød og guld og åbner sig som en cirkel. Uden klip: et guld blitz.
+     */
     private void ironMan() {
+        if (konamiVideo != null) return;
+        java.io.File clip = KonamiClip.file(this);
+        if (Motion.NONE.equals(motion)) {
+            ironManSwitch(true);
+            return;
+        }
+        if (!clip.isFile()) {
+            flash(() -> ironManSwitch(true));
+            return;
+        }
+        boolean[] switched = {false};
+        AlphaVideoView video = new AlphaVideoView(this, clip, () -> {
+            if (konamiVideo != null) root.removeView(konamiVideo);
+            konamiVideo = null;
+            if (!switched[0]) ironManSwitch(true);
+        });
+        konamiVideo = video;
+        root.addView(video, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        Runnable watch = new Runnable() {
+            @Override
+            public void run() {
+                if (konamiVideo != video) return;
+                if (!switched[0] && video.progress() >= 0.45f) {
+                    switched[0] = true;
+                    ironManSwitch(false);
+                    return;
+                }
+                handler.postDelayed(this, 40);
+            }
+        };
+        handler.postDelayed(watch, 200);
+        // Sikkerhed: et klip der hænger, fjernes efter 30 sekunder
+        handler.postDelayed(() -> {
+            if (konamiVideo == video) video.stop();
+        }, 30_000);
+    }
+
+    /** Hvidt-guld blitz over hele skærmen; skiftet sker midt i, når skærmen er helt dækket. */
+    private void flash(Runnable then) {
+        View f = new View(this);
+        f.setBackgroundColor(Color.parseColor("#FFF3D0"));
+        f.setAlpha(0f);
+        root.addView(f, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        f.animate().alpha(1f).setDuration(120).withEndAction(() -> {
+            then.run();
+            f.animate().alpha(0f).setDuration(Motion.LIGHT.equals(motion) ? 300 : 700).withEndAction(() -> root.removeView(f)).start();
+        }).start();
+    }
+
+    private void ironManSwitch(boolean hud) {
         ironManUntil = System.currentTimeMillis() + 60_000;
-        new HudView(this, "Iron Man mode", currentAccent()).play(root);
+        if (hud) new HudView(this, "Iron Man mode", currentAccent()).play(root);
+        if (Motion.FULL.equals(motion)) Motion.reveal(column, motion, -1, -1);
         refreshApps();
         updateSeason();
         if (ha.configured()) {
