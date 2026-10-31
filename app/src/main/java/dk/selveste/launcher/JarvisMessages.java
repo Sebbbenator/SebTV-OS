@@ -74,10 +74,11 @@ final class JarvisMessages {
         });
     }
 
-    /** Viser banneret. "Titel | tekst" giver en egen overskrift, ellers står der JARVIS. */
+    /** Viser banneret. "Titel | tekst" giver en egen overskrift, ellers assistentens navn. */
     void show(String text, JSONObject state) {
         hide();
-        String title = "JARVIS";
+        String name = prefs.assistantName();
+        String title = name.isEmpty() ? "BESKED" : name.toUpperCase(java.util.Locale.ROOT);
         int bar = text.indexOf('|');
         if (bar > 0) {
             title = text.substring(0, bar).trim().toUpperCase(java.util.Locale.ROOT);
@@ -90,7 +91,7 @@ final class JarvisMessages {
         box.setOrientation(LinearLayout.VERTICAL);
         int pad = Ui.dp(service, 18);
         box.setPadding(pad, Ui.dp(service, 12), pad, Ui.dp(service, 14));
-        GradientDrawable bg = Ui.card(service, android.graphics.Color.parseColor("#F2061722"), accent, 2);
+        GradientDrawable bg = Ui.card(service, HudView.withAlpha(Ui.CARD_FOCUS, 0.95f), accent, 2);
         box.setBackground(bg);
         box.setElevation(Ui.dp(service, 8));
         TextView head = Ui.header(service, title, accent);

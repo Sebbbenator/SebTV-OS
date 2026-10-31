@@ -50,6 +50,8 @@ $imgs = @()
 $imgs += Get-ChildItem -Path $dir, "$env:USERPROFILE\Downloads", "$env:USERPROFILE\OneDrive\Billeder", "$env:USERPROFILE\Pictures" -Filter 'baggrund.*' -File -ErrorAction SilentlyContinue
 $imgs += Get-ChildItem -Path "$env:USERPROFILE\Pictures\Jarvis TV", "$env:USERPROFILE\OneDrive\Billeder\Jarvis TV" -File -ErrorAction SilentlyContinue
 $imgs = $imgs | Where-Object { $_.Extension -match '^\.(jpe?g|png)$' }
+# En anden stick (fx kaerestens) faar ikke billeder fra denne pc; hun laegger sine egne op fra telefonen
+if ($env:JARVIS_TV) { $imgs = @() }
 & $adb -s $tv shell mkdir -p /sdcard/Pictures/JarvisTV | Out-Null
 foreach ($img in $imgs) {
     & $adb -s $tv push $img.FullName "/sdcard/Pictures/JarvisTV/$($img.Name)" | Out-Null

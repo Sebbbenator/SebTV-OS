@@ -126,7 +126,9 @@ final class UploadServer {
             }
 
             if (path.equals("/") || path.equals("/index.html")) {
-                send(out, 200, "text/html; charset=utf-8", bytes(UploadPage.HTML));
+                send(out, 200, "text/html; charset=utf-8", bytes(UploadPage.HTML
+                        .replace("JARVIS TV", prefs.appName().toUpperCase(Locale.ROOT))
+                        .replace("<title>Jarvis TV</title>", "<title>" + prefs.appName() + "</title>")));
                 return;
             }
 

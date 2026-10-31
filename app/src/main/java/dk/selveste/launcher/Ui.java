@@ -13,12 +13,39 @@ import android.widget.TextView;
 /** Fælles byggeklodser til Jarvis skærmene, så de ser ens ud. */
 final class Ui {
 
-    static final int BG = Color.parseColor("#02080D");
     static final int CYAN = Color.parseColor("#4FD8FF");
-    static final int TEXT = Color.parseColor("#D8F6FF");
-    static final int TEXT_DIM = Color.parseColor("#8FC3D1");
-    static final int CARD = Color.parseColor("#CC061722");
-    static final int CARD_STROKE = Color.parseColor("#334FD8FF");
+    // Farverne skifter med tonen (kold, varm, nat), så de er ikke final
+    static int BG = Color.parseColor("#02080D");
+    static int TEXT = Color.parseColor("#D8F6FF");
+    static int TEXT_DIM = Color.parseColor("#8FC3D1");
+    static int CARD = Color.parseColor("#CC061722");
+    static int CARD_FOCUS = Color.parseColor("#E60B2633");
+    static int CARD_STROKE = Color.parseColor("#334FD8FF");
+    static String tone = "kold";
+
+    /** tone, baggrund, kort, kort i fokus, tekst, dæmpet tekst */
+    private static final String[][] TONES = {
+            {"kold", "#02080D", "#061722", "#0B2633", "#D8F6FF", "#8FC3D1"},
+            {"varm", "#0D0807", "#1E1412", "#2E1E1A", "#FBEFEA", "#CDB2A8"},
+            {"nat", "#07061A", "#13112E", "#1F1B45", "#ECE8FF", "#ADA5D6"},
+    };
+
+    static void applyTone(String key) {
+        String[] t = TONES[0];
+        for (String[] x : TONES) if (x[0].equals(key)) t = x;
+        tone = t[0];
+        BG = Color.parseColor(t[1]);
+        CARD = HudView.withAlpha(Color.parseColor(t[2]), 0.8f);
+        CARD_FOCUS = HudView.withAlpha(Color.parseColor(t[3]), 0.9f);
+        TEXT = Color.parseColor(t[4]);
+        TEXT_DIM = Color.parseColor(t[5]);
+        CARD_STROKE = HudView.withAlpha(TEXT_DIM, 0.25f);
+    }
+
+    /** Baggrundsfarven med en given gennemsigtighed, til skygger over billedet. */
+    static int bg(float alpha) {
+        return HudView.withAlpha(BG, alpha);
+    }
 
     /** Skrift til ur, hilsen og overskrifter; skiftes under Indstillinger > Skrifttype. */
     static Typeface display = Typeface.create("sans-serif-light", Typeface.NORMAL);
@@ -37,6 +64,10 @@ final class Ui {
                 case "rajdhani":
                     display = Typeface.createFromAsset(c.getAssets(), "fonts/Rajdhani-Light.ttf");
                     headerFace = Typeface.createFromAsset(c.getAssets(), "fonts/Rajdhani-Medium.ttf");
+                    return;
+                case "serif":
+                    display = Typeface.create("serif", Typeface.NORMAL);
+                    headerFace = Typeface.create("serif", Typeface.BOLD);
                     return;
             }
         } catch (Exception ignored) {
@@ -70,7 +101,7 @@ final class Ui {
 
     static StateListDrawable focusable(Context c, int accent) {
         StateListDrawable s = new StateListDrawable();
-        s.addState(new int[]{android.R.attr.state_focused}, card(c, Color.parseColor("#E60B2633"), accent, 2));
+        s.addState(new int[]{android.R.attr.state_focused}, card(c, CARD_FOCUS, accent, 2));
         s.addState(new int[]{}, card(c, CARD, CARD_STROKE, 1));
         return s;
     }

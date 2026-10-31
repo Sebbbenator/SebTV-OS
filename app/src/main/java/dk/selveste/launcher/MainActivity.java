@@ -86,6 +86,7 @@ public class MainActivity extends Activity {
     private ClockRingView clockRing;
     private ImageView avatar;
     private String appliedLook;
+    private String builtTone;
     private long lastNowPlaying;
     private String nowPlayingIds = "";
     private TextView date;
@@ -172,6 +173,7 @@ public class MainActivity extends Activity {
         ha = new HomeAssistant(prefs);
         jf = new Jellyfin(prefs);
         installCrashHandler(this);
+        builtTone = prefs.tone();
         Ui.loadFont(this, prefs.font());
         setContentView(buildLayout());
         applyLook();
@@ -192,6 +194,16 @@ public class MainActivity extends Activity {
         backgrounds.importShared();
         loadBackground(pendingHome);
         pendingHome = false;
+        if (!prefs.setupDone()) {
+            // Ny stick: velkomstguiden først (navn, udgave, tema)
+            startActivity(new Intent(this, SetupActivity.class));
+            return;
+        }
+        if (!prefs.tone().equals(builtTone)) {
+            // Ny farvetone: skyggerne og kortene er bygget med den gamle, så byg skærmen forfra
+            recreate();
+            return;
+        }
         if (appsDirty) {
             // Indstillinger kan have ændret accentfarve eller fliser: læs baggrund og farve igen
             shownBackground = null;
@@ -273,11 +285,11 @@ public class MainActivity extends Activity {
 
         View shadeBottom = new View(this);
         shadeBottom.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP,
-                new int[]{Color.parseColor("#F202080D"), Color.parseColor("#9902080D"), Color.parseColor("#0002080D")}));
+                new int[]{Ui.bg(0.95f), Ui.bg(0.6f), Ui.bg(0f)}));
         root.addView(shadeBottom, match());
         View shadeTop = new View(this);
         shadeTop.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{Color.parseColor("#9902080D"), Color.parseColor("#0002080D"), Color.parseColor("#0002080D")}));
+                new int[]{Ui.bg(0.6f), Ui.bg(0f), Ui.bg(0f)}));
         root.addView(shadeTop, match());
 
         particles = new ParticleView(this);
@@ -368,7 +380,7 @@ public class MainActivity extends Activity {
         night = new FrameLayout(this);
         night.setBackgroundColor(Color.BLACK);
         night.setVisibility(View.GONE);
-        nightClock = Ui.text(this, "", 120, Color.parseColor("#40D8F6FF"));
+        nightClock = Ui.text(this, "", 120, HudView.withAlpha(Ui.TEXT, 0.25f));
         nightClock.setTypeface(Typeface.create("sans-serif-thin", Typeface.NORMAL));
         night.addView(nightClock, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
@@ -610,7 +622,7 @@ public class MainActivity extends Activity {
                 java.util.Set<String> h = prefs.hidden();
                 h.add(entry.packageName);
                 prefs.setHidden(h);
-                Toast.makeText(this, entry.label + " er skjult. Vis den igen under Jarvis indstillinger.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, entry.label + " er skjult. Vis den igen under Indstillinger.", Toast.LENGTH_LONG).show();
             });
             labels.add("App info");
             actions.add(() -> {
@@ -1120,7 +1132,7 @@ public class MainActivity extends Activity {
     private void bootIfWoken() {
         if (!wokeUp || visible != this) return;
         wokeUp = false;
-        if (Features.on(prefs, Features.BOOT)) new HudView(this, greetingText(), currentAccent()).play(root);
+        if (Features.on(prefs, Features.BOOT)) HudView.forPrefs(this, prefs, greetingText(), currentAccent()).play(root);
         speakGreeting();
     }
 
@@ -1290,7 +1302,7 @@ public class MainActivity extends Activity {
                 return;
             }
             new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle("Nyt i Jarvis TV " + version)
+                    .setTitle("Nyt i " + new Prefs(a).appName() + " " + version)
                     .setMessage(body.trim())
                     .setPositiveButton("Fedt", null)
                     .show();
@@ -1306,7 +1318,7 @@ public class MainActivity extends Activity {
         Net.async(() -> Updater.check(this), (r, err) -> {
             if (r == null || isFinishing()) return;
             new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle("Ny version af Jarvis TV")
+                    .setTitle("Ny version af " + prefs.appName())
                     .setMessage("Version " + r.number + " er klar. Installér nu?")
                     .setPositiveButton("Installér", (d, w) -> installUpdate(this, r))
                     .setNegativeButton("Senere", null)

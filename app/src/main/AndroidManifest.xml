@@ -58,6 +58,11 @@
             android:screenOrientation="landscape" />
 
         <activity
+            android:name=".SetupActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <activity
             android:name=".UploadActivity"
             android:exported="false"
             android:screenOrientation="landscape" />

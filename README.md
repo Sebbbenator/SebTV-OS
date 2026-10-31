@@ -25,6 +25,15 @@ $env:JARVIS_TV='100.x.y.z'; irm https://github.com/Sebbbenator/SebTV-OS/releases
 Derefter opdaterer appen sig selv: om natten kl. ca. 4, eller under Indstillinger > Søg efter opdatering.
 `undo.ps1` giver Home knappen tilbage til den launcher, der var før.
 
+## To udgaver
+
+En ny stick starter med en velkomstguide: navn, udgave, tema og kæreste.
+
+- **Hjem**: blød og rolig, varme farvetoner (Rosé, Hygge, Salvie, Nattehimmel), en stille opstart med et hjerte og danske streaming apps forrest.
+- **Jarvis**: sci-fi HUD med ring ur, Orbitron skrift, Konami kode og Jarvis stemme.
+
+Udgave, tema og assistentens navn kan skiftes under Indstillinger > Udseende.
+
 ## Profil
 
 Navn, hilsen, kæreste, dato og profilbillede sættes under Indstillinger > Profil eller på telefonsiden.

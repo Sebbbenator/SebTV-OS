@@ -38,6 +38,18 @@ final class AppRepository {
             new Favorite("twitch", "tv.twitch.android.viewer", "tv.twitch.android.app"),
     };
 
+    /** Almindelige danske streaming apps, sat forrest i Hjem udgaven, hvis de er installeret. */
+    static final Favorite[] STREAMING = {
+            new Favorite("dr tv", "dk.dr.tvplayer", "dk.dr.drtv"),
+            new Favorite("tv 2 play", "dk.tv2.tv2playtv", "dk.tv2.play"),
+            new Favorite("viaplay", "com.viaplay.android"),
+            new Favorite("disney", "com.disney.disneyplus"),
+            new Favorite("hbo max", "com.wbd.stream", "com.hbo.hbonow"),
+            new Favorite("prime video", "com.amazon.avod"),
+            new Favorite("youtube", "com.amazon.firetv.youtube", "com.google.android.youtube.tv"),
+            new Favorite("spotify", "com.spotify.tv.android"),
+    };
+
     static final Favorite[] TOOLS = {
             new Favorite("downloader", "com.esaba.downloader"),
             new Favorite("tailscale", "com.tailscale.ipn"),
@@ -77,6 +89,7 @@ final class AppRepository {
         for (String h : prefs.hidden()) all.remove(h);
 
         pick(all, APPS, apps);
+        if (!prefs.isJarvis()) pick(all, STREAMING, apps);
         pick(all, TOOLS, tools);
         rest.addAll(all.values());
         Collator collator = Collator.getInstance(new Locale("da", "DK"));
@@ -98,7 +111,7 @@ final class AppRepository {
 
         if (dice) apps.add(special(DICE_KEY, "Hvad skal vi se?", android.R.drawable.ic_menu_help));
         tools.add(special(SETTINGS_KEY, "Fire TV", android.R.drawable.ic_menu_manage));
-        tools.add(special(JARVIS_SETTINGS_KEY, "Jarvis indstillinger", android.R.drawable.ic_menu_preferences));
+        tools.add(special(JARVIS_SETTINGS_KEY, prefs.isJarvis() ? "Jarvis indstillinger" : "Indstillinger", android.R.drawable.ic_menu_preferences));
 
         applyOrder(prefs, ROW_APPS, apps);
         applyOrder(prefs, ROW_TOOLS, tools);

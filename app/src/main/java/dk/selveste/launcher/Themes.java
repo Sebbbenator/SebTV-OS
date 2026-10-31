@@ -1,49 +1,69 @@
 package dk.selveste.launcher;
 
-/** Temaer med ét tryk: sætter farve, ur, skrift og et par funktioner på én gang. Alt kan rettes bagefter. */
+/** Temaer med ét tryk: sætter tone, farve, ur, skrift og et par effekter på én gang. Alt kan rettes bagefter. */
 final class Themes {
 
-    /** nøgle, navn, beskrivelse */
+    /** nøgle, navn, beskrivelse, udgave */
     static final String[][] ALL = {
-            {"jarvis", "Jarvis", "Cyan, ring ur og HUD skrift"},
-            {"ironman", "Iron Man", "Rød og guld, ring ur, HUD skrift"},
-            {"minimal", "Minimal", "Rolig, tyndt ur, ingen effekter"},
-            {"biograf", "Biograf", "Farve fra baggrunden, smal skrift, plakaterne i fokus"},
+            {"rose", "Rosé", "Varm og blød med rosa", Prefs.EDITION_HOME},
+            {"hygge", "Hygge", "Varme farver som levende lys", Prefs.EDITION_HOME},
+            {"salvie", "Salvie", "Rolig grøn og elegant skrift", Prefs.EDITION_HOME},
+            {"natte", "Nattehimmel", "Dyb blå med lavendel", Prefs.EDITION_HOME},
+            {"jarvis", "Jarvis", "Cyan, ring ur og HUD skrift", Prefs.EDITION_JARVIS},
+            {"ironman", "Iron Man", "Rød og guld, ring ur, HUD skrift", Prefs.EDITION_JARVIS},
+            {"minimal", "Minimal", "Rolig, tyndt ur, ingen effekter", Prefs.EDITION_JARVIS},
+            {"biograf", "Biograf", "Farve fra baggrunden, smal skrift", Prefs.EDITION_JARVIS},
     };
 
     static void apply(Prefs prefs, String key) {
         prefs.setTheme(key);
         switch (key) {
+            case "rose":
+                look(prefs, "varm", "rosa", "tynd", "serif", "normal");
+                effects(prefs, true);
+                prefs.setFlag(Features.PARALLAX, false);
+                break;
+            case "hygge":
+                look(prefs, "varm", "fersken", "stor", "system", "normal");
+                effects(prefs, true);
+                prefs.setFlag(Features.PARALLAX, false);
+                break;
+            case "salvie":
+                look(prefs, "varm", "salvie", "tynd", "serif", "kompakt");
+                effects(prefs, false);
+                prefs.setFlag(Features.KEN_BURNS, true);
+                break;
+            case "natte":
+                look(prefs, "nat", "lavendel", "tynd", "system", "normal");
+                effects(prefs, true);
+                break;
             case "ironman":
-                prefs.setAccentKey("roed");
-                prefs.setClockStyle("hud");
-                prefs.setFont("orbitron");
+                look(prefs, "kold", "roed", "hud", "orbitron", "normal");
                 effects(prefs, true);
                 break;
             case "minimal":
-                prefs.setAccentKey("is");
-                prefs.setClockStyle("tynd");
-                prefs.setFont("system");
-                prefs.setTileSize("kompakt");
+                look(prefs, "kold", "is", "tynd", "system", "kompakt");
                 effects(prefs, false);
                 break;
             case "biograf":
-                prefs.setAccentKey("auto");
-                prefs.setClockStyle("stor");
-                prefs.setFont("rajdhani");
-                prefs.setTileSize("stor");
+                look(prefs, "kold", "auto", "stor", "rajdhani", "stor");
                 effects(prefs, true);
                 prefs.setFlag(Features.PARALLAX, false);
                 prefs.setFlag(Features.LATEST, true);
                 prefs.setFlag(Features.NOW_PLAYING, true);
                 break;
             default:
-                prefs.setAccentKey("cyan");
-                prefs.setClockStyle("hud");
-                prefs.setFont("orbitron");
-                prefs.setTileSize("normal");
+                look(prefs, "kold", "cyan", "hud", "orbitron", "normal");
                 effects(prefs, true);
         }
+    }
+
+    private static void look(Prefs prefs, String tone, String accent, String clock, String font, String tiles) {
+        prefs.setTone(tone);
+        prefs.setAccentKey(accent);
+        prefs.setClockStyle(clock);
+        prefs.setFont(font);
+        prefs.setTileSize(tiles);
     }
 
     private static void effects(Prefs prefs, boolean on) {
@@ -51,6 +71,15 @@ final class Themes {
         prefs.setFlag(Features.PARALLAX, on);
         prefs.setFlag(Features.BOOT, on);
         prefs.setFlag(Features.SEASONS, on);
+    }
+
+    /** Skifter udgave og slår det fra, der kun giver mening i Jarvis (Konami, stemme). */
+    static void setEdition(Prefs prefs, String edition) {
+        prefs.setEdition(edition);
+        boolean jarvis = Prefs.EDITION_JARVIS.equals(edition);
+        prefs.setFlag(Features.KONAMI, jarvis);
+        prefs.setFlag(Features.VOICE, jarvis);
+        apply(prefs, jarvis ? "jarvis" : "rose");
     }
 
     static String name(String key) {

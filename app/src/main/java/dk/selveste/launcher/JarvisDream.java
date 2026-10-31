@@ -51,7 +51,7 @@ public class JarvisDream extends DreamService {
             root.addView(iv, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }
         clock = new TextView(this);
-        clock.setTextColor(Color.parseColor("#D8F6FF"));
+        clock.setTextColor(Ui.TEXT);
         clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 48);
         clock.setShadowLayer(16, 0, 0, Color.BLACK);
         int pad = Math.round(48 * getResources().getDisplayMetrics().density);

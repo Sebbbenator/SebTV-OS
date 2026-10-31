@@ -32,6 +32,10 @@ final class Prefs {
             {"roed", "Iron Man rød", "#FF5A5F"},
             {"groen", "Grøn", "#5CFFB0"},
             {"lilla", "Lilla", "#B48CFF"},
+            {"rosa", "Rosa", "#FF8FB1"},
+            {"fersken", "Fersken", "#FFB38A"},
+            {"salvie", "Salvie", "#A8D8B0"},
+            {"lavendel", "Lavendel", "#C3B1FF"},
             {"auto", "Fra baggrunden", ""},
     };
 
@@ -46,6 +50,8 @@ final class Prefs {
 
     Prefs(Context context) {
         sp = context.getSharedPreferences("jarvis", Context.MODE_PRIVATE);
+        // Alle skærme læser Prefs først, så tonen er altid sat, før noget tegnes
+        if (!tone().equals(Ui.tone)) Ui.applyTone(tone());
     }
 
     // Rækker
@@ -254,6 +260,63 @@ final class Prefs {
         e.apply();
     }
 
+    // Udgave og velkomst
+
+    static final String EDITION_JARVIS = "jarvis";
+    static final String EDITION_HOME = "hjem";
+
+    /** Jarvis: sci-fi HUD. Hjem: blød og rolig uden Jarvis. Vælges i velkomstguiden. */
+    String edition() {
+        return sp.getString("edition", EDITION_JARVIS);
+    }
+
+    void setEdition(String e) {
+        sp.edit().putString("edition", e).apply();
+    }
+
+    boolean isJarvis() {
+        return EDITION_JARVIS.equals(edition());
+    }
+
+    /** Navnet på tv'ets assistent (overskrift på beskeder og opstart). Tom = intet navn. */
+    String assistantName() {
+        return sp.getString("assistant", isJarvis() ? "Jarvis" : "");
+    }
+
+    void setAssistantName(String name) {
+        sp.edit().putString("assistant", name.trim()).apply();
+    }
+
+    String appName() {
+        return isJarvis() ? "Jarvis TV" : "Hjem";
+    }
+
+    /**
+     * Velkomstguiden er vist. En stick, der allerede er sat op (fx Sebs), regnes som færdig,
+     * så guiden kun kommer på nye sticks.
+     */
+    boolean setupDone() {
+        if (sp.getBoolean("setup_done", false)) return true;
+        if (lastSeenVersion() > 0 || !jfToken().isEmpty() || sp.contains("profile_name")) {
+            setSetupDone(true);
+            return true;
+        }
+        return false;
+    }
+
+    void setSetupDone(boolean v) {
+        sp.edit().putBoolean("setup_done", v).apply();
+    }
+
+    /** Farvetone for baggrund, kort og tekst: kold (Jarvis blå), varm eller nat. */
+    String tone() {
+        return sp.getString("tone", "kold");
+    }
+
+    void setTone(String t) {
+        sp.edit().putString("tone", t).apply();
+    }
+
     // Ur, skrift og tema
 
     static final String[][] CLOCKS = {
@@ -267,6 +330,7 @@ final class Prefs {
             {"system", "Standard"},
             {"orbitron", "Orbitron (HUD)"},
             {"rajdhani", "Rajdhani (smal)"},
+            {"serif", "Elegant (serif)"},
     };
 
     String clockStyle() {

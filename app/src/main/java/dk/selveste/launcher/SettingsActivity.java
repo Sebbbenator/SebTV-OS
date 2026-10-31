@@ -78,6 +78,8 @@ public class SettingsActivity extends Activity {
 
     private void build() {
         list.removeAllViews();
+        if (!prefs.tone().equals(Ui.tone)) Ui.applyTone(prefs.tone());
+        ((View) list.getParent()).setBackgroundColor(Ui.BG);
         accent = prefs.accentColor();
         Ui.loadFont(this, prefs.font());
         switch (page) {
@@ -134,8 +136,8 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.row(this, "Home Assistant", ha ? "Forbundet" : "Indsæt token via telefonsiden", c,
                 v -> startActivity(new Intent(this, UploadActivity.class))));
         if (ha) list.addView(Ui.row(this, "Hurtigknapper", buttonCount() + " af 4 valgt", c, v -> open(PAGE_BUTTONS)));
-        if (ha) list.addView(Ui.row(this, "Jarvis besked", "Send en prøve", c, v -> {
-            if (!HomeService.testMessage("Test | Jarvis beskeder virker. Home Assistant skriver i " + JarvisMessages.ENTITY + ".")) {
+        if (ha) list.addView(Ui.row(this, "Besked på tv'et", "Send en prøve", c, v -> {
+            if (!HomeService.testMessage("Test | Beskeder virker. Home Assistant skriver i " + JarvisMessages.ENTITY + ".")) {
                 Toast.makeText(this, "Home knap tjenesten kører ikke", Toast.LENGTH_SHORT).show();
             }
         }));
@@ -146,14 +148,14 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.row(this, "Fire TV indstillinger", "", c, v -> FireTvMenu.show(this)));
 
         list.addView(Ui.header(this, "SYSTEM", c));
-        list.addView(Ui.row(this, "Om Jarvis TV", "Version " + Updater.installedName(this), c, v -> open(PAGE_ABOUT)));
+        list.addView(Ui.row(this, "Om " + prefs.appName(), "Version " + Updater.installedName(this), c, v -> open(PAGE_ABOUT)));
         list.addView(Ui.row(this, "Søg efter opdatering", "", c, v -> checkUpdate()));
     }
 
     private void buildProfile() {
         int c = accent;
         title("Profil");
-        list.addView(Ui.text(this, "Bruges til hilsenen, Jarvis stemmen og dage sammen. Kan også rettes på telefonsiden.", 16, Ui.TEXT_DIM));
+        list.addView(Ui.text(this, "Bruges til hilsenen, stemmen og dage sammen. Kan også rettes på telefonsiden.", 16, Ui.TEXT_DIM));
         list.addView(Ui.header(this, "PROFIL", c));
         list.addView(Ui.row(this, "Navn", prefs.profileName(), c, v -> ask("Navn", prefs.profileName(), "Seb",
                 t -> prefs.setProfile(t, null, null, null))));
@@ -170,6 +172,10 @@ public class SettingsActivity extends Activity {
                     }
                     prefs.setProfile(null, null, null, t);
                 })));
+        list.addView(Ui.row(this, "Velkomstguide", "Kør den igen", c, v -> {
+            startActivity(new Intent(this, SetupActivity.class));
+            finish();
+        }));
         list.addView(Ui.row(this, "Profilbillede", ProfilePicture.file(this).exists() ? "Sat, skift via telefonen" : "Læg op via telefonen", c,
                 v -> startActivity(new Intent(this, UploadActivity.class))));
 
@@ -179,7 +185,14 @@ public class SettingsActivity extends Activity {
         int c = accent;
         title("Udseende");
         list.addView(Ui.header(this, "TEMA", c));
+        list.addView(Ui.row(this, "Udgave", prefs.isJarvis() ? "Jarvis" : "Hjem", c, v -> {
+            Themes.setEdition(prefs, prefs.isJarvis() ? Prefs.EDITION_HOME : Prefs.EDITION_JARVIS);
+            build();
+        }));
         list.addView(Ui.row(this, "Tema", Themes.name(prefs.theme()), c, v -> chooseTheme()));
+        list.addView(Ui.row(this, "Assistentens navn", prefs.assistantName().isEmpty() ? "Intet" : prefs.assistantName(), c,
+                v -> ask("Assistentens navn (tom = intet)", prefs.assistantName(), prefs.isJarvis() ? "Jarvis" : "Luna",
+                        prefs::setAssistantName)));
         list.addView(Ui.header(this, "ENKELTVIS", c));
         list.addView(Ui.row(this, "Ur", pick(Prefs.CLOCKS, prefs.clockStyle()), c,
                 v -> choose("Ur", Prefs.CLOCKS, prefs.clockStyle(), prefs::setClockStyle)));
@@ -193,11 +206,13 @@ public class SettingsActivity extends Activity {
         int c = accent;
         title("Funktioner og rækker");
         for (String group : Features.GROUPS) {
-            list.addView(Ui.header(this, group.toUpperCase(java.util.Locale.ROOT), c));
+            String label = group.equals("Jarvis") && !prefs.isJarvis() ? "Assistent og hjem" : group;
+            list.addView(Ui.header(this, label.toUpperCase(java.util.Locale.ROOT), c));
             for (String[] f : Features.ALL) {
                 if (!f[3].equals(group)) continue;
                 final String key = f[0];
-                list.addView(Ui.row(this, f[1], onOff(Features.on(prefs, key)), c, v -> {
+                String name = prefs.isJarvis() ? f[1] : capitalize(f[1].replace("Jarvis ", ""));
+                list.addView(Ui.row(this, name, onOff(Features.on(prefs, key)), c, v -> {
                     prefs.setFlag(key, !Features.on(prefs, key));
                     Ui.setValue(v, onOff(Features.on(prefs, key)));
                 }));
@@ -263,7 +278,7 @@ public class SettingsActivity extends Activity {
 
     private void buildAbout() {
         int c = accent;
-        title("Om Jarvis TV");
+        title("Om " + prefs.appName());
         list.addView(Ui.header(this, "VERSION", c));
         list.addView(Ui.row(this, "Installeret", Updater.installedName(this), c, v -> { }));
         list.addView(Ui.row(this, "Nyt i denne version", "Vis", c,
@@ -361,18 +376,22 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseTheme() {
-        String[] names = new String[Themes.ALL.length];
+        // Udgavens egne temaer først, så de andre
+        List<String[]> themes = new ArrayList<>();
+        for (String[] t : Themes.ALL) if (t[3].equals(prefs.edition())) themes.add(t);
+        for (String[] t : Themes.ALL) if (!t[3].equals(prefs.edition())) themes.add(t);
+        String[] names = new String[themes.size()];
         int checked = -1;
         for (int i = 0; i < names.length; i++) {
-            names[i] = Themes.ALL[i][1] + "  ·  " + Themes.ALL[i][2];
-            if (Themes.ALL[i][0].equals(prefs.theme())) checked = i;
+            names[i] = themes.get(i)[1] + "  ·  " + themes.get(i)[2];
+            if (themes.get(i)[0].equals(prefs.theme())) checked = i;
         }
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle("Tema")
                 .setSingleChoiceItems(names, checked, (d, which) -> {
-                    Themes.apply(prefs, Themes.ALL[which][0]);
+                    Themes.apply(prefs, themes.get(which)[0]);
                     d.dismiss();
-                    Toast.makeText(this, Themes.ALL[which][1] + " er sat. Alt kan stadig rettes enkeltvis.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, themes.get(which)[1] + " er sat. Alt kan stadig rettes enkeltvis.", Toast.LENGTH_SHORT).show();
                     build();
                 })
                 .show();
@@ -516,6 +535,10 @@ public class SettingsActivity extends Activity {
                 MainActivity.installUpdate(this, r);
             }
         });
+    }
+
+    private static String capitalize(String s) {
+        return s.isEmpty() ? s : s.substring(0, 1).toUpperCase(java.util.Locale.ROOT) + s.substring(1);
     }
 
     static String onOff(boolean v) {

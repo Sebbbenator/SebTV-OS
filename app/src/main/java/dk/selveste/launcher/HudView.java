@@ -19,6 +19,11 @@ final class HudView extends View {
     private final RectF oval = new RectF();
     private final String greeting;
     private final int color;
+    /** Overskriften i midten, fx J.A.R.V.I.S.; tom i den bløde udgave uden assistent. */
+    private String title = "J.A.R.V.I.S.";
+    private String subtitle = "SYSTEMS ONLINE";
+    /** Blød opstart til Hjem udgaven: rolige ringe der breder sig, et hjerte og en hilsen. */
+    private boolean soft;
     private float t;
 
     HudView(Context context, String greeting, int color) {
@@ -29,7 +34,31 @@ final class HudView extends View {
         ring.setStrokeCap(Paint.Cap.ROUND);
         text.setTextAlign(Paint.Align.CENTER);
         text.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
-        setBackgroundColor(Color.parseColor("#F202080D"));
+        setBackgroundColor(Ui.bg(0.95f));
+    }
+
+    HudView titled(String title, String subtitle) {
+        this.title = title;
+        this.subtitle = subtitle;
+        return this;
+    }
+
+    HudView soft() {
+        soft = true;
+        text.setTypeface(Ui.display);
+        return this;
+    }
+
+    /** Opstarten der passer til udgaven og assistentens navn. */
+    static HudView forPrefs(Context c, Prefs prefs, String greeting, int color) {
+        HudView h = new HudView(c, greeting, color);
+        if (prefs.isJarvis()) {
+            String name = prefs.assistantName().toUpperCase(java.util.Locale.ROOT);
+            StringBuilder spaced = new StringBuilder();
+            for (char ch : name.toCharArray()) spaced.append(ch).append('.');
+            return h.titled(name.isEmpty() ? "" : spaced.toString(), "SYSTEMS ONLINE");
+        }
+        return h.soft().titled(prefs.assistantName(), "Velkommen hjem");
     }
 
     void play(ViewGroup parent) {
@@ -51,8 +80,43 @@ final class HudView extends View {
         a.start();
     }
 
+    private void drawSoft(Canvas c) {
+        float cx = getWidth() / 2f;
+        float cy = getHeight() / 2f - getHeight() * 0.06f;
+        float base = Math.min(getWidth(), getHeight()) * 0.14f;
+        float d = getResources().getDisplayMetrics().density;
+        ring.setStrokeWidth(1.5f * d);
+        // Tre ringe der breder sig og toner ud, som ringe i vand
+        for (int i = 0; i < 3; i++) {
+            float p = (t * 1.6f + i / 3f) % 1f;
+            float radius = base * (0.6f + p * 1.6f);
+            ring.setColor(withAlpha(color, 0.5f * (1f - p) * Math.min(1f, t * 4f)));
+            c.drawCircle(cx, cy, radius, ring);
+        }
+        text.setColor(withAlpha(color, Math.min(1f, t * 3f)));
+        text.setLetterSpacing(0f);
+        text.setTextSize(44 * d * (0.9f + 0.1f * (float) Math.sin(t * Math.PI * 3)));
+        c.drawText("\u2665", cx, cy + 15 * d, text);
+        if (t > 0.3f) {
+            text.setLetterSpacing(0.15f);
+            text.setTextSize(15 * d);
+            text.setColor(withAlpha(Ui.TEXT_DIM, Math.min(1f, (t - 0.3f) * 3f)));
+            c.drawText(subtitle, cx, cy + base * 2.4f, text);
+        }
+        if (t > 0.45f) {
+            text.setLetterSpacing(0.02f);
+            text.setTextSize(30 * d);
+            text.setColor(withAlpha(Ui.TEXT, Math.min(1f, (t - 0.45f) * 3f)));
+            c.drawText(greeting, cx, cy + base * 2.4f + 44 * d, text);
+        }
+    }
+
     @Override
     protected void onDraw(Canvas c) {
+        if (soft) {
+            drawSoft(c);
+            return;
+        }
         float cx = getWidth() / 2f;
         float cy = getHeight() / 2f - getHeight() * 0.05f;
         float base = Math.min(getWidth(), getHeight()) * 0.16f;
@@ -80,18 +144,18 @@ final class HudView extends View {
         text.setColor(withAlpha(color, Math.min(1f, t * 3f)));
         text.setTextSize(26 * d);
         text.setLetterSpacing(0.4f);
-        c.drawText("J.A.R.V.I.S.", cx, cy + 9 * d, text);
+        c.drawText(title, cx, cy + 9 * d, text);
 
         if (t > 0.35f) {
             text.setLetterSpacing(0.3f);
             text.setTextSize(14 * d);
             text.setColor(withAlpha(color, Math.min(1f, (t - 0.35f) * 4f)));
-            c.drawText(typed("SYSTEMS ONLINE", (t - 0.35f) * 3f), cx, cy + base * 2.3f, text);
+            c.drawText(typed(subtitle, (t - 0.35f) * 3f), cx, cy + base * 2.3f, text);
         }
         if (t > 0.55f) {
             text.setLetterSpacing(0.05f);
             text.setTextSize(24 * d);
-            text.setColor(withAlpha(Color.parseColor("#D8F6FF"), Math.min(1f, (t - 0.55f) * 4f)));
+            text.setColor(withAlpha(Ui.TEXT, Math.min(1f, (t - 0.55f) * 4f)));
             c.drawText(greeting, cx, cy + base * 2.3f + 40 * d, text);
         }
     }
