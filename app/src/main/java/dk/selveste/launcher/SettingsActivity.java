@@ -471,6 +471,64 @@ public class SettingsActivity extends Activity {
         return i < 0 ? "" : "Knap " + (i + 1);
     }
 
+    /** Home knappen: via tilladelsen, hvis appen har den, ellers via tv'ets egen ADB (én gang). */
+    private void makeHome() {
+        if (HomeService.isRunning()) return;
+        if (HomeSetup.repair(this)) {
+            Toast.makeText(this, "Home knappen er slået til", Toast.LENGTH_LONG).show();
+            handler.postDelayed(this::build, 1500);
+            return;
+        }
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Gør til forside")
+                .setMessage("Tv'et giver sig selv lov via sin egen fejlfinding (ADB), så der skal ikke bruges en pc.\n\n"
+                        + "1. Slå ADB debugging til under Indstillinger > My Fire TV > Developer options.\n"
+                        + "2. Tryk Start. Spørger tv'et \"Allow USB debugging?\", så vælg Always allow og OK.\n\n"
+                        + "Bagefter kan ADB slås fra igen; Home knappen bliver ved med at virke.")
+                .setPositiveButton("Start", (d, w) -> {
+                    Toast.makeText(this, "Forbinder til tv'ets ADB...", Toast.LENGTH_LONG).show();
+                    Net.async(() -> {
+                        HomeSetup.makeHome(this);
+                        return true;
+                    }, (ok, err) -> {
+                        if (err != null) {
+                            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                                    .setTitle("Det lykkedes ikke").setMessage(String.valueOf(err.getMessage()))
+                                    .setPositiveButton("OK", null).show();
+                            return;
+                        }
+                        Toast.makeText(this, "Færdig. Home knappen åbner nu " + prefs.appName(), Toast.LENGTH_LONG).show();
+                        handler.postDelayed(this::build, 1500);
+                    });
+                })
+                .setNegativeButton("Annullér", null)
+                .show();
+    }
+
+    /** Vælg hvilke af Amazons apps der skal slås fra. Alt kan slås til igen samme sted. */
+    private void cleanUp() {
+        java.util.List<HomeSetup.Item> items = HomeSetup.bloat(this);
+        String[] names = new String[items.size()];
+        boolean[] off = new boolean[items.size()];
+        for (int i = 0; i < items.size(); i++) {
+            names[i] = items.get(i).label;
+            off[i] = items.get(i).disabled;
+        }
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Slå fra (flueben = slået fra)")
+                .setMultiChoiceItems(names, off, (d, which, checked) -> off[which] = checked)
+                .setPositiveButton("Gem", (d, w) -> {
+                    Toast.makeText(this, "Forbinder til tv'ets ADB...", Toast.LENGTH_LONG).show();
+                    Net.async(() -> {
+                        HomeSetup.applyBloat(this, items, off);
+                        return true;
+                    }, (ok, err) -> Toast.makeText(this, err == null ? "Gemt" : "Det lykkedes ikke: " + err.getMessage(),
+                            Toast.LENGTH_LONG).show());
+                })
+                .setNegativeButton("Annullér", null)
+                .show();
+    }
+
     private void buildAbout() {
         int c = accent;
         title("Om " + prefs.appName());
@@ -484,7 +542,8 @@ public class SettingsActivity extends Activity {
             build();
         }));
         list.addView(Ui.header(this, "TILSTAND", c));
-        list.addView(Ui.row(this, "Home knap", HomeService.isRunning() ? "Aktiv" : "Ikke aktiv, kør install scriptet", c, v -> { }));
+        list.addView(Ui.row(this, "Home knap", HomeService.isRunning() ? "Aktiv" : "Ikke aktiv, tryk for at slå til", c, v -> makeHome()));
+        if (!HomeSetup.bloat(this).isEmpty()) list.addView(Ui.row(this, "Ryd op i Fire TV", "Slå Amazons ekstra apps fra", c, v -> cleanUp()));
         list.addView(Ui.row(this, "Jellyfin", new Jellyfin(prefs).configured() ? "Forbundet via " + prefs.jfUrl() : "Ikke forbundet", c, v -> { }));
         list.addView(Ui.row(this, "Natlig opdatering", Features.on(prefs, Features.NIGHT_UPDATE) ? "Kl. ca. 4" : "Fra", c, v -> { }));
         list.addView(Ui.row(this, "Home Assistant", new HomeAssistant(prefs).configured() ? "Forbundet" : "Ikke forbundet", c, v -> { }));

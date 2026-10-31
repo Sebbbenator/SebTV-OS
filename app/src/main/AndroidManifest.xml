@@ -1,15 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Gives via tv'ets egen ADB (Indstillinger > Om > Home knap), så Home tjenesten kan tænde sig selv igen -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
     <queries>
+        <!-- Ryd op i Fire TV (HomeSetup.BLOAT) -->
+        <package android:name="com.amazon.kso" />
+        <package android:name="com.amazon.bueller.photos" />
+        <package android:name="com.amazon.ags.app" />
+        <package android:name="com.amazon.bueller.music" />
+        <package android:name="com.amazon.imdb.tv.android.app" />
+        <package android:name="com.amazon.avod.thirdpartyclient" />
+        <package android:name="com.amazon.tv.ottssocompanionapp" />
+        <package android:name="com.amazon.tv.csapp" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LEANBACK_LAUNCHER" />

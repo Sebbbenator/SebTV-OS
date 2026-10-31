@@ -280,6 +280,8 @@ public class MainActivity extends Activity {
                 return null;
             }, null);
         }
+        // Home tjenesten slås fra ved force-stop; har appen fået lov, tændes den bare igen
+        if (!HomeService.isRunning()) HomeSetup.repair(this);
         refreshRemote();
         HaSocket socket = HaSocket.get(this);
         socket.addListener(haLive);
