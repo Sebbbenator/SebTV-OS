@@ -26,6 +26,7 @@ final class Features {
     static final String MODES = "modes";
     static final String MESSAGES = "messages";
     static final String NIGHT_UPDATE = "nightupdate";
+    static final String COMPACT = "compact";
 
     /** nøgle, navn, standard (1 = til), gruppe */
     static final String[][] ALL = {
@@ -37,6 +38,7 @@ final class Features {
             {HA_BUTTONS, "Værelset (hurtigknapper)", "1", "Rækker"},
             {UPCOMING, "Kommer snart", "1", "Rækker"},
             {ALL_APPS, "Alle apps", "1", "Rækker"},
+            {COMPACT, "Færre rækker (resten under Mere)", "1", "Rækker"},
             {HA_STATUS, "Statuslinje fra Home Assistant", "1", "Forside"},
             {TOGETHER, "Dage sammen", "1", "Forside"},
             {DICE, "Hvad skal vi se?", "1", "Forside"},

@@ -95,7 +95,16 @@ public class MainActivity extends Activity {
     private TextView status;
     private ScrollView scroller;
     private LinearLayout sectionNowPlaying, sectionResume, sectionApps, sectionModes, sectionHa, sectionLatest, sectionUpcoming,
-            sectionTools, sectionRest;
+            sectionTools, sectionRest, sectionMore, moreBox;
+    private boolean moreOpen;
+    private Map<String, JSONObject> lastStates;
+    private boolean menuHandled;
+    private long lastBack;
+    private final Runnable menuLongPress = () -> {
+        if (menuHandled) return;
+        menuHandled = true;
+        showQuickPanel();
+    };
     private FrameLayout bgFrame;
     private LinearLayout column;
     private TextView ambientClock;
@@ -177,6 +186,7 @@ public class MainActivity extends Activity {
         Ui.loadFont(this, prefs.font());
         setContentView(buildLayout());
         applyLook();
+        updateMore();
         NightUpdate.schedule(this);
         wokeUp = true;
         IntentFilter pkgFilter = new IntentFilter();
@@ -209,6 +219,7 @@ public class MainActivity extends Activity {
             shownBackground = null;
             accent = prefs.accentColor();
             applyLook();
+            updateMore();
             backgrounds.importShared();
             loadBackground(false);
             refreshApps();
@@ -234,36 +245,189 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (intent.getBooleanExtra(EXTRA_HOME, false)) pendingHome = true;
+        if (moreOpen) {
+            moreOpen = false;
+            updateMore();
+        }
         if (scroller != null) scroller.smoothScrollTo(0, 0);
         focusFirst();
     }
 
     @Override
     public void onBackPressed() {
+        long now = System.currentTimeMillis();
+        boolean twice = now - lastBack < 2000;
+        lastBack = now;
+        if (twice) {
+            // Andet tryk lige efter: rolig tilstand, kun baggrund og ur
+            lastBack = 0;
+            setAmbient(true);
+            return;
+        }
+        if (moreOpen) {
+            moreOpen = false;
+            updateMore();
+        }
         if (scroller != null) scroller.smoothScrollTo(0, 0);
         focusFirst();
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        int code = event.getKeyCode();
+        if (code == KeyEvent.KEYCODE_MENU) {
+            // Kort tryk på ☰: indstillinger. Langt tryk: hurtigpanelet.
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                lastKey = System.currentTimeMillis();
+                menuHandled = wakeUp();
+                if (!menuHandled) handler.postDelayed(menuLongPress, 550);
+            } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                handler.removeCallbacks(menuLongPress);
+                if (!menuHandled) {
+                    menuHandled = true;
+                    startActivity(new Intent(this, SettingsActivity.class));
+                }
+            }
+            return true;
+        }
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             lastKey = System.currentTimeMillis();
-            if (night.getVisibility() == View.VISIBLE) {
-                night.setVisibility(View.GONE);
-                return true;
-            }
-            if (ambient) {
-                setAmbient(false);
-                return true;
-            }
-            trackKonami(event.getKeyCode());
-            if (event.getKeyCode() == KeyEvent.KEYCODE_MENU) {
-                // Menuknappen (☰) åbner indstillingerne; flisens egen menu ligger på et langt tryk
-                startActivity(new Intent(this, SettingsActivity.class));
+            if (wakeUp()) return true;
+            trackKonami(code);
+            if (code >= KeyEvent.KEYCODE_1 && code <= KeyEvent.KEYCODE_9 && event.getRepeatCount() == 0) {
+                // Talknapper åbner app nummer 1 til 9 i Apps, ligesom kanaler
+                int i = code - KeyEvent.KEYCODE_1;
+                if (i < repository.apps.size()) launch(repository.apps.get(i));
                 return true;
             }
         }
         return super.dispatchKeyEvent(event);
+    }
+
+    /** Vækker skærmen fra natteur eller rolig tilstand. Sand hvis tasten blev brugt til det. */
+    private boolean wakeUp() {
+        if (night.getVisibility() == View.VISIBLE) {
+            night.setVisibility(View.GONE);
+            return true;
+        }
+        if (ambient) {
+            setAmbient(false);
+            return true;
+        }
+        return false;
+    }
+
+    /** Hurtigpanel i højre side: det man oftest skal bruge, uden at gå ind i menuer. */
+    private void showQuickPanel() {
+        android.app.Dialog d = new android.app.Dialog(this);
+        d.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        int c = currentAccent();
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(24), dp(8), dp(24), dp(24));
+        box.setBackground(Ui.card(this, Ui.bg(0.94f), Ui.CARD_STROKE, 1));
+        box.addView(Ui.header(this, "HURTIGPANEL", c));
+
+        Map<String, JSONObject> states = lastStates;
+        JSONObject mode = states == null ? null : states.get(MODES_ENTITY);
+        JSONObject modeAttrs = mode == null ? null : mode.optJSONObject("attributes");
+        JSONArray modeOptions = modeAttrs == null ? null : modeAttrs.optJSONArray("options");
+        if (modeOptions != null && modeOptions.length() > 0) {
+            box.addView(Ui.row(this, "Tilstand", mode.optString("state"), c, v -> {
+                d.dismiss();
+                chooseOption(MODES_ENTITY, "Tilstand", modeOptions, mode.optString("state"));
+            }));
+        }
+        JSONObject sync = states == null ? null : states.get("switch.lys_sync");
+        if (sync != null) {
+            boolean on = "on".equals(sync.optString("state"));
+            View[] row = new View[1];
+            row[0] = Ui.row(this, "Lys sync", on ? "Til" : "Fra", c, v -> {
+                Ui.setValue(row[0], "...");
+                Net.async(() -> {
+                    ha.press("switch.lys_sync");
+                    return true;
+                }, (ok, err) -> {
+                    Ui.setValue(row[0], err != null ? "Fejl" : (on ? "Fra" : "Til"));
+                    handler.postDelayed(this::refreshRemote, 700);
+                });
+            });
+            box.addView(row[0]);
+        }
+        if ("billeder".equals(prefs.str("bg_source", "billeder")) && backgrounds.list().size() > 1) {
+            box.addView(Ui.row(this, "Næste baggrund", "", c, v -> {
+                List<String> all = backgrounds.list();
+                prefs.setBgCurrent(backgrounds.next(all, prefs.bgCurrent() == null ? all.get(0) : prefs.bgCurrent()));
+                loadBackground(false);
+            }));
+        }
+        box.addView(Ui.row(this, "Rolig tilstand", "", c, v -> {
+            d.dismiss();
+            setAmbient(true);
+        }));
+        box.addView(Ui.row(this, "Sov nu", "", c, v -> {
+            d.dismiss();
+            FireTvMenu.sleep(this);
+        }));
+        box.addView(Ui.row(this, "Wi-Fi", "", c, v -> {
+            d.dismiss();
+            FireTvMenu.open(this, Settings.ACTION_WIFI_SETTINGS);
+        }));
+        box.addView(Ui.row(this, "Bluetooth og fjernbetjening", "", c, v -> {
+            d.dismiss();
+            FireTvMenu.open(this, Settings.ACTION_BLUETOOTH_SETTINGS);
+        }));
+        box.addView(Ui.row(this, "Alle indstillinger", "", c, v -> {
+            d.dismiss();
+            startActivity(new Intent(this, SettingsActivity.class));
+        }));
+
+        ScrollView sv = new ScrollView(this);
+        sv.addView(box);
+        d.setContentView(sv);
+        // Menuknappen lukker panelet igen, men ikke ved det første slip, der åbnede det
+        boolean[] firstUp = {true};
+        d.setOnKeyListener((dialog, keyCode, e) -> {
+            if (keyCode != KeyEvent.KEYCODE_MENU) return false;
+            if (e.getAction() == KeyEvent.ACTION_UP) {
+                if (firstUp[0]) firstUp[0] = false;
+                else dialog.dismiss();
+            }
+            return true;
+        });
+        android.view.Window w = d.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            w.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+            w.setLayout(dp(480), ViewGroup.LayoutParams.WRAP_CONTENT);
+            w.setDimAmount(0.45f);
+        }
+        d.show();
+        View first = firstFocusable(box);
+        if (first != null) first.requestFocus();
+    }
+
+    /** "Mere" kortet: viser eller skjuler rækkerne under Tilstande. */
+    private void updateMore() {
+        if (!Features.on(prefs, Features.COMPACT)) {
+            sectionMore.removeAllViews();
+            moreBox.setVisibility(View.VISIBLE);
+            return;
+        }
+        moreBox.setVisibility(moreOpen ? View.VISIBLE : View.GONE);
+        boolean focused = getCurrentFocus() != null && "more".equals(getCurrentFocus().getTag());
+        LinearLayout row = startRow(sectionMore, null);
+        FrameLayout[] out = new FrameLayout[1];
+        LinearLayout holder = tile("more", dp(150), dp(48), "", null, out);
+        TextView t = Ui.text(this, moreOpen ? "Mindre  ▴" : "Mere  ▾", 16, Ui.TEXT_DIM);
+        t.setGravity(Gravity.CENTER);
+        out[0].addView(t, match());
+        out[0].setOnClickListener(v -> {
+            moreOpen = !moreOpen;
+            updateMore();
+        });
+        row.addView(holder);
+        if (focused) restoreFocus("more");
     }
 
     // Layout
@@ -363,11 +527,14 @@ public class MainActivity extends Activity {
         sectionResume = section(rows);
         sectionApps = section(rows);
         sectionModes = section(rows);
-        sectionHa = section(rows);
-        sectionLatest = section(rows);
-        sectionUpcoming = section(rows);
-        sectionTools = section(rows);
-        sectionRest = section(rows);
+        // Resten ligger i en boks, der foldes ud med "Mere"
+        sectionMore = section(rows);
+        moreBox = section(rows);
+        sectionHa = section(moreBox);
+        sectionLatest = section(moreBox);
+        sectionUpcoming = section(moreBox);
+        sectionTools = section(moreBox);
+        sectionRest = section(moreBox);
 
         ambientClock = Ui.text(this, "", 44, Ui.TEXT);
         ambientClock.setShadowLayer(dp(10), 0, 0, Color.BLACK);
@@ -488,7 +655,7 @@ public class MainActivity extends Activity {
 
     private LinearLayout startRow(LinearLayout section, String title) {
         section.removeAllViews();
-        section.addView(Ui.header(this, title, accent));
+        if (title != null) section.addView(Ui.header(this, title, accent));
         HorizontalScrollView hscroll = new HorizontalScrollView(this);
         hscroll.setHorizontalScrollBarEnabled(false);
         hscroll.setClipToPadding(false);
@@ -598,6 +765,8 @@ public class MainActivity extends Activity {
         }
         try {
             startActivity(entry.launchIntent);
+            prefs.noteLaunch(entry.packageName);
+            if (!"egen".equals(prefs.appSort())) appsDirty = true;
         } catch (Exception e) {
             Toast.makeText(this, "Kunne ikke åbne " + entry.label, Toast.LENGTH_SHORT).show();
         }
@@ -607,10 +776,12 @@ public class MainActivity extends Activity {
         String row = repository.rowOf(entry);
         List<String> labels = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
-        labels.add("Flyt til venstre");
-        actions.add(() -> repository.move(entry, -1));
-        labels.add("Flyt til højre");
-        actions.add(() -> repository.move(entry, 1));
+        if (!(AppRepository.ROW_APPS.equals(row) && !"egen".equals(prefs.appSort()))) {
+            labels.add("Flyt til venstre");
+            actions.add(() -> repository.move(entry, -1));
+            labels.add("Flyt til højre");
+            actions.add(() -> repository.move(entry, 1));
+        }
         if (AppRepository.isSpecial(entry)) {
             // Genvejsfliserne kan skjules, nu hvor menuknappen åbner indstillingerne
             labels.add("Skjul");
@@ -671,13 +842,14 @@ public class MainActivity extends Activity {
                     }
                     return items;
                 }, (items, err) -> {
-                    fillMedia(sectionResume, "FORTSÆT AT SE", items, true);
+                    if (items == null && err != null) statusRow(sectionResume, "FORTSÆT AT SE", "Jellyfin svarer ikke");
+                    else fillMedia(sectionResume, "FORTSÆT AT SE", items, true, true);
                     // Serveren svarer ikke på den gemte adresse: prøv LAN og Tailscale til næste gang
                     if (err instanceof java.io.IOException) Net.async(jf::findServer, null);
                 });
             } else sectionResume.removeAllViews();
             if (Features.on(prefs, Features.LATEST)) {
-                Net.async(jf::latest, (items, err) -> fillMedia(sectionLatest, "NYT PÅ SERVEREN", items, false));
+                Net.async(jf::latest, (items, err) -> fillMedia(sectionLatest, "NYT PÅ SERVEREN", items, false, false));
             } else sectionLatest.removeAllViews();
         } else {
             sectionResume.removeAllViews();
@@ -689,9 +861,12 @@ public class MainActivity extends Activity {
                 if (states == null) {
                     status.setText(err == null ? "" : "Home Assistant svarer ikke");
                     sectionHa.removeAllViews();
-                    sectionModes.removeAllViews();
+                    if (err != null && Features.on(prefs, Features.MODES)) {
+                        statusRow(sectionModes, "TILSTANDE", "Home Assistant svarer ikke");
+                    } else sectionModes.removeAllViews();
                     return;
                 }
+                lastStates = states;
                 fillStatus(states);
                 fillModes(states);
                 fillHaButtons(states);
@@ -722,7 +897,7 @@ public class MainActivity extends Activity {
             for (Jellyfin.Item it : items) ids.append(it.id).append(it.subtitle).append(it.progress / 5).append(',');
             if (ids.toString().equals(nowPlayingIds)) return;
             nowPlayingIds = ids.toString();
-            fillMedia(sectionNowPlaying, "AFSPILLES NU", items, true);
+            fillMedia(sectionNowPlaying, "AFSPILLES NU", items, true, false);
         });
     }
 
@@ -808,7 +983,27 @@ public class MainActivity extends Activity {
         return day.format(c.getTime());
     }
 
-    private void fillMedia(LinearLayout section, String title, List<Jellyfin.Item> items, boolean progress) {
+    /** Et lille card i stedet for en række, når serveren ikke svarer. Tryk for at prøve igen. */
+    private void statusRow(LinearLayout section, String title, String message) {
+        String focusedKey = focusedKey();
+        LinearLayout row = startRow(section, title);
+        FrameLayout[] out = new FrameLayout[1];
+        LinearLayout holder = tile("status:" + title, dp(300), dp(76), "", null, out);
+        LinearLayout inner = new LinearLayout(this);
+        inner.setOrientation(LinearLayout.VERTICAL);
+        inner.setPadding(dp(14), dp(10), dp(14), dp(10));
+        inner.addView(Ui.text(this, message, 16, Ui.TEXT));
+        inner.addView(Ui.text(this, "Tryk for at prøve igen", 13, Ui.TEXT_DIM));
+        out[0].addView(inner, match());
+        out[0].setOnClickListener(v -> {
+            Net.async(jf::findServer, (ok, err) -> refreshRemote());
+            Toast.makeText(this, "Prøver igen ...", Toast.LENGTH_SHORT).show();
+        });
+        row.addView(holder);
+        restoreFocus(focusedKey);
+    }
+
+    private void fillMedia(LinearLayout section, String title, List<Jellyfin.Item> items, boolean progress, boolean play) {
         if (items == null || items.isEmpty()) {
             section.removeAllViews();
             return;
@@ -830,7 +1025,14 @@ public class MainActivity extends Activity {
                 FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w * Math.min(it.progress, 100) / 100, dp(4), Gravity.BOTTOM);
                 card.addView(bar, lp);
             }
-            card.setOnClickListener(v -> openInWholphin(it.id));
+            if (play) {
+                // OK starter afsnittet med det samme; langt tryk åbner siden om filmen eller serien
+                card.setOnClickListener(v -> playInWholphin(it));
+                card.setOnLongClickListener(v -> {
+                    openInWholphin(it.id);
+                    return true;
+                });
+            } else card.setOnClickListener(v -> openInWholphin(it.id));
             row.addView(holder);
         }
         restoreFocus(focusedKey);
@@ -848,6 +1050,20 @@ public class MainActivity extends Activity {
             images.put(url, bmp);
             if (url.equals(into.getTag())) into.setImageBitmap(bmp);
         });
+    }
+
+    private void playInWholphin(Jellyfin.Item it) {
+        Intent play = new Intent("com.github.damontecres.wholphin.PLAYBACK",
+                Uri.parse("wholphin://play?itemId=" + it.id + "&position=" + it.positionMs))
+                .setPackage(WHOLPHIN)
+                .putExtra("itemId", it.id)
+                .putExtra("position", it.positionMs)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(play);
+        } catch (Exception e) {
+            openInWholphin(it.id);
+        }
     }
 
     private void openInWholphin(String itemId) {

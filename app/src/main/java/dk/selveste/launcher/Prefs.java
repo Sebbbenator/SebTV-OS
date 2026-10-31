@@ -124,6 +124,20 @@ final class Prefs {
         sp.edit().putString("bg_current", name).putLong("bg_changed", System.currentTimeMillis()).apply();
     }
 
+    /** Husker hvornår og hvor tit en app åbnes, til sortering af Apps. */
+    void noteLaunch(String pkg) {
+        sp.edit().putLong("last_" + pkg, System.currentTimeMillis()).putLong("uses_" + pkg, sp.getLong("uses_" + pkg, 0) + 1).apply();
+    }
+
+    long usage(String pkg, boolean recent) {
+        return sp.getLong((recent ? "last_" : "uses_") + pkg, 0);
+    }
+
+    /** egen, senest eller mest */
+    String appSort() {
+        return sp.getString("app_sort", "egen");
+    }
+
     boolean flag(String key, boolean def) {
         return sp.getBoolean("flag_" + key, def);
     }

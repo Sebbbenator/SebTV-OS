@@ -19,6 +19,8 @@ final class Jellyfin {
         String imageUrl;
         String overview;
         int progress;
+        /** Hvor langt man er nået, i millisekunder (0 = fra start). */
+        long positionMs;
     }
 
     private final Prefs prefs;
@@ -172,7 +174,10 @@ final class Jellyfin {
         }
         it.overview = o.optString("Overview", "");
         JSONObject ud = o.optJSONObject("UserData");
-        if (ud != null) it.progress = (int) Math.round(ud.optDouble("PlayedPercentage", 0));
+        if (ud != null) {
+            it.progress = (int) Math.round(ud.optDouble("PlayedPercentage", 0));
+            it.positionMs = ud.optLong("PlaybackPositionTicks", 0) / 10000;
+        }
 
         JSONObject tags = o.optJSONObject("ImageTags");
         JSONArray backdrops = o.optJSONArray("BackdropImageTags");

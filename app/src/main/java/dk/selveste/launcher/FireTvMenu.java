@@ -28,7 +28,7 @@ final class FireTvMenu {
                 .show();
     }
 
-    private static void open(Activity a, String action) {
+    static void open(Activity a, String action) {
         try {
             a.startActivity(new Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } catch (Exception e) {

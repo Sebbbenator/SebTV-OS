@@ -36,6 +36,7 @@ final class Looks {
     static final String[][] CARDS = {{"fast", "Faste"}, {"glas", "Glas (gennemsigtige)"}};
     static final String[][] SHADE = {{"let", "Let"}, {"normal", "Normal"}, {"kraftig", "Kraftig"}};
     static final String[][] BG_SOURCE = {{"billeder", "Mine billeder"}, {"ternet", "Ternet stof"}, {"ensfarvet", "Ensfarvet"}};
+    static final String[][] SORT = {{"egen", "Min egen rækkefølge"}, {"senest", "Senest brugt forrest"}, {"mest", "Mest brugt forrest"}};
     static final String[][] PARTICLES = {{"auto", "Kun højtider"}, {"blade", "Faldende blade"}, {"ingen", "Ingen"}};
 
     static final Option[] ALL = {
@@ -49,9 +50,10 @@ final class Looks {
             new Option("tiles", "tile_size", "Størrelse på cards", "Form", "normal", Prefs.TILE_SIZES),
             new Option("clock", "clock_style", "Ur", "Ur og skrift", "stor", Prefs.CLOCKS),
             new Option("font", "font", "Skrifttype", "Ur og skrift", "system", Prefs.FONTS),
+            new Option("sort", "app_sort", "Rækkefølge i Apps", "Forside", "egen", SORT),
     };
 
-    static final String[] GROUPS = {"Farver", "Stemning", "Form", "Ur og skrift"};
+    static final String[] GROUPS = {"Farver", "Stemning", "Form", "Ur og skrift", "Forside"};
 
     static Option find(String key) {
         for (Option o : ALL) if (o.key.equals(key)) return o;
@@ -67,7 +69,8 @@ final class Looks {
         for (String[] v : o.values) {
             if (v[0].equals(value)) {
                 prefs.setStr(o.pref, value);
-                prefs.setTheme("");
+                // Sortering er ikke en del af udseendet, så temaet beholder sit navn
+                if (!"Forside".equals(o.group)) prefs.setTheme("");
                 return;
             }
         }

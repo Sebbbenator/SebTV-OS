@@ -117,6 +117,13 @@ final class AppRepository {
         applyOrder(prefs, ROW_APPS, apps);
         applyOrder(prefs, ROW_TOOLS, tools);
         applyOrder(prefs, ROW_REST, rest);
+
+        String sort = prefs.appSort();
+        if (!"egen".equals(sort)) {
+            // Stabil sortering: apps der aldrig er åbnet beholder deres egen rækkefølge bagerst
+            boolean recent = "senest".equals(sort);
+            Collections.sort(apps, (a, b) -> Long.compare(prefs.usage(b.packageName, recent), prefs.usage(a.packageName, recent)));
+        }
     }
 
     List<AppEntry> list(String row) {
