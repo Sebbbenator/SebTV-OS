@@ -45,8 +45,8 @@ final class Looks {
             new Option("shade", "shade", "Mørklægning af baggrund", "Stemning", "normal", SHADE),
             new Option("particles", "particles", "Effekter på skærmen", "Stemning", "auto", PARTICLES),
             new Option("corners", "corners", "Hjørner", "Form", "normal", CORNERS),
-            new Option("cards", "cards", "Kort og fliser", "Form", "fast", CARDS),
-            new Option("tiles", "tile_size", "Flisestørrelse", "Form", "normal", Prefs.TILE_SIZES),
+            new Option("cards", "cards", "Cards", "Form", "fast", CARDS),
+            new Option("tiles", "tile_size", "Størrelse på cards", "Form", "normal", Prefs.TILE_SIZES),
             new Option("clock", "clock_style", "Ur", "Ur og skrift", "stor", Prefs.CLOCKS),
             new Option("font", "font", "Skrifttype", "Ur og skrift", "system", Prefs.FONTS),
     };

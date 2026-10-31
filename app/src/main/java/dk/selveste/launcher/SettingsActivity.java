@@ -440,7 +440,7 @@ public class SettingsActivity extends Activity {
             if (Prefs.TILE_SIZES[i][0].equals(prefs.tileSize())) checked = i;
         }
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Flisestørrelse")
+                .setTitle("Størrelse på cards")
                 .setSingleChoiceItems(names, checked, (d, which) -> {
                     prefs.setTileSize(Prefs.TILE_SIZES[which][0]);
                     prefs.setTheme("");
@@ -477,9 +477,9 @@ public class SettingsActivity extends Activity {
         String[] names = new String[pkgs.size()];
         for (int i = 0; i < pkgs.size(); i++) {
             String label = pkgs.get(i);
-            if (label.equals(AppRepository.JARVIS_SETTINGS_KEY)) label = "Indstillinger (flise)";
-            else if (label.equals(AppRepository.SETTINGS_KEY)) label = "Fire TV (flise)";
-            else if (label.equals(AppRepository.DICE_KEY)) label = "Hvad skal vi se? (flise)";
+            if (label.equals(AppRepository.JARVIS_SETTINGS_KEY)) label = "Indstillinger (card)";
+            else if (label.equals(AppRepository.SETTINGS_KEY)) label = "Fire TV (card)";
+            else if (label.equals(AppRepository.DICE_KEY)) label = "Hvad skal vi se? (card)";
             else try {
                 label = String.valueOf(getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(label, 0)));
             } catch (Exception ignored) {
