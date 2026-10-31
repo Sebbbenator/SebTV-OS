@@ -179,6 +179,29 @@ public class MainActivity extends Activity {
         if (a != null) a.handler.post(a::bootIfWoken);
     }
 
+    /** Udseendet er ændret udefra (HA kommando): byg forsiden forfra, hvis den vises. */
+    static void lookChangedFromOutside() {
+        appsDirty = true;
+        MainActivity a = visible;
+        if (a != null) a.handler.post(a::recreate);
+    }
+
+    /** Ændringer fra HA's websocket: kun det der vises på forsiden, tegnes igen. */
+    private final HaSocket.Listener haLive = changed -> {
+        if (lastStates == null) return;
+        java.util.Set<String> needed = ha.needed();
+        boolean relevant = false;
+        for (String id : changed.keySet()) if (needed.contains(id)) relevant = true;
+        if (!relevant) return;
+        Map<String, JSONObject> merged = new java.util.LinkedHashMap<>(lastStates);
+        merged.putAll(changed);
+        lastStates = merged;
+        fillStatus(merged);
+        fillModes(merged);
+        fillHaButtons(merged);
+        RemoteCache.saveStates(this, merged);
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -242,6 +265,9 @@ public class MainActivity extends Activity {
             }, null);
         }
         refreshRemote();
+        HaSocket socket = HaSocket.get(this);
+        socket.addListener(haLive);
+        socket.start();
         handler.removeCallbacks(tick);
         handler.post(tick);
         bootIfWoken();
@@ -253,6 +279,7 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         if (visible == this) visible = null;
+        HaSocket.get(this).removeListener(haLive);
         handler.removeCallbacks(tick);
         if (kenBurns != null) kenBurns.pause();
     }

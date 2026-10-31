@@ -502,6 +502,18 @@ final class Prefs {
         sp.edit().putString("theme", key).apply();
     }
 
+    // Effektniveau: hvor meget der bevæger sig. "auto" vælger ud fra sticken (se Motion).
+
+    static final String[][] EFFECTS = {{"auto", "Automatisk"}, {"fuld", "Fuld"}, {"let", "Let"}, {"ingen", "Ingen bevægelse"}};
+
+    String effects() {
+        return sp.getString("effects", "auto");
+    }
+
+    void setEffects(String level) {
+        sp.edit().putString("effects", level).apply();
+    }
+
     // Jarvis beskeder
 
     String lastMessageStamp() {

@@ -15,8 +15,9 @@ import org.json.JSONObject;
 
 /**
  * Jarvis beskeder som banner øverst på tv'et, også oven på Netflix og Wholphin.
- * HA skriver beskeden i den valgte input_text (Indstillinger > Home Assistant); tjenesten kigger efter ændringer hvert 15. sekund,
- * kun mens skærmen er tændt. Banneret tegnes som accessibility overlay, så det kræver ingen ekstra tilladelse.
+ * HA skriver beskeden i den valgte input_text (Indstillinger > Home Assistant). Den kommer med det samme via
+ * HA's websocket; virker den ikke, kigges der efter ændringer hvert 15. sekund, kun mens skærmen er tændt.
+ * Beskeder der starter med "/" er kommandoer til tv'et (se TvCommands). Banneret tegnes som accessibility overlay, så det kræver ingen ekstra tilladelse.
  */
 final class JarvisMessages {
 
@@ -41,37 +42,66 @@ final class JarvisMessages {
         }
     };
 
+    /** Websocket: beskeden kommer i samme øjeblik, HA skriver den. */
+    private final HaSocket.Listener live;
+
     JarvisMessages(AccessibilityService service) {
         this.service = service;
         this.prefs = new Prefs(service);
         this.ha = new HomeAssistant(prefs);
+        this.live = changed -> {
+            String entity = prefs.haMessage();
+            JSONObject st = entity.isEmpty() ? null : changed.get(entity);
+            if (st != null && running) received(st);
+        };
     }
 
     void start() {
         if (running) return;
         running = true;
         primed = false;
+        HaSocket socket = HaSocket.get(service);
+        socket.addListener(live);
+        socket.start();
         handler.post(poll);
     }
 
     void stop() {
         running = false;
         handler.removeCallbacks(poll);
+        HaSocket socket = HaSocket.get(service);
+        socket.removeListener(live);
+        socket.stop();
         hide();
     }
 
     private void check() {
         String entity = prefs.haMessage();
         if (!Features.on(prefs, Features.MESSAGES) || !ha.configured() || entity.isEmpty()) return;
+        HaSocket socket = HaSocket.get(service);
+        // Websocketten sørger for beskederne, når den er forbundet; ellers spørger vi som før
+        if (socket.connected() && primed) return;
+        socket.start();
         Net.async(() -> ha.state(entity), (st, err) -> {
             if (st == null || !running) return;
-            String text = st.optString("state", "");
-            String stamp = st.optString("last_changed", "") + "|" + text;
-            boolean fresh = primed && !stamp.equals(prefs.lastMessageStamp());
-            primed = true;
-            prefs.setLastMessageStamp(stamp);
-            if (fresh && !text.isEmpty() && !text.equals("unknown") && !text.equals("unavailable")) show(text, st);
+            received(st);
         });
+    }
+
+    private void received(JSONObject st) {
+        if (!Features.on(prefs, Features.MESSAGES)) return;
+        String text = st.optString("state", "");
+        String stamp = HaSocket.second(st.optString("last_changed", "")) + "|" + text;
+        boolean fresh = primed && !stamp.equals(prefs.lastMessageStamp());
+        primed = true;
+        prefs.setLastMessageStamp(stamp);
+        if (!fresh || text.isEmpty() || text.equals("unknown") || text.equals("unavailable")) return;
+        if (TvCommands.isCommand(text)) {
+            String problem = TvCommands.run(service, text);
+            if (problem != null) ErrorLog.add("HA kommando · " + problem);
+            return;
+        }
+        show(text, st);
     }
 
     /** Viser banneret. "Titel | tekst" giver en egen overskrift, ellers assistentens navn. */
