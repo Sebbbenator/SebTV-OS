@@ -91,7 +91,7 @@ public class SetupActivity extends Activity {
 
     private void name() {
         heading("Hvad hedder du?", "Navnet bruges i hilsenen på forsiden.");
-        EditText input = field(prefs.profileName().equals("Seb") ? "" : prefs.profileName(), "Dit navn");
+        EditText input = field(prefs.profileName(), "Dit navn");
         input.setOnEditorActionListener((v, actionId, e) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE || (e != null && e.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
                 saveName(input);

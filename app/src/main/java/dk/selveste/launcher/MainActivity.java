@@ -61,7 +61,6 @@ public class MainActivity extends Activity {
 
     private static final Locale DANISH = new Locale("da", "DK");
     private static final String WHOLPHIN = "com.github.damontecres.wholphin";
-    private static final String MODES_ENTITY = "input_select.vaerelset";
     private static final int[] KONAMI = {KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
             KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT};
@@ -70,7 +69,13 @@ public class MainActivity extends Activity {
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", DANISH);
     private final SimpleDateFormat secondsFormat = new SimpleDateFormat("HH:mm:ss", DANISH);
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("EEEE d. MMMM", DANISH);
-    private final LruCache<String, Bitmap> images = new LruCache<>(48);
+    /** Plakater og billeder til cards, højst ca. 24 MB, så sticken ikke løber tør for hukommelse. */
+    private final LruCache<String, Bitmap> images = new LruCache<String, Bitmap>(24 * 1024 * 1024) {
+        @Override
+        protected int sizeOf(String key, Bitmap value) {
+            return value.getByteCount();
+        }
+    };
 
     private Prefs prefs;
     private AppRepository repository;
@@ -182,6 +187,7 @@ public class MainActivity extends Activity {
         backgrounds = new Backgrounds(this);
         ha = new HomeAssistant(prefs);
         jf = new Jellyfin(prefs);
+        ErrorLog.init(this);
         installCrashHandler(this);
         builtTone = Looks.layoutSignature(prefs);
         Ui.loadFont(this, prefs.font());
@@ -189,6 +195,10 @@ public class MainActivity extends Activity {
         applyLook();
         updateMore();
         NightUpdate.schedule(this);
+        Net.async(() -> {
+            Updater.cleanUp(this);
+            return null;
+        }, null);
         wokeUp = true;
         IntentFilter pkgFilter = new IntentFilter();
         pkgFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -224,7 +234,6 @@ public class MainActivity extends Activity {
             backgrounds.importShared();
             loadBackground(false);
             refreshApps();
-            refreshRemote();
         }
         refreshRemote();
         handler.removeCallbacks(tick);
@@ -330,23 +339,26 @@ public class MainActivity extends Activity {
         box.addView(Ui.header(this, "HURTIGPANEL", c));
 
         Map<String, JSONObject> states = lastStates;
-        JSONObject mode = states == null ? null : states.get(MODES_ENTITY);
+        JSONObject mode = states == null ? null : states.get(prefs.haModes());
         JSONObject modeAttrs = mode == null ? null : mode.optJSONObject("attributes");
         JSONArray modeOptions = modeAttrs == null ? null : modeAttrs.optJSONArray("options");
         if (modeOptions != null && modeOptions.length() > 0) {
             box.addView(Ui.row(this, "Tilstand", mode.optString("state"), c, v -> {
                 d.dismiss();
-                chooseOption(MODES_ENTITY, "Tilstand", modeOptions, mode.optString("state"));
+                chooseOption(prefs.haModes(), "Tilstand", modeOptions, mode.optString("state"));
             }));
         }
-        JSONObject sync = states == null ? null : states.get("switch.lys_sync");
-        if (sync != null) {
-            boolean on = "on".equals(sync.optString("state"));
+        // Hurtigknapper der kan tændes og slukkes, fx lys sync
+        for (String id : Prefs.split(prefs.haButtons())) {
+            JSONObject st = states == null ? null : states.get(id);
+            String state = st == null ? "" : st.optString("state");
+            if (!"on".equals(state) && !"off".equals(state)) continue;
+            boolean on = "on".equals(state);
             View[] row = new View[1];
-            row[0] = Ui.row(this, "Lys sync", on ? "Til" : "Fra", c, v -> {
+            row[0] = Ui.row(this, HomeAssistant.friendly(st, id), on ? "Til" : "Fra", c, v -> {
                 Ui.setValue(row[0], "...");
                 Net.async(() -> {
-                    ha.press("switch.lys_sync");
+                    ha.press(id);
                     return true;
                 }, (ok, err) -> {
                     Ui.setValue(row[0], err != null ? "Fejl" : (on ? "Fra" : "Til"));
@@ -873,7 +885,8 @@ public class MainActivity extends Activity {
         }
         if (ha.configured() && (Features.on(prefs, Features.HA_STATUS) || Features.on(prefs, Features.HA_BUTTONS)
                 || Features.on(prefs, Features.MODES))) {
-            Net.async(ha::states, (states, err) -> {
+            java.util.Set<String> needed = ha.needed();
+            Net.async(() -> ha.statesFor(needed), (states, err) -> {
                 if (states == null) {
                     status.setText(err == null ? "" : "Home Assistant svarer ikke");
                     sectionHa.removeAllViews();
@@ -917,9 +930,9 @@ public class MainActivity extends Activity {
         });
     }
 
-    /** Tilstande: én flise pr. valg i input_select.vaerelset; den aktive lyser i accentfarven. */
+    /** Tilstande: ét card pr. valg i den valgte input_select; den aktive lyser i accentfarven. */
     private void fillModes(Map<String, JSONObject> states) {
-        JSONObject st = states.get(MODES_ENTITY);
+        JSONObject st = states.get(prefs.haModes());
         JSONObject attrs = st == null ? null : st.optJSONObject("attributes");
         JSONArray options = attrs == null ? null : attrs.optJSONArray("options");
         if (!Features.on(prefs, Features.MODES) || options == null || options.length() == 0) {
@@ -945,7 +958,7 @@ public class MainActivity extends Activity {
                 if (on) return;
                 t.setText("...");
                 Net.async(() -> {
-                    ha.selectOption(MODES_ENTITY, option);
+                    ha.selectOption(prefs.haModes(), option);
                     return true;
                 }, (ok, err) -> {
                     if (err != null) Toast.makeText(this, "HA: " + err.getMessage(), Toast.LENGTH_SHORT).show();
@@ -1103,38 +1116,49 @@ public class MainActivity extends Activity {
             return;
         }
         List<String> parts = new ArrayList<>();
-        JSONObject weather = states.get("weather.forecast_home");
-        if (weather == null) {
-            for (Map.Entry<String, JSONObject> e : states.entrySet()) {
-                if (e.getKey().startsWith("weather.")) {
-                    weather = e.getValue();
+        for (String id : statusEntities(states)) {
+            JSONObject st = states.get(id);
+            if (st == null) continue;
+            String part = statusText(id, st);
+            if (part != null) parts.add(part);
+        }
+        status.setText(String.join("  ·  ", parts));
+    }
+
+    /** De valgte entiteter; "auto" er det første vejr, HA har. */
+    private List<String> statusEntities(Map<String, JSONObject> states) {
+        List<String> out = new ArrayList<>();
+        for (String id : prefs.haStatus()) {
+            if (!"auto".equals(id)) {
+                out.add(id);
+                continue;
+            }
+            for (String k : states.keySet()) {
+                if (k.startsWith("weather.")) {
+                    out.add(k);
                     break;
                 }
             }
         }
-        if (weather != null) {
-            JSONObject a = weather.optJSONObject("attributes");
+        return out;
+    }
+
+    /** Kort tekst til statuslinjen: vejr som "Sol 12°", til/fra som "Lys sync til", tal med enhed. */
+    static String statusText(String id, JSONObject st) {
+        String state = st.optString("state");
+        if (state.isEmpty() || state.equals("unknown") || state.equals("unavailable")) return null;
+        JSONObject a = st.optJSONObject("attributes");
+        if (id.startsWith("weather.")) {
             String temp = a == null ? "" : a.optString("temperature", "");
-            parts.add(HomeAssistant.weatherDa(weather.optString("state")) + (temp.isEmpty() ? "" : " " + temp + "°"));
+            return HomeAssistant.weatherDa(state) + (temp.isEmpty() ? "" : " " + temp + "°");
         }
-        JSONObject el = states.get("sensor.elpris_overblik");
-        if (el != null) {
-            String s = el.optString("state");
-            JSONObject a = el.optJSONObject("attributes");
-            String unit = a == null ? "" : a.optString("unit_of_measurement", "");
-            if (s.length() <= 10 && !s.equals("unknown")) parts.add("Elpris " + s + (unit.isEmpty() ? "" : " " + unit));
-        }
-        JSONObject sync = states.get("switch.lys_sync");
-        if (sync != null) parts.add("Lys sync " + ("on".equals(sync.optString("state")) ? "til" : "fra"));
-        JSONObject pakker = states.get("sensor.pakker");
-        if (pakker != null) {
-            try {
-                int n = (int) Double.parseDouble(pakker.optString("state"));
-                if (n > 0) parts.add(n + (n == 1 ? " pakke" : " pakker") + " på vej");
-            } catch (NumberFormatException ignored) {
-            }
-        }
-        status.setText(String.join("  ·  ", parts));
+        String name = HomeAssistant.friendly(st, id);
+        if (state.equals("on") || state.equals("off")) return name + " " + (state.equals("on") ? "til" : "fra");
+        // En tæller på 0 (fx pakker på vej) fylder bare
+        if (state.equals("0")) return null;
+        if (state.length() > 14) return null;
+        String unit = a == null ? "" : a.optString("unit_of_measurement", "");
+        return name + " " + state + (unit.isEmpty() ? "" : " " + unit);
     }
 
     private void fillHaButtons(Map<String, JSONObject> states) {
@@ -1313,6 +1337,10 @@ public class MainActivity extends Activity {
             return;
         }
         int[] since = prefs.togetherSince();
+        if (since == null) {
+            set(together, "");
+            return;
+        }
         Calendar start = Calendar.getInstance();
         start.clear();
         start.set(since[0], since[1], since[2]);
@@ -1424,11 +1452,7 @@ public class MainActivity extends Activity {
         String name = prefs.profileName();
         String message = part + (name.isEmpty() ? "" : ", " + name) + ". All systems online.";
         Net.async(() -> {
-            String engine = null;
-            for (String id : ha.states().keySet()) {
-                if (!id.startsWith("tts.")) continue;
-                if (engine == null || id.contains("edge")) engine = id;
-            }
+            String engine = ha.ttsEngine();
             if (engine == null) return null;
             return ha.ttsUrl(message, engine);
         }, (url, err) -> {
@@ -1558,6 +1582,7 @@ public class MainActivity extends Activity {
                 if (trace.length() > 2000) trace = trace.substring(0, 2000);
                 String when = new SimpleDateFormat("d. MMM HH:mm", DANISH).format(new Date());
                 new Prefs(app).setLastCrash(when + " (version " + Updater.installedName(app) + ")\n\n" + trace);
+                ErrorLog.note("Nedbrud", error);
             } catch (Throwable ignored) {
             }
             if (previous != null) previous.uncaughtException(thread, error);

@@ -147,7 +147,7 @@ public class SettingsActivity extends Activity {
                 v -> startActivity(new Intent(this, UploadActivity.class))));
         if (ha) list.addView(Ui.row(this, "Hurtigknapper", buttonCount() + " af 4 valgt", c, v -> open(PAGE_BUTTONS)));
         if (ha) list.addView(Ui.row(this, "Besked på tv'et", "Send en prøve", c, v -> {
-            if (!HomeService.testMessage("Test | Beskeder virker. Home Assistant skriver i " + JarvisMessages.ENTITY + ".")) {
+            if (!HomeService.testMessage("Test | Beskeder virker. Home Assistant skriver i " + (prefs.haMessage().isEmpty() ? "en input_text, du vælger" : prefs.haMessage()) + ".")) {
                 Toast.makeText(this, "Home knap tjenesten kører ikke", Toast.LENGTH_SHORT).show();
             }
         }));
@@ -167,7 +167,7 @@ public class SettingsActivity extends Activity {
         title("Profil");
         list.addView(Ui.text(this, "Bruges til hilsenen, stemmen og dage sammen. Kan også rettes på telefonsiden.", 16, Ui.TEXT_DIM));
         list.addView(Ui.header(this, "PROFIL", c));
-        list.addView(Ui.row(this, "Navn", prefs.profileName(), c, v -> ask("Navn", prefs.profileName(), "Seb",
+        list.addView(Ui.row(this, "Navn", prefs.profileName(), c, v -> ask("Navn", prefs.profileName(), "Dit navn",
                 t -> prefs.setProfile(t, null, null, null))));
         list.addView(Ui.row(this, "Hilsen", prefs.customGreeting().isEmpty() ? "Efter tidspunktet" : prefs.customGreeting(), c,
                 v -> ask("Egen hilsen (tom = efter tidspunktet)", prefs.customGreeting(), "Velkommen hjem, sir",
@@ -306,6 +306,19 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.row(this, "Jellyfin", new Jellyfin(prefs).configured() ? "Forbundet via " + prefs.jfUrl() : "Ikke forbundet", c, v -> { }));
         list.addView(Ui.row(this, "Natlig opdatering", Features.on(prefs, Features.NIGHT_UPDATE) ? "Kl. ca. 4" : "Fra", c, v -> { }));
         list.addView(Ui.row(this, "Home Assistant", new HomeAssistant(prefs).configured() ? "Forbundet" : "Ikke forbundet", c, v -> { }));
+        String log = ErrorLog.text();
+        list.addView(Ui.row(this, "Fejl-log", log.isEmpty() ? "Ingen fejl" : log.split("\n").length + " linjer, vis", c, v -> {
+            if (log.isEmpty()) return;
+            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle("Fejl-log (nyeste først)")
+                    .setMessage(log)
+                    .setPositiveButton("Ryd", (d, w) -> {
+                        ErrorLog.clear();
+                        build();
+                    })
+                    .setNegativeButton("Luk", null)
+                    .show();
+        }));
         String crash = prefs.lastCrash();
         list.addView(Ui.row(this, "Seneste fejl", crash.isEmpty() ? "Ingen" : "Vis", c, v -> {
             if (crash.isEmpty()) return;

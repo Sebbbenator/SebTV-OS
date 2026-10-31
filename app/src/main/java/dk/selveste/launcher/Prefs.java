@@ -18,11 +18,9 @@ final class Prefs {
     static final String BG_HOURLY = "time";
     static final String BG_DAILY = "dag";
 
-    static final String DEFAULT_HA_URL = "http://192.168.111.25:8123";
-    static final String DEFAULT_JF_URL = "http://192.168.111.25:8096";
-    /** Samme server over Tailscale, til sticks uden for huset (fx kærestens). */
-    static final String TAILSCALE_JF_URL = "http://100.84.70.72:8096";
-    static final String DEFAULT_HA_BUTTONS = "switch.lys_sync,input_select.vaerelset,light.sebbe_bordlampe";
+    /** Standard HA adresse på en ny stick: tom, indtil brugeren selv forbinder. */
+    static final String DEFAULT_HA_URL = "";
+    static final String DEFAULT_JF_URL = "";
 
     /** Accentfarver: nøgle, navn, farve. "auto" tager farven fra baggrunden. */
     static final String[][] ACCENTS = {
@@ -61,10 +59,43 @@ final class Prefs {
 
     private final SharedPreferences sp;
 
+    private static boolean migrated;
+
     Prefs(Context context) {
         sp = context.getSharedPreferences("jarvis", Context.MODE_PRIVATE);
+        if (!migrated) {
+            migrated = true;
+            keepOldDefaults();
+        }
         // Alle skærme læser Prefs først, så tonen er altid sat, før noget tegnes
         Ui.applyStyle(tone(), str("cards", "fast"), str("corners", "normal"));
+    }
+
+    /**
+     * Til og med v113 var Sebs adresser og entiteter standard i koden. Nu er en ny stick tom, så sticks,
+     * der allerede kørte, får de gamle standarder skrevet ind én gang og opfører sig som før.
+     * Kan fjernes, når alle sticks har kørt v114 eller nyere.
+     */
+    private void keepOldDefaults() {
+        if (sp.getBoolean("old_defaults_kept", false)) return;
+        SharedPreferences.Editor e = sp.edit().putBoolean("old_defaults_kept", true);
+        boolean existing = sp.getInt("last_seen_version", 0) > 0 || sp.contains("jf_token") || sp.contains("ha_token")
+                || sp.getBoolean("setup_done", false) || sp.contains("profile_name");
+        if (existing) {
+            String nas = "192.168.111.25";
+            if (!sp.contains("ha_url")) e.putString("ha_url", "http://" + nas + ":8123");
+            if (!sp.contains("jf_url")) e.putString("jf_url", "http://" + nas + ":8096");
+            if (!sp.contains("ha_buttons")) e.putString("ha_buttons", "switch.lys_sync,input_select.vaerelset,light.sebbe_bordlampe");
+            if (!sp.contains("profile_name")) e.putString("profile_name", "Seb");
+            if (!sp.contains("profile_together")) e.putString("profile_together", "2026-01-04");
+            e.putString("jf_fallbacks", "http://" + nas + ":8096,http://100.84.70.72:8096");
+            e.putString("ha_modes", "input_select.vaerelset");
+            e.putString("ha_message", "input_text.jarvis_tv");
+            e.putString("ha_status", "weather.forecast_home,sensor.elpris_overblik,switch.lys_sync,sensor.pakker");
+            e.putString("tts_voice", "en-GB-RyanNeural");
+            e.putString("home_subnet", "192.168.111.");
+        }
+        e.apply();
     }
 
     /** Fri tekstværdi, bruges af Looks til udseendet. */
@@ -169,7 +200,69 @@ final class Prefs {
     }
 
     String haButtons() {
-        return sp.getString("ha_buttons", DEFAULT_HA_BUTTONS);
+        return sp.getString("ha_buttons", "");
+    }
+
+    /** Entiteter i statuslinjen. "auto" = det første vejr i HA. */
+    List<String> haStatus() {
+        return split(sp.getString("ha_status", "auto"));
+    }
+
+    void setHaStatus(List<String> ids) {
+        sp.edit().putString("ha_status", String.join(",", ids)).apply();
+    }
+
+    /** input_select, der vises som rækken Tilstande. Tom = ingen række. */
+    String haModes() {
+        return sp.getString("ha_modes", "");
+    }
+
+    void setHaModes(String id) {
+        sp.edit().putString("ha_modes", id).apply();
+    }
+
+    /** input_text, som HA skriver beskeder til tv'et i. Tom = ingen beskeder. */
+    String haMessage() {
+        return sp.getString("ha_message", "");
+    }
+
+    void setHaMessage(String id) {
+        sp.edit().putString("ha_message", id).apply();
+    }
+
+    /** Stemme til HA's TTS (fx en-GB-RyanNeural). Tom = HA's standard stemme. */
+    String ttsVoice() {
+        return sp.getString("tts_voice", "");
+    }
+
+    void setTtsVoice(String v) {
+        sp.edit().putString("tts_voice", v.trim()).apply();
+    }
+
+    /** Ekstra Jellyfin adresser at prøve, fx samme server over Tailscale. */
+    List<String> jfFallbacks() {
+        return split(sp.getString("jf_fallbacks", ""));
+    }
+
+    void addJfFallback(String url) {
+        List<String> all = jfFallbacks();
+        if (url == null || url.isEmpty() || all.contains(url)) return;
+        all.add(url);
+        sp.edit().putString("jf_fallbacks", String.join(",", all)).apply();
+    }
+
+    /**
+     * Hjemmenettets begyndelse (fx "192.168.111."). Er tv'et på et andet net, peger telefonsidens QR
+     * på Tailscale. Tom = altid wifi først.
+     */
+    String homeSubnet() {
+        return sp.getString("home_subnet", "");
+    }
+
+    static List<String> split(String raw) {
+        List<String> out = new ArrayList<>();
+        for (String id : raw.split(",")) if (!id.trim().isEmpty()) out.add(id.trim());
+        return out;
     }
 
     void setHa(String url, String token, String buttons) {
@@ -258,9 +351,9 @@ final class Prefs {
 
     // Profil
 
-    /** Standard er Seb; en anden stick (fx kærestens) skifter det under Indstillinger > Profil. */
+    /** Navnet i hilsenen; tomt på en ny stick, indtil velkomstguiden spørger. */
     String profileName() {
-        return sp.getString("profile_name", "Seb");
+        return sp.getString("profile_name", "");
     }
 
     /** Egen hilsen; tom = Godmorgen/Goddag/Godaften efter tidspunktet. */
@@ -272,19 +365,19 @@ final class Prefs {
         return sp.getString("profile_partner", "");
     }
 
-    /** Dagen I blev kærester som {år, måned (0-11), dag}. */
+    /** Dagen I blev kærester som {år, måned (0-11), dag}, eller null hvis den ikke er sat. */
     int[] togetherSince() {
-        String raw = sp.getString("profile_together", "2026-01-04");
+        String raw = sp.getString("profile_together", "");
         try {
             String[] p = raw.split("-");
             return new int[]{Integer.parseInt(p[0]), Integer.parseInt(p[1]) - 1, Integer.parseInt(p[2])};
         } catch (Exception e) {
-            return new int[]{2026, 0, 4};
+            return null;
         }
     }
 
     String togetherSinceText() {
-        return sp.getString("profile_together", "2026-01-04");
+        return sp.getString("profile_together", "");
     }
 
     void setProfile(String name, String greeting, String partner, String together) {

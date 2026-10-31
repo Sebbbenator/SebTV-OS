@@ -15,12 +15,11 @@ import org.json.JSONObject;
 
 /**
  * Jarvis beskeder som banner øverst på tv'et, også oven på Netflix og Wholphin.
- * HA skriver beskeden i input_text.jarvis_tv; tjenesten kigger efter ændringer hvert 15. sekund,
+ * HA skriver beskeden i den valgte input_text (Indstillinger > Home Assistant); tjenesten kigger efter ændringer hvert 15. sekund,
  * kun mens skærmen er tændt. Banneret tegnes som accessibility overlay, så det kræver ingen ekstra tilladelse.
  */
 final class JarvisMessages {
 
-    static final String ENTITY = "input_text.jarvis_tv";
     private static final long POLL_MS = 15_000;
     private static final long SHOW_MS = 10_000;
 
@@ -62,8 +61,9 @@ final class JarvisMessages {
     }
 
     private void check() {
-        if (!Features.on(prefs, Features.MESSAGES) || !ha.configured()) return;
-        Net.async(() -> ha.state(ENTITY), (st, err) -> {
+        String entity = prefs.haMessage();
+        if (!Features.on(prefs, Features.MESSAGES) || !ha.configured() || entity.isEmpty()) return;
+        Net.async(() -> ha.state(entity), (st, err) -> {
             if (st == null || !running) return;
             String text = st.optString("state", "");
             String stamp = st.optString("last_changed", "") + "|" + text;

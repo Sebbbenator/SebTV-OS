@@ -102,9 +102,19 @@ final class Updater {
         install(context, r);
     }
 
+    static File apkFile(Context context) {
+        return new File(context.getCacheDir(), "jarvis-tv-update.apk");
+    }
+
+    /** Den hentede APK fylder ca. 1 MB; den slettes, når den nye version kører. */
+    static void cleanUp(Context context) {
+        File apk = apkFile(context);
+        if (apk.isFile()) apk.delete();
+    }
+
     /** Hent og installer. Fire OS viser selv en bekræftelse, som InstallReceiver åbner. */
     static void install(Context context, Release r) throws Exception {
-        File apk = new File(context.getCacheDir(), "jarvis-tv-update.apk");
+        File apk = apkFile(context);
         Net.download(r.apkUrl, apk);
 
         PackageInstaller installer = context.getPackageManager().getPackageInstaller();
