@@ -44,6 +44,11 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    testOptions {
+        // Tests kører på pc'en uden Android; Android kald svarer bare 0/null
+        unitTests.returnDefaultValues = true
+    }
+
     lint {
         abortOnError false
         checkReleaseBuilds false
@@ -52,4 +57,5 @@ android {
 
 dependencies {
     implementation "io.nayuki:qrcodegen:1.8.0"
+    testImplementation "junit:junit:4.13.2"
 }

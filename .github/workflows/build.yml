@@ -48,6 +48,10 @@ jobs:
           echo "JARVIS_VERSION=$((GITHUB_RUN_NUMBER + 100))" >> "$GITHUB_ENV"
           if [ "$GITHUB_REF_NAME" = "main" ]; then echo "JARVIS_CHANNEL=stabil" >> "$GITHUB_ENV"; else echo "JARVIS_CHANNEL=test" >> "$GITHUB_ENV"; fi
 
+      - name: Tests
+        # Fejler en test, bygges og udgives intet
+        run: gradle --no-daemon testReleaseUnitTest
+
       - name: Byg APK
         env:
           JARVIS_KEYSTORE_PASS: ${{ secrets.JARVIS_KEYSTORE_PASS }}

@@ -301,7 +301,7 @@ final class HaSocket {
         }
     }
 
-    private static void send(OutputStream out, String text) throws IOException {
+    static void send(OutputStream out, String text) throws IOException {
         byte[] data = text.getBytes(StandardCharsets.UTF_8);
         ByteArrayOutputStream f = new ByteArrayOutputStream();
         f.write(0x81);
@@ -340,7 +340,7 @@ final class HaSocket {
     }
 
     /** Læser én hel tekstbesked (samler fortsættelsesrammer). Svarer selv på ping. */
-    private static String readMessage(InputStream in, OutputStream out) throws IOException {
+    static String readMessage(InputStream in, OutputStream out) throws IOException {
         ByteArrayOutputStream msg = new ByteArrayOutputStream();
         while (true) {
             int b0 = readByte(in);
