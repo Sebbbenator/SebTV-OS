@@ -46,7 +46,11 @@ public class UploadActivity extends Activity {
         col.addView(Ui.header(this, "TELEFONSIDEN", Ui.CYAN));
         TextView url = Ui.text(this, "", 28, Ui.TEXT);
         col.addView(url);
-        col.addView(Ui.text(this, "Scan koden eller skriv adressen på din telefon (samme wifi eller Tailscale).", 16, Ui.TEXT_DIM));
+        col.addView(Ui.text(this, "Scan koden med telefonen. Telefonen skal være på samme wifi som tv'et.", 16, Ui.TEXT_DIM));
+        String ts = tailscaleIp();
+        if (ts != null && !ts.equals(ip())) {
+            col.addView(Ui.text(this, "Med Tailscale på telefonen: http://" + ts + ":" + UploadServer.PORT, 15, Ui.TEXT_DIM));
+        }
         col.addView(Ui.header(this, "KODE", Ui.CYAN));
         TextView pin = Ui.text(this, "", 56, Ui.CYAN);
         pin.setTypeface(Typeface.MONOSPACE);
@@ -79,17 +83,40 @@ public class UploadActivity extends Activity {
         if (server != null) server.stop();
     }
 
+    /**
+     * Adressen telefonen skal bruge. Wifi (192.168.x, 10.x, 172.16-31.x) går forud for Tailscale (100.x),
+     * så det virker for en telefon på samme wifi, også når tv'et har Tailscale tændt.
+     */
     static String ip() {
+        String fallback = null;
         try {
             for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 if (!ni.isUp() || ni.isLoopback()) continue;
                 for (InetAddress a : Collections.list(ni.getInetAddresses())) {
-                    if (a instanceof Inet4Address && !a.isLoopbackAddress()) return a.getHostAddress();
+                    if (!(a instanceof Inet4Address) || a.isLoopbackAddress()) continue;
+                    if (a.isSiteLocalAddress()) return a.getHostAddress();
+                    if (fallback == null) fallback = a.getHostAddress();
                 }
             }
         } catch (Exception ignored) {
         }
-        return "192.168.111.5";
+        return fallback != null ? fallback : "192.168.111.5";
+    }
+
+    /** Tailscale adressen (100.64-127.x), hvis tv'et har en, til en telefon uden for wifi'et. */
+    static String tailscaleIp() {
+        try {
+            for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                if (!ni.isUp()) continue;
+                for (InetAddress a : Collections.list(ni.getInetAddresses())) {
+                    if (!(a instanceof Inet4Address)) continue;
+                    byte[] b = a.getAddress();
+                    if ((b[0] & 0xff) == 100 && (b[1] & 0xc0) == 64) return a.getHostAddress();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     static Bitmap qrBitmap(String text, int px) {
