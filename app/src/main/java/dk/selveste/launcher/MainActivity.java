@@ -1217,10 +1217,20 @@ public class MainActivity extends Activity {
 
     private static Bitmap drawableBitmap(Drawable d) {
         if (d == null) return null;
+        // Tegn en kopi: setBounds på flisens egen drawable ville skrumpe billedet på flisen
+        Drawable.ConstantState cs = d.getConstantState();
+        Drawable copy = cs != null ? cs.newDrawable().mutate() : null;
         Bitmap b = Bitmap.createBitmap(64, 36, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(b);
-        d.setBounds(0, 0, 64, 36);
-        d.draw(c);
+        if (copy != null) {
+            copy.setBounds(0, 0, 64, 36);
+            copy.draw(c);
+        } else {
+            android.graphics.Rect old = new android.graphics.Rect(d.getBounds());
+            d.setBounds(0, 0, 64, 36);
+            d.draw(c);
+            d.setBounds(old);
+        }
         return b;
     }
 
