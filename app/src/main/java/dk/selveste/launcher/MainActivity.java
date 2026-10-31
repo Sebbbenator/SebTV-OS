@@ -1459,20 +1459,25 @@ public class MainActivity extends Activity {
     }
 
     private AlphaVideoView konamiVideo;
+    private boolean suitUp;
 
     /**
      * Konami sekvensen: klippet fra telefonsiden spiller oven på forsiden, og midt i (under blitzet)
      * skifter forsiden til rød og guld og åbner sig som en cirkel. Uden klip: et guld blitz.
      */
     private void ironMan() {
-        if (konamiVideo != null) return;
+        if (konamiVideo != null || suitUp) return;
         java.io.File clip = KonamiClip.file(this);
         if (Motion.NONE.equals(motion)) {
             ironManSwitch(true);
             return;
         }
         if (!clip.isFile()) {
-            flash(() -> ironManSwitch(true));
+            // Uden klip: appens egen hjelm sekvens (Fuld) eller bare et blitz (Let)
+            if (Motion.FULL.equals(motion)) {
+                suitUp = true;
+                new SuitUpView(this, () -> ironManSwitch(false), () -> suitUp = false).play(root);
+            } else flash(() -> ironManSwitch(true));
             return;
         }
         boolean[] switched = {false};

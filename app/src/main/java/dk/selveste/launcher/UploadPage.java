@@ -106,7 +106,7 @@ final class UploadPage {
             + " const P=S.profile;if(document.activeElement.tagName!='INPUT'){$('pName').value=P.name;$('pGreeting').value=P.greeting;\n"
             + "  $('pPartner').value=P.partner;$('pTogether').value=P.together}\n"
             + " $('pic').src=P.picture?'/profil.jpg?pin='+PIN+'&t='+Date.now():'';\n"
-            + " $('clipState').textContent=S.konamiClip?'Der ligger et klip på tv\\'et.':'Intet klip. Uden klip blinker skærmen bare guld.'}\n"
+            + " $('clipState').textContent=S.konamiClip?'Der ligger et klip på tv\\'et.':'Intet klip. Så kører appens egen hjelm sekvens.'}\n"
             + "function uploadClip(f){if(!f)return;if(f.size>60*1024*1024){say('Klippet må højst fylde 60 MB');return}\n"
             + " const x=new XMLHttpRequest();x.open('POST','/api/konami-clip');x.setRequestHeader('X-Pin',PIN);\n"
             + " x.upload.onprogress=e=>{if(e.lengthComputable)say('Lægger klip op: '+Math.round(e.loaded*100/e.total)+' %')};\n"
