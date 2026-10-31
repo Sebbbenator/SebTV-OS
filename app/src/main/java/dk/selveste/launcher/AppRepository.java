@@ -109,9 +109,10 @@ final class AppRepository {
             list(row).add(e);
         }
 
-        if (dice) apps.add(special(DICE_KEY, "Hvad skal vi se?", android.R.drawable.ic_menu_help));
-        tools.add(special(SETTINGS_KEY, "Fire TV", android.R.drawable.ic_menu_manage));
-        tools.add(special(JARVIS_SETTINGS_KEY, prefs.isJarvis() ? "Jarvis indstillinger" : "Indstillinger", android.R.drawable.ic_menu_preferences));
+        java.util.Set<String> hidden = prefs.hidden();
+        if (dice && !hidden.contains(DICE_KEY)) apps.add(special(DICE_KEY, "Hvad skal vi se?", android.R.drawable.ic_menu_help));
+        if (!hidden.contains(SETTINGS_KEY)) tools.add(special(SETTINGS_KEY, "Fire TV", android.R.drawable.ic_menu_manage));
+        if (!hidden.contains(JARVIS_SETTINGS_KEY)) tools.add(special(JARVIS_SETTINGS_KEY, prefs.isJarvis() ? "Jarvis indstillinger" : "Indstillinger", android.R.drawable.ic_menu_preferences));
 
         applyOrder(prefs, ROW_APPS, apps);
         applyOrder(prefs, ROW_TOOLS, tools);

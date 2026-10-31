@@ -60,6 +60,16 @@ public class SettingsActivity extends Activity {
     }
 
     @Override
+    public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
+        // Menuknappen igen lukker indstillingerne, så den virker som en til/fra knap
+        if (keyCode == android.view.KeyEvent.KEYCODE_MENU) {
+            finish();
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         build();
@@ -467,7 +477,10 @@ public class SettingsActivity extends Activity {
         String[] names = new String[pkgs.size()];
         for (int i = 0; i < pkgs.size(); i++) {
             String label = pkgs.get(i);
-            try {
+            if (label.equals(AppRepository.JARVIS_SETTINGS_KEY)) label = "Indstillinger (flise)";
+            else if (label.equals(AppRepository.SETTINGS_KEY)) label = "Fire TV (flise)";
+            else if (label.equals(AppRepository.DICE_KEY)) label = "Hvad skal vi se? (flise)";
+            else try {
                 label = String.valueOf(getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(label, 0)));
             } catch (Exception ignored) {
             }

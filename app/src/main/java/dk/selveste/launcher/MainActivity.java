@@ -258,11 +258,9 @@ public class MainActivity extends Activity {
             }
             trackKonami(event.getKeyCode());
             if (event.getKeyCode() == KeyEvent.KEYCODE_MENU) {
-                View f = getCurrentFocus();
-                if (f != null && f.getTag() instanceof AppEntry) {
-                    tileMenu((AppEntry) f.getTag());
-                    return true;
-                }
+                // Menuknappen (☰) åbner indstillingerne; flisens egen menu ligger på et langt tryk
+                startActivity(new Intent(this, SettingsActivity.class));
+                return true;
             }
         }
         return super.dispatchKeyEvent(event);
@@ -613,7 +611,16 @@ public class MainActivity extends Activity {
         actions.add(() -> repository.move(entry, -1));
         labels.add("Flyt til højre");
         actions.add(() -> repository.move(entry, 1));
-        if (!AppRepository.isSpecial(entry)) {
+        if (AppRepository.isSpecial(entry)) {
+            // Genvejsfliserne kan skjules, nu hvor menuknappen åbner indstillingerne
+            labels.add("Skjul");
+            actions.add(() -> {
+                java.util.Set<String> h = prefs.hidden();
+                h.add(entry.packageName);
+                prefs.setHidden(h);
+                Toast.makeText(this, entry.label + " er skjult. Menuknappen åbner stadig indstillingerne.", Toast.LENGTH_LONG).show();
+            });
+        } else {
             for (String[] r : new String[][]{{AppRepository.ROW_APPS, "Flyt til Apps"},
                     {AppRepository.ROW_TOOLS, "Flyt til Værktøjer"}, {AppRepository.ROW_REST, "Flyt til Alle apps"}}) {
                 if (r[0].equals(row)) continue;
