@@ -84,10 +84,10 @@ public class MainActivity extends Activity {
     };
 
     Prefs prefs;
-    private AppRepository repository;
+    AppRepository repository;
     Backgrounds backgrounds;
     HomeAssistant ha;
-    private Jellyfin jf;
+    Jellyfin jf;
 
     private FrameLayout root;
     private ImageView background;
@@ -120,6 +120,9 @@ public class MainActivity extends Activity {
     private FrameLayout bgFrame;
     private LinearLayout column;
     private TextView ambientClock;
+    /** Over uret i rolig tilstand: vejret og det første fra statuslinjen. */
+    private TextView ambientInfo;
+    private String ambientText = "";
     private boolean ambient;
     private FrameLayout night;
     private TextView nightClock;
@@ -525,6 +528,13 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.END);
         acp.setMargins(0, 0, dp(56), dp(40));
         root.addView(ambientClock, acp);
+        ambientInfo = Ui.text(this, "", 20, Ui.TEXT);
+        ambientInfo.setShadowLayer(dp(8), 0, 0, Color.BLACK);
+        ambientInfo.setAlpha(0f);
+        FrameLayout.LayoutParams aip = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.END);
+        aip.setMargins(0, 0, dp(58), dp(100));
+        root.addView(ambientInfo, aip);
 
         night = new FrameLayout(this);
         night.setBackgroundColor(Color.BLACK);
@@ -712,6 +722,7 @@ public class MainActivity extends Activity {
         final TextView subF = sub;
         card.setOnFocusChangeListener((v, has) -> {
             Motion.focus(v, has, motion);
+            if (has) Sounds.move(this, prefs);
             if (shadowF != null) shadowF.setColor(has ? currentAccent() : Ui.INK);
             else bg.setStroke(dp((has ? 3 : 1) + Ui.restStroke()), has ? currentAccent() : Ui.CARD_STROKE);
             l.setTextColor(has ? Ui.TEXT : Ui.TEXT_DIM);
@@ -748,7 +759,8 @@ public class MainActivity extends Activity {
         return holder;
     }
 
-    private void launch(AppEntry entry) {
+    void launch(AppEntry entry) {
+        Sounds.select(this, prefs);
         switch (entry.packageName) {
             case AppRepository.SETTINGS_KEY:
                 FireTvMenu.show(this);
@@ -1099,7 +1111,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void openInWholphin(String itemId) {
+    void openInWholphin(String itemId) {
         Intent deep = new Intent(Intent.ACTION_VIEW, Uri.parse("wholphin://item/" + itemId))
                 .setPackage(WHOLPHIN)
                 .putExtra("itemId", itemId)
@@ -1127,6 +1139,8 @@ public class MainActivity extends Activity {
             if (part != null) parts.add(part);
         }
         status.setText(String.join("  ·  ", parts));
+        ambientText = String.join("  ·  ", parts.subList(0, Math.min(2, parts.size())));
+        if (ambient) ambientInfo.setText(ambientText);
     }
 
     /** De valgte entiteter; "auto" er det første vejr, HA har. */
@@ -1376,6 +1390,8 @@ public class MainActivity extends Activity {
         column.animate().alpha(on ? 0f : 1f).setDuration(on ? 1500 : 250).start();
         ambientClock.setText(timeFormat.format(new Date()));
         ambientClock.animate().alpha(on ? 1f : 0f).setDuration(on ? 1500 : 250).start();
+        ambientInfo.setText(ambientText);
+        ambientInfo.animate().alpha(on ? 0.85f : 0f).setDuration(on ? 1500 : 250).start();
         if (!on) lastKey = System.currentTimeMillis();
     }
 

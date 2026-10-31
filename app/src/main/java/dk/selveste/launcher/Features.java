@@ -27,6 +27,7 @@ final class Features {
     static final String MESSAGES = "messages";
     static final String NIGHT_UPDATE = "nightupdate";
     static final String COMPACT = "compact";
+    static final String SOUNDS = "sounds";
 
     /** nøgle, navn, standard (1 = til), gruppe */
     static final String[][] ALL = {
@@ -43,6 +44,7 @@ final class Features {
             {TOGETHER, "Dage sammen", "1", "Forside"},
             {DICE, "Hvad skal vi se?", "1", "Forside"},
             {AMBIENT, "Rolig tilstand efter 3 minutter", "1", "Forside"},
+            {SOUNDS, "Lyde ved navigation", "0", "Forside"},
             {KEN_BURNS, "Langsom zoom", "1", "Baggrund"},
             {PARALLAX, "Baggrunden følger fokus", "1", "Baggrund"},
             {BOOT, "Jarvis opstart", "1", "Jarvis"},

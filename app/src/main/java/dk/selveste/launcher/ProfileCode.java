@@ -33,7 +33,7 @@ final class ProfileCode {
             "ha_token", "ha_refresh", "ha_access", "ha_access_until", "ha_client", "jf_token", "jf_user", "device_id",
             "bg_current", "bg_changed", "last_seen_version", "last_crash", "last_message", "last_greeting",
             "last_update_check", "old_defaults_kept", "setup_done", "tts_engine", "channel", "jf_profile_pushed",
-            "effects_measured",
+            "effects_measured", Profiles.KEY, Profiles.ACTIVE,
     };
     private static final String[] SKIP_PREFIX = {"last_", "uses_", "cache_"};
 

@@ -181,6 +181,22 @@ public class SettingsActivity extends Activity {
                     }
                     prefs.setProfile(null, null, null, t);
                 })));
+        list.addView(Ui.header(this, "PROFILER", c));
+        list.addView(Ui.text(this, "Flere opsætninger på samme tv, fx en til film aften og en til gæster. Skift også fra hurtigpanelet (hold ☰ nede).", 16, Ui.TEXT_DIM));
+        String activeProfile = Profiles.active(prefs);
+        for (String name : Profiles.names(prefs)) {
+            list.addView(Ui.row(this, name, name.equals(activeProfile) ? "I brug" : "Skift", c, v -> profileMenu(name)));
+        }
+        list.addView(Ui.row(this, "Gem nuværende som profil", "", c,
+                v -> ask("Navn på profilen", activeProfile, "Film aften", t -> {
+                    String n = t.trim();
+                    if (n.isEmpty()) return;
+                    try {
+                        Profiles.save(this, n);
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Kunne ikke gemme: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                })));
         list.addView(Ui.header(this, "PROFILKODE", c));
         list.addView(Ui.text(this, "Alle dine indstillinger i én kode. Gem den på telefonen, så er alt tilbage på et øjeblik på en ny stick. Login er aldrig med i koden.", 16, Ui.TEXT_DIM));
         list.addView(Ui.row(this, "Vis min profilkode", "QR til telefonen", c, v -> showProfileCode()));
@@ -196,6 +212,28 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.row(this, "Profilbillede", ProfilePicture.file(this).exists() ? "Sat, skift via telefonen" : "Læg op via telefonen", c,
                 v -> startActivity(new Intent(this, UploadActivity.class))));
 
+    }
+
+    private void profileMenu(String name) {
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(name)
+                .setItems(new String[]{"Skift til " + name, "Gem nuværende indstillinger her", "Slet profilen"}, (d, which) -> {
+                    try {
+                        if (which == 0) {
+                            Profiles.load(this, name);
+                            MainActivity.appsDirty = true;
+                            Toast.makeText(this, name + " er i brug", Toast.LENGTH_SHORT).show();
+                        } else if (which == 1) {
+                            Profiles.save(this, name);
+                        } else {
+                            Profiles.delete(this, name);
+                        }
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Det lykkedes ikke: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                    build();
+                })
+                .show();
     }
 
     /** QR'en åbner telefonsiden med koden i adressens #-del, som aldrig sendes nogen steder hen. */

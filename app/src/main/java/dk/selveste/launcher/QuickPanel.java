@@ -76,6 +76,30 @@ final class QuickPanel {
                 a.loadBackground(false);
             }));
         }
+        List<String> profiles = Profiles.names(a.prefs);
+        if (profiles.size() > 1) {
+            String active = Profiles.active(a.prefs);
+            box.addView(Ui.row(a, "Profil", active.isEmpty() ? "Vælg" : active, c, v -> {
+                d.dismiss();
+                String[] names = profiles.toArray(new String[0]);
+                new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                        .setTitle("Profil")
+                        .setSingleChoiceItems(names, profiles.indexOf(active), (dd, which) -> {
+                            dd.dismiss();
+                            try {
+                                Profiles.load(a, names[which]);
+                                MainActivity.lookChangedFromOutside();
+                            } catch (Exception e) {
+                                ErrorLog.note("Profil", e);
+                            }
+                        })
+                        .show();
+            }));
+        }
+        box.addView(Ui.row(a, "Søg", "Apps, film og værelset", c, v -> {
+            d.dismiss();
+            Search.show(a);
+        }));
         box.addView(Ui.row(a, "Rolig tilstand", "", c, v -> {
             d.dismiss();
             a.setAmbient(true);

@@ -190,6 +190,14 @@ final class Jellyfin {
         return out;
     }
 
+    /** Søgning i film, serier og afsnit. */
+    List<Item> search(String term) throws Exception {
+        String u = prefs.jfUser();
+        String q = "searchTerm=" + java.net.URLEncoder.encode(term, "UTF-8")
+                + "&includeItemTypes=Movie,Series,Episode&recursive=true&limit=12&fields=Overview";
+        return items(get("/Items?userId=" + u + "&" + q, "/Users/" + u + "/Items?" + q));
+    }
+
     Item randomUnwatchedMovie() throws Exception {
         String u = prefs.jfUser();
         String q = "includeItemTypes=Movie&isPlayed=false&sortBy=Random&limit=1&recursive=true&fields=Overview";
