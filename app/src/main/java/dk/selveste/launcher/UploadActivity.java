@@ -46,10 +46,19 @@ public class UploadActivity extends Activity {
         col.addView(Ui.header(this, "TELEFONSIDEN", Ui.CYAN));
         TextView url = Ui.text(this, "", 28, Ui.TEXT);
         col.addView(url);
-        col.addView(Ui.text(this, "Scan koden med telefonen. Telefonen skal være på samme wifi som tv'et.", 16, Ui.TEXT_DIM));
+        // Hjemme hos Seb (192.168.111.x) virker wifi. Ude, fx hos kæresten, kan wifi'et blokere
+        // telefonen, men begge har Tailscale, så QR koden peger på Tailscale adressen
+        String wifi = ip();
         String ts = tailscaleIp();
-        if (ts != null && !ts.equals(ip())) {
-            col.addView(Ui.text(this, "Med Tailscale på telefonen: http://" + ts + ":" + UploadServer.PORT, 15, Ui.TEXT_DIM));
+        boolean useTailscale = ts != null && !wifi.startsWith("192.168.111.");
+        String primary = useTailscale ? ts : wifi;
+        String other = useTailscale ? wifi : ts;
+        col.addView(Ui.text(this, useTailscale
+                ? "Scan koden med telefonen. Tailscale skal være tændt på telefonen."
+                : "Scan koden med telefonen. Telefonen skal være på samme wifi som tv'et.", 16, Ui.TEXT_DIM));
+        if (other != null && !other.equals(primary)) {
+            col.addView(Ui.text(this, (useTailscale ? "Uden Tailscale, på samme wifi: http://" : "Med Tailscale på telefonen: http://")
+                    + other + ":" + UploadServer.PORT, 15, Ui.TEXT_DIM));
         }
         col.addView(Ui.header(this, "KODE", Ui.CYAN));
         TextView pin = Ui.text(this, "", 56, Ui.CYAN);
@@ -70,7 +79,7 @@ public class UploadActivity extends Activity {
         } catch (Exception e) {
             status.setText("Kunne ikke starte siden: " + e.getMessage());
         }
-        String address = "http://" + ip() + ":" + UploadServer.PORT;
+        String address = "http://" + primary + ":" + UploadServer.PORT;
         url.setText(address);
         pin.setText(server.pin);
         qr.setImageBitmap(qrBitmap(address, qrSize));
