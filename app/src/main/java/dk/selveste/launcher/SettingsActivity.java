@@ -297,6 +297,10 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.row(this, "Nyt i denne version", "Vis", c,
                 v -> MainActivity.showChangelog(this, Updater.installedVersion(this))));
         list.addView(Ui.row(this, "Søg efter opdatering", "", c, v -> checkUpdate()));
+        list.addView(Ui.row(this, "Opdateringskanal", Updater.testChannel(this) ? "Test (nyeste, før andre)" : "Stabil", c, v -> {
+            prefs.setTestChannel(!Updater.testChannel(this));
+            build();
+        }));
         list.addView(Ui.header(this, "TILSTAND", c));
         list.addView(Ui.row(this, "Home knap", HomeService.isRunning() ? "Aktiv" : "Ikke aktiv, kør install scriptet", c, v -> { }));
         list.addView(Ui.row(this, "Jellyfin", new Jellyfin(prefs).configured() ? "Forbundet via " + prefs.jfUrl() : "Ikke forbundet", c, v -> { }));

@@ -452,6 +452,19 @@ final class Prefs {
         sp.edit().putLong("last_greeting", t).apply();
     }
 
+    /** Opdateringskanal: "test" henter også test versioner fra udviklingsgrenen. */
+    boolean testChannel() {
+        return "test".equals(sp.getString("channel", "stabil"));
+    }
+
+    boolean channelChosen() {
+        return sp.contains("channel");
+    }
+
+    void setTestChannel(boolean test) {
+        sp.edit().putString("channel", test ? "test" : "stabil").apply();
+    }
+
     long lastUpdateCheck() {
         return sp.getLong("last_update_check", 0);
     }

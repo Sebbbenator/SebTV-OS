@@ -2,7 +2,8 @@ name: Byg Jarvis TV launcher
 
 on:
   push:
-    branches: [main]
+    # main giver stabile versioner; claude/** grene giver test versioner (pre-release)
+    branches: [main, "claude/**"]
     paths-ignore:
       - "README.md"
   workflow_dispatch:
@@ -41,9 +42,11 @@ jobs:
           echo "JARVIS_KEYSTORE=$RUNNER_TEMP/jarvis.p12" >> "$GITHUB_ENV"
           echo "JARVIS_KEY_ALIAS=$alias" >> "$GITHUB_ENV"
 
-      - name: Versionsnummer
+      - name: Versionsnummer og kanal
         # Fortsætter efter CSS-Jellyfin (1 til 9), så versioner aldrig går baglæns
-        run: echo "JARVIS_VERSION=$((GITHUB_RUN_NUMBER + 100))" >> "$GITHUB_ENV"
+        run: |
+          echo "JARVIS_VERSION=$((GITHUB_RUN_NUMBER + 100))" >> "$GITHUB_ENV"
+          if [ "$GITHUB_REF_NAME" = "main" ]; then echo "JARVIS_CHANNEL=stabil" >> "$GITHUB_ENV"; else echo "JARVIS_CHANNEL=test" >> "$GITHUB_ENV"; fi
 
       - name: Byg APK
         env:
@@ -68,8 +71,11 @@ jobs:
           tag="launcher-v${JARVIS_VERSION}"
           # Commit beskeden bliver til "Nyt i denne version" på tv'et (uden tekniske trailers)
           git log -1 --format=%B | grep -vE '^(Co-Authored-By|Claude-Session):' > notes.txt
-          gh release create "$tag" out/* \
-            --target "$GITHUB_SHA" \
-            --title "Jarvis TV ${JARVIS_VERSION}" \
-            --notes-file notes.txt \
-            --latest
+          if [ "$JARVIS_CHANNEL" = "test" ]; then
+            # Test version: kun sticks på kanal Test henter den; venner og stabile sticks ser den ikke
+            gh release create "$tag" out/* --target "$GITHUB_SHA" --title "Jarvis TV ${JARVIS_VERSION} (test)" \
+              --notes-file notes.txt --prerelease --latest=false
+          else
+            gh release create "$tag" out/* --target "$GITHUB_SHA" --title "Jarvis TV ${JARVIS_VERSION}" \
+              --notes-file notes.txt --latest
+          fi
