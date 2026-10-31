@@ -30,19 +30,33 @@ final class Looks {
             {"chokolade", "Chokolade"},
             {"nat", "Nattehimmel"},
             {"creme", "Lys creme"},
+            {"grafit", "Grafit"},
+            {"reaktor", "Reaktor rød"},
+            {"biograf", "Biografmørke"},
+            {"spider", "Spider blå"},
+            {"gotham", "Gotham sort"},
+            {"krypton", "Krypton blå"},
+            {"rose", "Lys rosé"},
+            {"uld", "Uld brun"},
+            {"salvie", "Lys salvie"},
+            {"skov", "Skovgrøn"},
+            {"hav", "Lys havbrise"},
     };
 
-    static final String[][] CORNERS = {{"normal", "Normale"}, {"rund", "Runde"}, {"ekstra", "Ekstra runde"}};
-    static final String[][] CARDS = {{"fast", "Faste"}, {"glas", "Glas (gennemsigtige)"}};
-    static final String[][] SHADE = {{"let", "Let"}, {"normal", "Normal"}, {"kraftig", "Kraftig"}};
-    static final String[][] BG_SOURCE = {{"billeder", "Mine billeder"}, {"ternet", "Ternet stof"}, {"ensfarvet", "Ensfarvet"}};
+    static final String[][] CORNERS = {{"skarp", "Skarpe"}, {"normal", "Normale"}, {"rund", "Runde"}, {"ekstra", "Ekstra runde"}};
+    static final String[][] CARDS = {{"fast", "Faste"}, {"papir", "Papir (flade, uden kant)"}, {"streg", "Kun streg"},
+            {"tegneserie", "Tegneserie (sort kant og skygge)"}, {"glas", "Glas (gennemsigtige)"}};
+    static final String[][] SHADE = {{"ingen", "Ingen"}, {"let", "Let"}, {"normal", "Normal"}, {"kraftig", "Kraftig"}};
+    static final String[][] BG_SOURCE = {{"scene", "Temaets scene"}, {"billeder", "Mine billeder"}, {"ensfarvet", "Ensfarvet"}};
     static final String[][] SORT = {{"egen", "Min egen rækkefølge"}, {"senest", "Senest brugt forrest"}, {"mest", "Mest brugt forrest"}};
-    static final String[][] PARTICLES = {{"auto", "Kun højtider"}, {"blade", "Faldende blade"}, {"ingen", "Ingen"}};
+    static final String[][] PARTICLES = {{"auto", "Kun højtider"}, {"blade", "Faldende blade"}, {"kronblade", "Rosenblade"},
+            {"stjerner", "Blinkende stjerner"}, {"regn", "Regn"}, {"sne", "Sne"}, {"ingen", "Ingen"}};
 
     static final Option[] ALL = {
             new Option("tone", "tone", "Farvetone", "Farver", "kold", TONES),
             new Option("accent", "accent", "Accentfarve", "Farver", "cyan", Prefs.ACCENTS),
             new Option("bg", "bg_source", "Baggrund", "Stemning", "billeder", BG_SOURCE),
+            new Option("scene", "scene", "Scene", "Stemning", "tegning", Scenes.ALL),
             new Option("shade", "shade", "Mørklægning af baggrund", "Stemning", "normal", SHADE),
             new Option("particles", "particles", "Effekter på skærmen", "Stemning", "auto", PARTICLES),
             new Option("corners", "corners", "Hjørner", "Form", "normal", CORNERS),

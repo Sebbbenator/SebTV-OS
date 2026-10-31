@@ -37,6 +37,17 @@ final class Prefs {
             {"salvie", "Salvie", "#A8D8B0"},
             {"lavendel", "Lavendel", "#C3B1FF"},
             {"karamel", "Karamel", "#D9945A"},
+            {"spider", "Spider rød", "#E62429"},
+            {"flagermus", "Signalgul", "#F2C230"},
+            {"sol", "Solgul", "#F6C232"},
+            {"kridt", "Kridt", "#EDEBE6"},
+            {"rust", "Rust", "#B4532A"},
+            {"kirsebaer", "Kirsebær", "#C2334D"},
+            {"sennep", "Sennep", "#D9A441"},
+            {"eukalyptus", "Eukalyptus", "#4F7A55"},
+            {"maane", "Måneskin", "#F1E6C8"},
+            {"jul", "Julerød", "#D23B33"},
+            {"petrol", "Petrol", "#1F7A8C"},
             {"auto", "Fra baggrunden", ""},
     };
 
@@ -356,6 +367,12 @@ final class Prefs {
             {"orbitron", "Orbitron (HUD)"},
             {"rajdhani", "Rajdhani (smal)"},
             {"serif", "Elegant (serif)"},
+            {"playfair", "Playfair (fin serif)"},
+            {"quicksand", "Quicksand (blød)"},
+            {"caveat", "Caveat (håndskrift)"},
+            {"bangers", "Bangers (tegneserie)"},
+            {"cinzel", "Cinzel (gotisk)"},
+            {"bebas", "Bebas Neue (plakat)"},
     };
 
     String clockStyle() {

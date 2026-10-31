@@ -436,7 +436,7 @@ public class MainActivity extends Activity {
         root = new FrameLayout(this);
         root.setBackgroundColor(Ui.BG);
         String shadeKey = prefs.str("shade", "normal");
-        float shade = "let".equals(shadeKey) ? 0.55f : "kraftig".equals(shadeKey) ? 1.3f : 1f;
+        float shade = "ingen".equals(shadeKey) ? 0f : "let".equals(shadeKey) ? 0.55f : "kraftig".equals(shadeKey) ? 1.3f : 1f;
 
         // Rammen er en anelse større end skærmen, så den kan glide med fokus uden kanter
         bgFrame = new FrameLayout(this);
@@ -696,7 +696,21 @@ public class MainActivity extends Activity {
         card.setClickable(true);
         card.setClipToOutline(true);
         GradientDrawable bg = Ui.card(this, Ui.CARD, Ui.CARD_STROKE, 1);
-        card.setBackground(bg);
+        GradientDrawable shadow = null;
+        if ("tegneserie".equals(Ui.cardStyle)) {
+            // Tegneserie: tyk sort kant og en hård skygge forskudt ned til højre, der bliver til accentfarven i fokus
+            shadow = Ui.card(this, Ui.INK, Ui.INK, 0);
+            int o = dp(7);
+            android.graphics.drawable.LayerDrawable layers = new android.graphics.drawable.LayerDrawable(new Drawable[]{shadow, bg});
+            layers.setLayerInset(0, o, o, 0, 0);
+            layers.setLayerInset(1, 0, 0, o, o);
+            card.setBackground(layers);
+            card.setPadding(dp(3), dp(3), o + dp(3), o + dp(3));
+            card.setClipToOutline(false);
+        } else {
+            card.setBackground(bg);
+        }
+        final GradientDrawable shadowF = shadow;
         holder.addView(card, new LinearLayout.LayoutParams(width, height));
 
         TextView l = Ui.text(this, label, 13, Ui.TEXT_DIM);
@@ -716,7 +730,8 @@ public class MainActivity extends Activity {
         card.setOnFocusChangeListener((v, has) -> {
             float s = has ? 1.08f : 1f;
             v.animate().scaleX(s).scaleY(s).setDuration(140).start();
-            bg.setStroke(dp(has ? 3 : 1), has ? currentAccent() : Ui.CARD_STROKE);
+            if (shadowF != null) shadowF.setColor(has ? currentAccent() : Ui.INK);
+            else bg.setStroke(dp((has ? 3 : 1) + Ui.restStroke()), has ? currentAccent() : Ui.CARD_STROKE);
             l.setTextColor(has ? Ui.TEXT : Ui.TEXT_DIM);
             l.setAlpha(has ? 1f : 0.75f);
             if (subF != null) subF.setAlpha(has ? 0.9f : 0.6f);
@@ -1208,20 +1223,23 @@ public class MainActivity extends Activity {
 
     private void loadBackground(boolean homePressed) {
         String source = prefs.str("bg_source", "billeder");
-        String name = "billeder".equals(source) ? backgrounds.current(homePressed) : "mønster:" + source + ":" + prefs.accentKey() + ":" + prefs.tone();
+        // Gammel værdi "ternet" er nu scenen Tartan
+        String scene = "ternet".equals(source) ? "tartan" : prefs.str("scene", "tegning");
+        String name = "billeder".equals(source) ? backgrounds.current(homePressed)
+                : "mønster:" + source + ":" + scene + ":" + prefs.accentKey() + ":" + prefs.tone();
         if (name != null && name.equals(shownBackground)) {
             if (kenBurns != null) kenBurns.resume();
             return;
         }
         shownBackground = name;
         File f = name == null || name.startsWith("mønster:") ? null : backgrounds.file(name);
-        boolean plaid = "ternet".equals(source);
+        boolean drawScene = "scene".equals(source) || "ternet".equals(source);
         int width = Math.max(getResources().getDisplayMetrics().widthPixels, 1280);
         boolean wantAccent = "auto".equals(prefs.accentKey());
         int fixedAccent = prefs.accentColor();
         // Billedet læses på en baggrundstråd, så Home ikke hakker, når baggrunden skifter
         Net.async(() -> {
-            Bitmap bmp = plaid ? Patterns.plaid(width, width * 9 / 16, fixedAccent)
+            Bitmap bmp = drawScene ? Scenes.draw(scene, width, width * 9 / 16)
                     : f == null ? null : Backgrounds.decode(f, width);
             return new Object[]{bmp, wantAccent ? Backgrounds.accent(bmp, Ui.CYAN) : fixedAccent};
         }, (res, err) -> {
@@ -1319,10 +1337,23 @@ public class MainActivity extends Activity {
     private void updateSeason() {
         int mode = Features.on(prefs, Features.SEASONS) ? ParticleView.modeFor(Calendar.getInstance()) : ParticleView.NONE;
         // Efterårstemaet: blade resten af året, når der ikke er sne eller fyrværkeri
-        if ((mode == ParticleView.NONE || mode == ParticleView.EMBERS) && "blade".equals(prefs.particles())) mode = ParticleView.LEAVES;
+        int themed = themedParticles(prefs.particles());
+        if ((mode == ParticleView.NONE || mode == ParticleView.EMBERS) && themed != ParticleView.NONE) mode = themed;
         if ("ingen".equals(prefs.particles()) && mode != ParticleView.FIREWORKS) mode = ParticleView.NONE;
         if (System.currentTimeMillis() < ironManUntil) mode = ParticleView.FIREWORKS;
         particles.setMode(mode);
+    }
+
+    /** Temaets egne effekter; højtiderne (sne, fyrværkeri) vinder kun, når der ikke er valgt noget. */
+    private static int themedParticles(String key) {
+        switch (key) {
+            case "blade": return ParticleView.LEAVES;
+            case "kronblade": return ParticleView.PETALS;
+            case "stjerner": return ParticleView.STARS;
+            case "regn": return ParticleView.RAIN;
+            case "sne": return ParticleView.SNOW;
+            default: return ParticleView.NONE;
+        }
     }
 
     private void updateNight() {

@@ -30,9 +30,24 @@ final class Ui {
             {"nat", "#07061A", "#13112E", "#1F1B45", "#ECE8FF", "#ADA5D6"},
             {"chokolade", "#1A0F0A", "#2B1A12", "#3F2719", "#F7EADC", "#CFB49A"},
             {"creme", "#EFE3D3", "#E6D5C0", "#DCC4A6", "#3B2416", "#7A5A44"},
+            {"grafit", "#111214", "#1B1D20", "#26292D", "#F2F2F0", "#9A9C9F"},
+            {"reaktor", "#120606", "#240C0C", "#3A1414", "#FFF1E0", "#D9A88A"},
+            {"biograf", "#0E0B0A", "#1C1614", "#2A201D", "#F5E9D8", "#B39C86"},
+            {"spider", "#0E1A4A", "#13225C", "#1F2E7A", "#FFFFFF", "#B8C4F0"},
+            {"gotham", "#0A0B0D", "#15171B", "#1F2228", "#EDEAE0", "#8E8C84"},
+            {"krypton", "#0C2A6E", "#0F3380", "#164099", "#FFFFFF", "#BFD0F2"},
+            {"rose", "#F6E3E1", "#EFD3D0", "#E8C2BE", "#3A1820", "#8A5A63"},
+            {"uld", "#2A1D17", "#36261E", "#463126", "#F6E9D7", "#C8AE92"},
+            {"salvie", "#E6EBE1", "#DCE4D5", "#CBD8C2", "#23331F", "#5E7357"},
+            {"skov", "#0F2A1E", "#153526", "#1C4431", "#FBF5EA", "#BFD1C2"},
+            {"hav", "#E9F1F0", "#DCE9E7", "#CFE1DE", "#12343B", "#4E747A"},
     };
 
     static float radiusDp = 10;
+    /** fast, glas, papir (ingen kant), streg (kun kant) eller tegneserie (sort kant og hård skygge) */
+    static String cardStyle = "fast";
+    /** Blæk til tegneserie kort: næsten sort på mørke toner, mørk tekstfarve på lyse. */
+    static int INK = Color.parseColor("#0A0A14");
     private static String style = "";
 
     /** Tone, kortstil og hjørner. Billig at kalde ofte: gør kun noget, når noget er ændret. */
@@ -41,12 +56,31 @@ final class Ui {
         if (sig.equals(style)) return;
         style = sig;
         applyTone(toneKey);
-        if ("glas".equals(cards)) {
-            CARD = HudView.withAlpha(CARD, 0.42f);
-            CARD_FOCUS = HudView.withAlpha(CARD_FOCUS, 0.7f);
-            CARD_STROKE = HudView.withAlpha(TEXT, 0.35f);
+        cardStyle = cards;
+        INK = Patterns.isLight(BG) ? TEXT : Color.parseColor("#05050A");
+        switch (cards) {
+            case "glas":
+                CARD = HudView.withAlpha(CARD, 0.42f);
+                CARD_FOCUS = HudView.withAlpha(CARD_FOCUS, 0.7f);
+                CARD_STROKE = HudView.withAlpha(TEXT, 0.35f);
+                break;
+            case "papir":
+                CARD = HudView.withAlpha(CARD, 1f);
+                CARD_FOCUS = HudView.withAlpha(CARD_FOCUS, 1f);
+                CARD_STROKE = Color.TRANSPARENT;
+                break;
+            case "streg":
+                CARD = HudView.withAlpha(BG, 0.55f);
+                CARD_FOCUS = HudView.withAlpha(BG, 0.8f);
+                CARD_STROKE = HudView.withAlpha(TEXT, 0.55f);
+                break;
+            case "tegneserie":
+                CARD = HudView.withAlpha(CARD, 1f);
+                CARD_FOCUS = HudView.withAlpha(CARD_FOCUS, 1f);
+                CARD_STROKE = INK;
+                break;
         }
-        radiusDp = "ekstra".equals(corners) ? 26 : "rund".equals(corners) ? 18 : 10;
+        radiusDp = "ekstra".equals(corners) ? 26 : "rund".equals(corners) ? 18 : "skarp".equals(corners) ? 2 : 10;
     }
 
     static void applyTone(String key) {
@@ -84,6 +118,22 @@ final class Ui {
                     display = Typeface.createFromAsset(c.getAssets(), "fonts/Rajdhani-Light.ttf");
                     headerFace = Typeface.createFromAsset(c.getAssets(), "fonts/Rajdhani-Medium.ttf");
                     return;
+                case "bangers":
+                case "cinzel":
+                case "bebas":
+                case "playfair":
+                case "quicksand": {
+                    String file = key.equals("bangers") ? "Bangers" : key.equals("cinzel") ? "Cinzel" : key.equals("bebas") ? "BebasNeue"
+                            : key.equals("playfair") ? "PlayfairDisplay" : "Quicksand";
+                    display = Typeface.createFromAsset(c.getAssets(), "fonts/" + file + ".ttf");
+                    headerFace = display;
+                    return;
+                }
+                case "caveat":
+                    // Håndskrift til ur og hilsen; overskrifterne i en rolig skrift, så de kan læses på afstand
+                    display = Typeface.createFromAsset(c.getAssets(), "fonts/Caveat.ttf");
+                    headerFace = Typeface.createFromAsset(c.getAssets(), "fonts/Quicksand.ttf");
+                    return;
                 case "serif":
                     display = Typeface.create("serif", Typeface.NORMAL);
                     headerFace = Typeface.create("serif", Typeface.BOLD);
@@ -114,8 +164,13 @@ final class Ui {
         GradientDrawable g = new GradientDrawable();
         g.setCornerRadius(dp(c, radiusDp));
         g.setColor(fill);
-        g.setStroke(dp(c, strokeDp), stroke);
+        g.setStroke(dp(c, strokeDp + restStroke()), stroke);
         return g;
+    }
+
+    /** Ekstra kantbredde for stilarter, der lever af stregen. */
+    static int restStroke() {
+        return "tegneserie".equals(cardStyle) ? 2 : "streg".equals(cardStyle) ? 1 : 0;
     }
 
     static StateListDrawable focusable(Context c, int accent) {

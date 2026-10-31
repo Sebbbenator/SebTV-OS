@@ -18,6 +18,14 @@ final class ParticleView extends View {
     static final int FIREWORKS = 3;
     /** Blade der daler og svajer, til efterårstemaet. */
     static final int LEAVES = 4;
+    /** Rosenblade der daler langsomt, til Rosé. */
+    static final int PETALS = 5;
+    /** Stjerner der blinker stille, til Nattehimmel. */
+    static final int STARS = 6;
+    /** Skrå regn, til Batman. */
+    static final int RAIN = 7;
+    private static final int[] PETAL_COLORS = {
+            Color.rgb(240, 140, 160), Color.rgb(232, 114, 138), Color.rgb(246, 186, 196), Color.rgb(194, 51, 77)};
     private static final int LEAF_COUNT = 16;
     private static final int[] LEAF_COLORS = {
             Color.rgb(196, 98, 45), Color.rgb(217, 148, 90), Color.rgb(160, 72, 38), Color.rgb(228, 176, 96), Color.rgb(122, 74, 44)};
@@ -95,13 +103,35 @@ final class ParticleView extends View {
             case FIREWORKS:
                 life[i] = 0;
                 break;
+            case STARS:
+                x[i] = random.nextFloat() * w;
+                y[i] = random.nextFloat() * h * 0.7f;
+                size[i] = (1 + random.nextFloat() * 1.4f) * d;
+                life[i] = random.nextFloat() * 10f;
+                vx[i] = 0.6f + random.nextFloat() * 1.4f;
+                color[i] = Color.rgb(241, 230, 200);
+                break;
+            case RAIN:
+                x[i] = random.nextFloat() * (w + h * 0.3f);
+                y[i] = anywhere ? random.nextFloat() * h : -30 * d;
+                vx[i] = -160 * d;
+                vy[i] = (700 + random.nextFloat() * 300) * d;
+                size[i] = (14 + random.nextFloat() * 14) * d;
+                color[i] = Color.argb(40 + random.nextInt(40), 200, 210, 225);
+                break;
+            case PETALS:
             case LEAVES:
                 x[i] = random.nextFloat() * w;
                 y[i] = anywhere ? random.nextFloat() * h : -20 * d;
                 vx[i] = (random.nextFloat() - 0.3f) * 18 * d;
                 vy[i] = (14 + random.nextFloat() * 22) * d;
                 size[i] = (7 + random.nextFloat() * 7) * d;
-                color[i] = Color.argb(140 + random.nextInt(90), 0, 0, 0) | (LEAF_COLORS[random.nextInt(LEAF_COLORS.length)] & 0xFFFFFF);
+                int[] palette = mode == PETALS ? PETAL_COLORS : LEAF_COLORS;
+                color[i] = Color.argb(140 + random.nextInt(90), 0, 0, 0) | (palette[random.nextInt(palette.length)] & 0xFFFFFF);
+                if (mode == PETALS) {
+                    size[i] *= 0.6f;
+                    vy[i] *= 0.6f;
+                }
                 angle[i] = random.nextFloat() * 360f;
                 spin[i] = (random.nextFloat() - 0.5f) * 90f;
                 life[i] = random.nextFloat() * 6f;
@@ -143,9 +173,11 @@ final class ParticleView extends View {
         paint.setColor(color[i]);
         paint.setStyle(Paint.Style.FILL);
         c.drawPath(leaf, paint);
-        paint.setColor(HudView.withAlpha(Color.rgb(70, 40, 22), Color.alpha(color[i]) / 255f));
-        paint.setStrokeWidth(Math.max(1f, s * 0.08f));
-        c.drawLine(0, -s * 0.8f, 0, s * 1.25f, paint);
+        if (mode == LEAVES) {
+            paint.setColor(HudView.withAlpha(Color.rgb(70, 40, 22), Color.alpha(color[i]) / 255f));
+            paint.setStrokeWidth(Math.max(1f, s * 0.08f));
+            c.drawLine(0, -s * 0.8f, 0, s * 1.25f, paint);
+        }
         c.restore();
     }
 
@@ -158,9 +190,29 @@ final class ParticleView extends View {
         float h = getHeight();
         float w = getWidth();
         boolean alive = false;
-        int n = mode == LEAVES ? LEAF_COUNT : COUNT;
+        int n = mode == LEAVES || mode == PETALS ? LEAF_COUNT : COUNT;
         for (int i = 0; i < n; i++) {
-            if (mode == LEAVES) {
+            if (mode == STARS) {
+                life[i] += dt * vx[i];
+                float tw = 0.15f + 0.85f * Math.abs((float) Math.sin(life[i]));
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(HudView.withAlpha(color[i], tw));
+                c.drawCircle(x[i], y[i], size[i], paint);
+                continue;
+            }
+            if (mode == RAIN) {
+                x[i] += vx[i] * dt;
+                y[i] += vy[i] * dt;
+                if (y[i] > h + 30 || x[i] < -30) reset(i, false);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(getResources().getDisplayMetrics().density * 1.2f);
+                paint.setColor(color[i]);
+                float k = size[i] / vy[i];
+                c.drawLine(x[i], y[i], x[i] - vx[i] * k, y[i] - size[i], paint);
+                paint.setStyle(Paint.Style.FILL);
+                continue;
+            }
+            if (mode == LEAVES || mode == PETALS) {
                 life[i] += dt;
                 // Svajer fra side til side, mens det daler
                 x[i] += (vx[i] + (float) Math.sin(life[i] * 1.3f) * 22 * getResources().getDisplayMetrics().density) * dt;

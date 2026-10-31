@@ -1,92 +1,67 @@
 package dk.selveste.launcher;
 
-/** Temaer med ét tryk: sætter tone, farve, ur, skrift og et par effekter på én gang. Alt kan rettes bagefter. */
+/**
+ * Temaer med ét tryk. Hvert tema har sin egen tegnede scene, skrift, card stil og farver, så de ikke
+ * ligner hinanden. Alt kan rettes enkeltvis bagefter under Udseende.
+ */
 final class Themes {
 
     /** nøgle, navn, beskrivelse, udgave */
     static final String[][] ALL = {
-            {"efteraar", "Efterår", "Lys creme, karamel, ternet stof og faldende blade", Prefs.EDITION_HOME},
-            {"rose", "Rosé", "Varm og blød med rosa", Prefs.EDITION_HOME},
-            {"hygge", "Hygge", "Varme farver som levende lys", Prefs.EDITION_HOME},
-            {"salvie", "Salvie", "Rolig grøn og elegant skrift", Prefs.EDITION_HOME},
-            {"natte", "Nattehimmel", "Dyb blå med lavendel", Prefs.EDITION_HOME},
-            {"jarvis", "Jarvis", "Cyan, ring ur og HUD skrift", Prefs.EDITION_JARVIS},
-            {"ironman", "Iron Man", "Rød og guld, ring ur, HUD skrift", Prefs.EDITION_JARVIS},
-            {"minimal", "Minimal", "Rolig, tyndt ur, ingen effekter", Prefs.EDITION_JARVIS},
-            {"biograf", "Biograf", "Farve fra baggrunden, smal skrift", Prefs.EDITION_JARVIS},
+            {"efteraar", "Efterår", "Tartan i rust og sennep, Playfair og faldende blade", Prefs.EDITION_HOME},
+            {"rose", "Rosé", "Rosentryk i to farver som en risograf, rosenblade", Prefs.EDITION_HOME},
+            {"hygge", "Hygge", "Strik med nordisk bort og ur i håndskrift", Prefs.EDITION_HOME},
+            {"salvie", "Salvie", "Eukalyptus tegnet med streg på lyst papir", Prefs.EDITION_HOME},
+            {"natte", "Nattehimmel", "Stjernekort med stjernebilleder og månesegl", Prefs.EDITION_HOME},
+            {"jul", "Jul", "Julesweater i masker med stjerner og træer", Prefs.EDITION_HOME},
+            {"hav", "Havbrise", "Japanske bølger og sol på lyst papir", Prefs.EDITION_HOME},
+            {"jarvis", "Jarvis", "Teknisk tegning, ring ur og HUD skrift", Prefs.EDITION_JARVIS},
+            {"ironman", "Iron Man", "Rustningsplader og reaktor i rødt og guld", Prefs.EDITION_JARVIS},
+            {"spiderman", "Spider-Man", "Tegneserierude med net, raster og sorte kanter", Prefs.EDITION_JARVIS},
+            {"batman", "Batman", "Gotham om natten, signalet i skyerne og regn", Prefs.EDITION_JARVIS},
+            {"superman", "Superman", "Retroplakat med solstråler og kappe", Prefs.EDITION_JARVIS},
+            {"biograf", "Biograf", "Rødt tæppe, pærer og plakatskrift", Prefs.EDITION_JARVIS},
+            {"minimal", "Minimal", "Grafit, tyndt ur og ingen effekter", Prefs.EDITION_JARVIS},
+    };
+
+    /** tema: tone, accent, ur, skrift, cards størrelse, scene, effekter, card stil, hjørner, mørklægning */
+    private static final String[][] LOOK = {
+            {"efteraar", "creme", "rust", "analog", "playfair", "normal", "tartan", "blade", "papir", "rund", "let"},
+            {"rose", "rose", "kirsebaer", "tynd", "playfair", "normal", "riso", "kronblade", "papir", "rund", "ingen"},
+            {"hygge", "uld", "sennep", "stor", "caveat", "normal", "strik", "ingen", "fast", "rund", "let"},
+            {"salvie", "salvie", "eukalyptus", "tynd", "quicksand", "kompakt", "botanisk", "ingen", "streg", "rund", "ingen"},
+            {"natte", "nat", "maane", "tynd", "quicksand", "normal", "stjernekort", "stjerner", "streg", "rund", "ingen"},
+            {"jul", "skov", "jul", "analog", "playfair", "normal", "julestrik", "sne", "papir", "normal", "let"},
+            {"hav", "hav", "petrol", "tynd", "quicksand", "normal", "boelger", "ingen", "papir", "rund", "ingen"},
+            {"jarvis", "kold", "cyan", "hud", "orbitron", "normal", "tegning", "auto", "streg", "skarp", "ingen"},
+            {"ironman", "reaktor", "guld", "hud", "orbitron", "normal", "reaktor", "auto", "fast", "skarp", "let"},
+            {"spiderman", "spider", "spider", "stor", "bangers", "normal", "spindel", "ingen", "tegneserie", "skarp", "ingen"},
+            {"batman", "gotham", "flagermus", "tynd", "cinzel", "normal", "gotham", "regn", "streg", "skarp", "ingen"},
+            {"superman", "krypton", "sol", "stor", "bebas", "normal", "solstraaler", "ingen", "tegneserie", "skarp", "ingen"},
+            {"biograf", "biograf", "guld", "stor", "bebas", "stor", "biograf", "ingen", "fast", "skarp", "let"},
+            {"minimal", "grafit", "kridt", "tynd", "system", "kompakt", "grafit", "ingen", "papir", "skarp", "ingen"},
     };
 
     static void apply(Prefs prefs, String key) {
-        prefs.setTheme(key);
-        switch (key) {
-            case "efteraar":
-                look(prefs, "creme", "karamel", "analog", "serif", "normal");
-                effects(prefs, true);
-                prefs.setFlag(Features.PARALLAX, false);
-                prefs.setParticles("blade");
-                prefs.setStr("bg_source", "ternet");
-                prefs.setStr("corners", "ekstra");
-                prefs.setStr("cards", "glas");
-                prefs.setStr("shade", "let");
-                break;
-            case "rose":
-                look(prefs, "varm", "rosa", "tynd", "serif", "normal");
-                effects(prefs, true);
-                prefs.setFlag(Features.PARALLAX, false);
-                break;
-            case "hygge":
-                look(prefs, "varm", "fersken", "stor", "system", "normal");
-                effects(prefs, true);
-                prefs.setFlag(Features.PARALLAX, false);
-                break;
-            case "salvie":
-                look(prefs, "varm", "salvie", "tynd", "serif", "kompakt");
-                effects(prefs, false);
-                prefs.setFlag(Features.KEN_BURNS, true);
-                break;
-            case "natte":
-                look(prefs, "nat", "lavendel", "tynd", "system", "normal");
-                effects(prefs, true);
-                break;
-            case "ironman":
-                look(prefs, "kold", "roed", "hud", "orbitron", "normal");
-                effects(prefs, true);
-                break;
-            case "minimal":
-                look(prefs, "kold", "is", "tynd", "system", "kompakt");
-                effects(prefs, false);
-                break;
-            case "biograf":
-                look(prefs, "kold", "auto", "stor", "rajdhani", "stor");
-                effects(prefs, true);
-                prefs.setFlag(Features.PARALLAX, false);
-                prefs.setFlag(Features.LATEST, true);
-                prefs.setFlag(Features.NOW_PLAYING, true);
-                break;
-            default:
-                look(prefs, "kold", "cyan", "hud", "orbitron", "normal");
-                effects(prefs, true);
-        }
-    }
-
-    private static void look(Prefs prefs, String tone, String accent, String clock, String font, String tiles) {
-        prefs.setParticles("auto");
-        prefs.setStr("bg_source", "billeder");
-        prefs.setStr("corners", "normal");
-        prefs.setStr("cards", "fast");
-        prefs.setStr("shade", "normal");
-        prefs.setTone(tone);
-        prefs.setAccentKey(accent);
-        prefs.setClockStyle(clock);
-        prefs.setFont(font);
-        prefs.setTileSize(tiles);
-    }
-
-    private static void effects(Prefs prefs, boolean on) {
-        prefs.setFlag(Features.KEN_BURNS, on);
-        prefs.setFlag(Features.PARALLAX, on);
-        prefs.setFlag(Features.BOOT, on);
-        prefs.setFlag(Features.SEASONS, on);
+        String[] l = LOOK[7];
+        for (String[] x : LOOK) if (x[0].equals(key)) l = x;
+        prefs.setTheme(l[0]);
+        prefs.setTone(l[1]);
+        prefs.setAccentKey(l[2]);
+        prefs.setClockStyle(l[3]);
+        prefs.setFont(l[4]);
+        prefs.setTileSize(l[5]);
+        prefs.setStr("scene", l[6]);
+        prefs.setStr("bg_source", "scene");
+        prefs.setParticles(l[7]);
+        prefs.setStr("cards", l[8]);
+        prefs.setStr("corners", l[9]);
+        prefs.setStr("shade", l[10]);
+        // Scenerne er tegnet skarpt, så de skal ikke zoome; højtiderne må stadig komme
+        prefs.setFlag(Features.KEN_BURNS, false);
+        prefs.setFlag(Features.SEASONS, true);
+        prefs.setFlag(Features.PARALLAX, !"minimal".equals(l[0]));
+        prefs.setFlag(Features.BOOT, !"minimal".equals(l[0]));
     }
 
     /** Skifter udgave og slår det fra, der kun giver mening i Jarvis (Konami, stemme). */
