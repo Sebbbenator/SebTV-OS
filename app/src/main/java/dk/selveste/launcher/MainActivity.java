@@ -57,6 +57,12 @@ public class MainActivity extends Activity {
     static volatile boolean wokeUp;
     /** Sat når apps installeres eller fjernes, eller indstillinger ændres; ellers genbruges rækkerne. */
     static volatile boolean appsDirty = true;
+    /** Næste forside åbner med en cirkel (efter temaskift). */
+    private static boolean revealNext;
+    /** Effektniveau: Motion.FULL, LIGHT eller NONE. */
+    private String motion = Motion.FULL;
+    /** Rækker der allerede er gledet ind; senere opdateringer skal ikke animere igen. */
+    private final java.util.Set<LinearLayout> staggered = new java.util.HashSet<>();
     private static MainActivity visible;
 
     private static final Locale DANISH = new Locale("da", "DK");
@@ -183,7 +189,10 @@ public class MainActivity extends Activity {
     static void lookChangedFromOutside() {
         appsDirty = true;
         MainActivity a = visible;
-        if (a != null) a.handler.post(a::recreate);
+        if (a != null) a.handler.post(() -> {
+            revealNext = true;
+            a.recreate();
+        });
     }
 
     /** Ændringer fra HA's websocket: kun det der vises på forsiden, tegnes igen. */
@@ -213,8 +222,13 @@ public class MainActivity extends Activity {
         ErrorLog.init(this);
         installCrashHandler(this);
         builtTone = Looks.layoutSignature(prefs);
+        motion = Motion.level(this, prefs);
         Ui.loadFont(this, prefs.font());
         setContentView(buildLayout());
+        if (revealNext) {
+            revealNext = false;
+            Motion.reveal(root, motion, -1, -1);
+        }
         applyLook();
         updateMore();
         showCached();
@@ -246,6 +260,7 @@ public class MainActivity extends Activity {
         }
         if (!Looks.layoutSignature(prefs).equals(builtTone)) {
             // Ny farvetone: skyggerne og kortene er bygget med den gamle, så byg skærmen forfra
+            revealNext = true;
             recreate();
             return;
         }
@@ -253,6 +268,7 @@ public class MainActivity extends Activity {
             // Indstillinger kan have ændret accentfarve eller fliser: læs baggrund og farve igen
             shownBackground = null;
             accent = prefs.accentColor();
+            motion = Motion.level(this, prefs);
             applyLook();
             updateMore();
             backgrounds.importShared();
@@ -625,6 +641,7 @@ public class MainActivity extends Activity {
         row.setClipToPadding(false);
         hscroll.addView(row);
         section.addView(hscroll);
+        if (staggered.add(section)) Motion.stagger(row, motion);
         return row;
     }
 
@@ -686,8 +703,7 @@ public class MainActivity extends Activity {
         }
         final TextView subF = sub;
         card.setOnFocusChangeListener((v, has) -> {
-            float s = has ? 1.08f : 1f;
-            v.animate().scaleX(s).scaleY(s).setDuration(140).start();
+            Motion.focus(v, has, motion);
             if (shadowF != null) shadowF.setColor(has ? currentAccent() : Ui.INK);
             else bg.setStroke(dp((has ? 3 : 1) + Ui.restStroke()), has ? currentAccent() : Ui.CARD_STROKE);
             l.setTextColor(has ? Ui.TEXT : Ui.TEXT_DIM);
@@ -1273,7 +1289,7 @@ public class MainActivity extends Activity {
             }
             // En diskret skygge, så uret kan læses på lyse fotos
             clock.setShadowLayer(dp(6), 0, dp(1), Color.argb(110, 0, 0, 0));
-            startKenBurns(bmp != null && Features.on(prefs, Features.KEN_BURNS));
+            startKenBurns(bmp != null && Features.on(prefs, Features.KEN_BURNS) && !Motion.NONE.equals(motion));
         });
     }
 
@@ -1316,6 +1332,9 @@ public class MainActivity extends Activity {
         int themed = themedParticles(prefs.particles());
         if ((mode == ParticleView.NONE || mode == ParticleView.EMBERS) && themed != ParticleView.NONE) mode = themed;
         if ("ingen".equals(prefs.particles()) && mode != ParticleView.FIREWORKS) mode = ParticleView.NONE;
+        // Let: kun nytårets fyrværkeri. Ingen: slet ingenting
+        if (Motion.LIGHT.equals(motion) && mode != ParticleView.FIREWORKS) mode = ParticleView.NONE;
+        if (Motion.NONE.equals(motion)) mode = ParticleView.NONE;
         if (System.currentTimeMillis() < ironManUntil) mode = ParticleView.FIREWORKS;
         particles.setMode(mode);
     }
@@ -1354,7 +1373,7 @@ public class MainActivity extends Activity {
 
     /** Baggrunden glider en smule modsat fokus, så forsiden føles som et rum. */
     private void parallax(View focused) {
-        if (!Features.on(prefs, Features.PARALLAX)) {
+        if (!Features.on(prefs, Features.PARALLAX) || !Motion.FULL.equals(motion)) {
             bgFrame.setTranslationX(0);
             bgFrame.setTranslationY(0);
             return;
@@ -1371,7 +1390,7 @@ public class MainActivity extends Activity {
     private void bootIfWoken() {
         if (!wokeUp || visible != this) return;
         wokeUp = false;
-        if (Features.on(prefs, Features.BOOT)) HudView.forPrefs(this, prefs, greetingText(), currentAccent()).play(root);
+        if (Features.on(prefs, Features.BOOT) && !Motion.NONE.equals(motion)) HudView.forPrefs(this, prefs, greetingText(), currentAccent()).play(root);
         speakGreeting();
     }
 
