@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+: ingen systemets startskærm med ikon, forsiden kommer direkte -->
+    <style name="JarvisTheme" parent="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/jarvis_bg</item>
+        <item name="android:colorAccent">@color/jarvis_cyan</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowSwipeToDismiss">false</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowSplashScreenBackground">@color/jarvis_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+    </style>
+</resources>

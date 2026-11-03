@@ -246,7 +246,7 @@ public class MainActivity extends Activity {
         pkgFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
         pkgFilter.addAction(Intent.ACTION_PACKAGE_CHANGED);
         pkgFilter.addDataScheme("package");
-        registerReceiver(packages, pkgFilter);
+        Ui.registerSystemReceiver(this, packages, pkgFilter);
     }
 
     @Override

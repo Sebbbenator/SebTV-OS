@@ -4,6 +4,11 @@
         <item name="android:windowBackground">@color/jarvis_bg</item>
         <item name="android:colorAccent">@color/jarvis_cyan</item>
         <item name="android:windowAnimationStyle">@null</item>
+        <!-- Helt uigennemsigtig, så HDMI billedet ikke hænger under forsiden på nogle Google TV -->
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowSwipeToDismiss">false</item>
+        <item name="android:windowShowWallpaper">false</item>
     </style>
     <color name="jarvis_bg">#02080D</color>
     <color name="jarvis_cyan">#4FD8FF</color>

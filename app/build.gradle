@@ -9,7 +9,7 @@ android {
     defaultConfig {
         applicationId "dk.selveste.launcher"
         minSdk 25
-        targetSdk 30
+        targetSdk 34
         // JARVIS_VERSION sættes af workflowet (SebTV-OS fortsætter fra 100, så tal aldrig går baglæns)
         def v = System.getenv("JARVIS_VERSION") ?: System.getenv("GITHUB_RUN_NUMBER") ?: "1"
         versionCode v.toInteger()

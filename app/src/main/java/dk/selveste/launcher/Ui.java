@@ -222,4 +222,10 @@ final class Ui {
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         return t;
     }
+
+    /** Systemets egne broadcasts (skærm, apps). Fra Android 14 skal det siges, at andre apps ikke må sende hertil. */
+    static void registerSystemReceiver(android.content.Context c, android.content.BroadcastReceiver r, android.content.IntentFilter f) {
+        if (android.os.Build.VERSION.SDK_INT >= 33) c.registerReceiver(r, f, android.content.Context.RECEIVER_NOT_EXPORTED);
+        else c.registerReceiver(r, f);
+    }
 }

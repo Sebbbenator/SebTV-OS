@@ -94,7 +94,7 @@ public class HomeService extends AccessibilityService {
         ErrorLog.init(this);
         IntentFilter f = new IntentFilter(Intent.ACTION_SCREEN_ON);
         f.addAction(Intent.ACTION_SCREEN_OFF);
-        registerReceiver(screen, f);
+        Ui.registerSystemReceiver(this, screen, f);
         NightUpdate.schedule(this);
         messages = new JarvisMessages(this);
         messages.start();
