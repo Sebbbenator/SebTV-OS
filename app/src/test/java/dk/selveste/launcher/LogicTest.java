@@ -47,6 +47,14 @@ public class LogicTest {
     }
 
     @Test
+    public void adresserRettes() {
+        assertEquals("http://192.168.111.25:8096", Prefs.normalizeUrl(" 192.168.111.25:8096/ "));
+        assertEquals("https://ha.example.dk", Prefs.normalizeUrl("HTTPS://ha.example.dk//"));
+        assertEquals("http://homeassistant.local:8123", Prefs.normalizeUrl("http://homeassistant.local:8123"));
+        assertEquals("", Prefs.normalizeUrl("  "));
+    }
+
+    @Test
     public void tidspunktSammenlignes() {
         assertEquals("2026-10-31T12:00:05", HaSocket.second("2026-10-31T12:00:05.123456+00:00"));
     }

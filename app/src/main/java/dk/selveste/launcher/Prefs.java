@@ -191,8 +191,17 @@ final class Prefs {
 
     // Home Assistant
 
+    /** "192.168.1.5:8096/" bliver til "http://192.168.1.5:8096": skema tilføjes, mellemrum og skråstreger til sidst fjernes. */
+    static String normalizeUrl(String url) {
+        if (url == null) return "";
+        String u = url.trim().replaceAll("/+$", "");
+        if (u.isEmpty()) return "";
+        if (!u.matches("(?i)^https?://.*")) u = "http://" + u.replaceFirst("^/+", "");
+        return u.replaceFirst("(?i)^HTTP://", "http://").replaceFirst("(?i)^HTTPS://", "https://");
+    }
+
     String haUrl() {
-        return sp.getString("ha_url", DEFAULT_HA_URL);
+        return normalizeUrl(sp.getString("ha_url", DEFAULT_HA_URL));
     }
 
     String haToken() {
@@ -267,7 +276,7 @@ final class Prefs {
 
     void setHa(String url, String token, String buttons) {
         SharedPreferences.Editor e = sp.edit();
-        if (url != null && !url.trim().isEmpty()) e.putString("ha_url", url.trim().replaceAll("/+$", ""));
+        if (url != null && !url.trim().isEmpty()) e.putString("ha_url", normalizeUrl(url));
         if (token != null && !token.trim().isEmpty()) e.putString("ha_token", token.trim());
         if (buttons != null && !buttons.trim().isEmpty()) e.putString("ha_buttons", buttons.replace(" ", ""));
         e.apply();
@@ -280,7 +289,7 @@ final class Prefs {
     // Jellyfin
 
     String jfUrl() {
-        return sp.getString("jf_url", DEFAULT_JF_URL);
+        return normalizeUrl(sp.getString("jf_url", DEFAULT_JF_URL));
     }
 
     String jfToken() {
@@ -292,11 +301,11 @@ final class Prefs {
     }
 
     void setJfUrl(String url) {
-        sp.edit().putString("jf_url", url).apply();
+        sp.edit().putString("jf_url", normalizeUrl(url)).apply();
     }
 
     void setJellyfin(String url, String token, String user) {
-        sp.edit().putString("jf_url", url).putString("jf_token", token).putString("jf_user", user).apply();
+        sp.edit().putString("jf_url", normalizeUrl(url)).putString("jf_token", token).putString("jf_user", user).apply();
     }
 
     void clearJellyfin() {
