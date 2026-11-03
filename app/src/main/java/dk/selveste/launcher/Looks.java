@@ -45,7 +45,8 @@ final class Looks {
 
     static final String[][] CORNERS = {{"skarp", "Skarpe"}, {"normal", "Normale"}, {"rund", "Runde"}, {"ekstra", "Ekstra runde"}};
     static final String[][] CARDS = {{"fast", "Faste"}, {"papir", "Papir (flade, uden kant)"}, {"streg", "Kun streg"},
-            {"tegneserie", "Tegneserie (sort kant og skygge)"}, {"glas", "Glas (gennemsigtige)"}};
+            {"tegneserie", "Tegneserie (sort kant og skygge)"}, {"glas", "Glas (gennemsigtige)"},
+            {"apple", "Apple TV (store ikoner, navn ved fokus)"}};
     static final String[][] SHADE = {{"ingen", "Ingen"}, {"let", "Let"}, {"normal", "Normal"}, {"kraftig", "Kraftig"}};
     static final String[][] BG_SOURCE = {{"tema", "Temaets fotos"}, {"billeder", "Mine billeder"}, {"ensfarvet", "Ensfarvet"}};
     static final String[][] SORT = {{"egen", "Min egen rækkefølge"}, {"senest", "Senest brugt forrest"}, {"mest", "Mest brugt forrest"}};

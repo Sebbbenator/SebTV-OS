@@ -74,6 +74,12 @@ final class Ui {
                 CARD_FOCUS = HudView.withAlpha(BG, 0.8f);
                 CARD_STROKE = HudView.withAlpha(TEXT, 0.55f);
                 break;
+            case "apple":
+                // Som på Apple TV: tætte flader uden kant; fokus vises med størrelse og skygge
+                CARD = HudView.withAlpha(CARD_FOCUS, 1f);
+                CARD_FOCUS = CARD;
+                CARD_STROKE = Color.TRANSPARENT;
+                break;
             case "tegneserie":
                 CARD = HudView.withAlpha(CARD, 1f);
                 CARD_FOCUS = HudView.withAlpha(CARD_FOCUS, 1f);
@@ -157,7 +163,22 @@ final class Ui {
         t.setLetterSpacing(0.25f);
         t.setTypeface(headerFace);
         t.setPadding(0, dp(c, 22), 0, dp(c, 8));
+        if (apple()) {
+            // Apple skriver overskrifter som almindelige ord, hvide og halvfede
+            String s = text.toLowerCase(java.util.Locale.ROOT);
+            t.setText(s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1));
+            t.setTextColor(TEXT);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19);
+            t.setLetterSpacing(0f);
+            t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            t.setPadding(0, dp(c, 26), 0, dp(c, 2));
+        }
         return t;
+    }
+
+    /** Apple TV forsiden: én række store ikoner over et helt foto, uden ur og hilsen. */
+    static boolean apple() {
+        return "apple".equals(cardStyle);
     }
 
     static GradientDrawable card(Context c, int fill, int stroke, int strokeDp) {

@@ -39,7 +39,8 @@ final class Motion {
 
     /** Fokus på et kort: fjedrer lidt forbi og falder på plads ved Fuld. */
     static void focus(View v, boolean has, String level) {
-        float s = has ? 1.08f : 1f;
+        // Apple TV løfter ikonet tydeligere frem end de andre temaer
+        float s = has ? (Ui.apple() ? 1.14f : 1.08f) : 1f;
         if (NONE.equals(level)) {
             v.animate().cancel();
             v.setScaleX(s);

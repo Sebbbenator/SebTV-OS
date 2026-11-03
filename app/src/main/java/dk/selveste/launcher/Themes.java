@@ -22,6 +22,7 @@ final class Themes {
             {"superman", "Superman", "Rød kappe og blå himmel, plakatskrift", Prefs.EDITION_JARVIS},
             {"biograf", "Biograf", "Biografsale og plakatskrift", Prefs.EDITION_JARVIS},
             {"minimal", "Minimal", "Arkitektur i sort og hvid, tyndt ur", Prefs.EDITION_JARVIS},
+            {"apple", "Apple", "Forsiden som på Apple TV, med Big Sur, Yosemite og Catalina", Prefs.EDITION_JARVIS},
     };
 
     /** tema: tone, accent, ur, skrift, cards størrelse, card stil, hjørner */
@@ -40,6 +41,7 @@ final class Themes {
             {"superman", "krypton", "sol", "stor", "bebas", "normal", "fast", "skarp"},
             {"biograf", "biograf", "guld", "stor", "bebas", "stor", "fast", "skarp"},
             {"minimal", "grafit", "kridt", "tynd", "system", "kompakt", "papir", "skarp"},
+            {"apple", "grafit", "kridt", "tynd", "system", "normal", "apple", "normal"},
     };
 
     static void apply(Prefs prefs, String key) {
@@ -58,10 +60,12 @@ final class Themes {
         prefs.setStr("bg_source", "tema");
         prefs.setStr("shade", "normal");
         prefs.setParticles("auto");
-        prefs.setFlag(Features.KEN_BURNS, true);
+        // Minimal og Apple er stille: ingen glidende baggrund og ingen opstartsanimation
+        boolean calm = "minimal".equals(l[0]) || "apple".equals(l[0]);
+        prefs.setFlag(Features.KEN_BURNS, !"apple".equals(l[0]));
         prefs.setFlag(Features.SEASONS, true);
-        prefs.setFlag(Features.PARALLAX, !"minimal".equals(l[0]));
-        prefs.setFlag(Features.BOOT, !"minimal".equals(l[0]));
+        prefs.setFlag(Features.PARALLAX, !calm);
+        prefs.setFlag(Features.BOOT, !calm);
     }
 
     /** Skifter udgave og slår det fra, der kun giver mening i Jarvis (Konami, stemme). */
