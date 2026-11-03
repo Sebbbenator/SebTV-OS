@@ -82,7 +82,7 @@ final class QuickPanel {
             box.addView(Ui.row(a, "Profil", active.isEmpty() ? "Vælg" : active, c, v -> {
                 d.dismiss();
                 String[] names = profiles.toArray(new String[0]);
-                new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                new android.app.AlertDialog.Builder(a, Ui.dialogTheme())
                         .setTitle("Profil")
                         .setSingleChoiceItems(names, profiles.indexOf(active), (dd, which) -> {
                             dd.dismiss();

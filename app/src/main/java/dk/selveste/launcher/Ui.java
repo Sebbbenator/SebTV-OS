@@ -87,6 +87,7 @@ final class Ui {
                 break;
         }
         radiusDp = "ekstra".equals(corners) ? 26 : "rund".equals(corners) ? 18 : "skarp".equals(corners) ? 2 : 10;
+        if ("apple".equals(cards)) radiusDp = 14;
     }
 
     static void applyTone(String key) {
@@ -164,11 +165,11 @@ final class Ui {
         t.setTypeface(headerFace);
         t.setPadding(0, dp(c, 22), 0, dp(c, 8));
         if (apple()) {
-            // Apple skriver overskrifter som almindelige ord, hvide og halvfede
+            // Apple skriver overskrifter som almindelige ord, grå og halvfede
             String s = text.toLowerCase(java.util.Locale.ROOT);
             t.setText(s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1));
-            t.setTextColor(TEXT);
-            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19);
+            t.setTextColor(APPLE_GRAY);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
             t.setLetterSpacing(0f);
             t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
             t.setPadding(0, dp(c, 26), 0, dp(c, 2));
@@ -194,8 +195,24 @@ final class Ui {
         return "tegneserie".equals(cardStyle) ? 2 : "streg".equals(cardStyle) ? 1 : 0;
     }
 
+    /** Apples farver: lys flade i fokus, mørk tekst på den, grå sekundær tekst. */
+    static final int APPLE_LIGHT = Color.parseColor("#F2F2F7");
+    static final int APPLE_DARK = Color.parseColor("#1C1C1E");
+    static final int APPLE_GRAY = Color.parseColor("#A1A1A6");
+
+    /** Dialogernes udseende: Apples mørkegrå med runde hjørner, ellers systemets. */
+    static int dialogTheme() {
+        return apple() ? R.style.AppleDialog : android.R.style.Theme_DeviceDefault_Dialog_Alert;
+    }
+
     static StateListDrawable focusable(Context c, int accent) {
         StateListDrawable s = new StateListDrawable();
+        if (apple()) {
+            // tvOS: knappen bliver lys i fokus, ellers en svag lys flade uden kant
+            s.addState(new int[]{android.R.attr.state_focused}, card(c, APPLE_LIGHT, Color.TRANSPARENT, 0));
+            s.addState(new int[]{}, card(c, Color.argb(26, 255, 255, 255), Color.TRANSPARENT, 0));
+            return s;
+        }
         s.addState(new int[]{android.R.attr.state_focused}, card(c, CARD_FOCUS, accent, 2));
         s.addState(new int[]{}, card(c, CARD, CARD_STROKE, 1));
         return s;
@@ -227,6 +244,17 @@ final class Ui {
         v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         row.addView(v);
 
+        if (apple()) {
+            // Teksten skifter til mørk på den lyse fokusflade, og rækken løftes en anelse frem
+            row.setPadding(dp(c, 24), dp(c, 16), dp(c, 24), dp(c, 16));
+            v.setTextColor(APPLE_GRAY);
+            row.setOnFocusChangeListener((view, has) -> {
+                t.setTextColor(has ? APPLE_DARK : TEXT);
+                v.setTextColor(has ? Color.parseColor("#636366") : APPLE_GRAY);
+                view.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(150).start();
+                view.setElevation(has ? dp(c, 10) : 0);
+            });
+        }
         row.setOnClickListener(click);
         return row;
     }

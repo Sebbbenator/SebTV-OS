@@ -902,7 +902,7 @@ public class MainActivity extends Activity {
                 }
             });
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle(entry.label)
                 .setItems(labels.toArray(new String[0]), (d, which) -> {
                     actions.get(which).run();
@@ -1316,7 +1316,7 @@ public class MainActivity extends Activity {
             names[i] = options.optString(i);
             if (names[i].equals(active)) checked = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle(name)
                 .setSingleChoiceItems(names, checked, (d, which) -> {
                     d.dismiss();
@@ -1671,7 +1671,7 @@ public class MainActivity extends Activity {
             ov.setMaxLines(4);
             ov.setPadding(dp(24), dp(12), dp(24), 0);
             box.addView(ov);
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            new AlertDialog.Builder(this, Ui.dialogTheme())
                     .setTitle(it.title + (it.subtitle.isEmpty() ? "" : " (" + it.subtitle + ")"))
                     .setView(box)
                     .setPositiveButton("Se den", (d, w) -> openInWholphin(it.id))

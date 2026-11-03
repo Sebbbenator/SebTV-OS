@@ -17,7 +17,7 @@ final class FireTvMenu {
     static void show(Activity a) {
         String[] labels = {"Wi-Fi", "Bluetooth og fjernbetjening", "Skærm og lyd", "Apps", "Udviklerindstillinger",
                 "Alle " + ("Tv".equals(platform()) ? "tv" : platform()) + " indstillinger", "Sov nu"};
-        new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(a, Ui.dialogTheme())
                 .setTitle(platform())
                 .setItems(labels, (d, which) -> {
                     switch (which) {

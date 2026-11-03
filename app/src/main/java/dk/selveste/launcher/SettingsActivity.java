@@ -90,7 +90,14 @@ public class SettingsActivity extends Activity {
     private void build() {
         list.removeAllViews();
         Ui.applyStyle(prefs.tone(), prefs.str("cards", "fast"), prefs.str("corners", "normal"));
-        ((View) list.getParent()).setBackgroundColor(Ui.BG);
+        if (Ui.apple()) {
+            // tvOS indstillinger: dyb grå flade med lidt lys fra oven
+            ((View) list.getParent()).setBackground(new android.graphics.drawable.GradientDrawable(
+                    android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{android.graphics.Color.parseColor("#3A3A3C"), android.graphics.Color.parseColor("#1C1C1E"), android.graphics.Color.parseColor("#111112")}));
+        } else {
+            ((View) list.getParent()).setBackgroundColor(Ui.BG);
+        }
         accent = prefs.accentColor();
         Ui.loadFont(this, prefs.font());
         switch (page) {
@@ -112,6 +119,13 @@ public class SettingsActivity extends Activity {
     private TextView title(String text) {
         TextView t = Ui.text(this, text, 30, Ui.TEXT);
         t.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 4));
+        if (Ui.apple()) {
+            // tvOS: sidens navn står fedt og centreret øverst
+            t.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+            t.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
+            t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 34);
+            t.setPadding(0, Ui.dp(this, 16), 0, Ui.dp(this, 12));
+        }
         list.addView(t);
         return t;
     }
@@ -215,7 +229,7 @@ public class SettingsActivity extends Activity {
     }
 
     private void profileMenu(String name) {
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle(name)
                 .setItems(new String[]{"Skift til " + name, "Gem nuværende indstillinger her", "Slet profilen"}, (d, which) -> {
                     try {
@@ -261,7 +275,7 @@ public class SettingsActivity extends Activity {
             box.setPadding(pad, pad, pad, pad);
             box.addView(qr, new LinearLayout.LayoutParams(Ui.dp(this, 360), Ui.dp(this, 360)));
             box.addView(Ui.text(this, "Scan med telefonen (samme wifi) og tryk Del eller gem.", 16, Ui.TEXT_DIM));
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            new AlertDialog.Builder(this, Ui.dialogTheme())
                     .setTitle("Din profilkode")
                     .setView(box)
                     .setPositiveButton("Luk", null)
@@ -279,7 +293,7 @@ public class SettingsActivity extends Activity {
                 if (tellIfNone) Toast.makeText(this, "Der ligger ingen profil på Jellyfin endnu", Toast.LENGTH_LONG).show();
                 return;
             }
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            new AlertDialog.Builder(this, Ui.dialogTheme())
                     .setTitle("Profil fundet på Jellyfin")
                     .setMessage("Vil du hente tema, rækker og indstillinger fra din profil? Det du har nu, bliver overskrevet.")
                     .setPositiveButton("Hent", (d, w) -> {
@@ -401,7 +415,7 @@ public class SettingsActivity extends Activity {
                 if (ca != cb) return ca ? -1 : 1;
                 return a[1].compareToIgnoreCase(b[1]);
             });
-            AlertDialog.Builder b = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle(title);
+            AlertDialog.Builder b = new AlertDialog.Builder(this, Ui.dialogTheme()).setTitle(title);
             if (max == 1) {
                 String[] names = new String[cands.size() + 1];
                 names[0] = "Ingen";
@@ -528,7 +542,7 @@ public class SettingsActivity extends Activity {
             handler.postDelayed(this::build, 1500);
             return;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Gør til forside")
                 .setMessage("Tv'et giver sig selv lov via sin egen fejlfinding (ADB), så der skal ikke bruges en pc.\n\n"
                         + "1. Slå ADB debugging til under Indstillinger > My Fire TV > Developer options.\n"
@@ -541,7 +555,7 @@ public class SettingsActivity extends Activity {
                         return true;
                     }, (ok, err) -> {
                         if (err != null) {
-                            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                            new AlertDialog.Builder(this, Ui.dialogTheme())
                                     .setTitle("Det lykkedes ikke").setMessage(String.valueOf(err.getMessage()))
                                     .setPositiveButton("OK", null).show();
                             return;
@@ -563,7 +577,7 @@ public class SettingsActivity extends Activity {
             names[i] = items.get(i).label;
             off[i] = items.get(i).disabled;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Slå fra (flueben = slået fra)")
                 .setMultiChoiceItems(names, off, (d, which, checked) -> off[which] = checked)
                 .setPositiveButton("Gem", (d, w) -> {
@@ -599,7 +613,7 @@ public class SettingsActivity extends Activity {
         String log = ErrorLog.text();
         list.addView(Ui.row(this, "Fejl-log", log.isEmpty() ? "Ingen fejl" : log.split("\n").length + " linjer, vis", c, v -> {
             if (log.isEmpty()) return;
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            new AlertDialog.Builder(this, Ui.dialogTheme())
                     .setTitle("Fejl-log (nyeste først)")
                     .setMessage(log)
                     .setPositiveButton("Ryd", (d, w) -> {
@@ -612,7 +626,7 @@ public class SettingsActivity extends Activity {
         String crash = prefs.lastCrash();
         list.addView(Ui.row(this, "Seneste fejl", crash.isEmpty() ? "Ingen" : "Vis", c, v -> {
             if (crash.isEmpty()) return;
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            new AlertDialog.Builder(this, Ui.dialogTheme())
                     .setTitle("Seneste fejl")
                     .setMessage(crash)
                     .setPositiveButton("Ryd", (d, w) -> {
@@ -657,7 +671,7 @@ public class SettingsActivity extends Activity {
             names[i] = Prefs.ACCENTS[i][1];
             if (Prefs.ACCENTS[i][0].equals(prefs.accentKey())) checked = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Accentfarve")
                 .setSingleChoiceItems(names, checked, (d, which) -> {
                     prefs.setAccentKey(Prefs.ACCENTS[which][0]);
@@ -684,7 +698,7 @@ public class SettingsActivity extends Activity {
             names[i] = options[i][1];
             if (options[i][0].equals(current)) checked = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle(title)
                 .setSingleChoiceItems(names, checked, (d, which) -> {
                     setter.set(options[which][0]);
@@ -706,7 +720,7 @@ public class SettingsActivity extends Activity {
             names[i] = themes.get(i)[1] + "  ·  " + themes.get(i)[2];
             if (themes.get(i)[0].equals(prefs.theme())) checked = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Tema")
                 .setSingleChoiceItems(names, checked, (d, which) -> {
                     Themes.apply(prefs, themes.get(which)[0]);
@@ -728,7 +742,7 @@ public class SettingsActivity extends Activity {
         int pad = Ui.dp(this, 24);
         box.setPadding(pad, Ui.dp(this, 8), pad, 0);
         box.addView(input);
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle(title)
                 .setView(box)
                 .setPositiveButton("Gem", (d, w) -> {
@@ -746,7 +760,7 @@ public class SettingsActivity extends Activity {
             names[i] = Prefs.TILE_SIZES[i][1];
             if (Prefs.TILE_SIZES[i][0].equals(prefs.tileSize())) checked = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Størrelse på cards")
                 .setSingleChoiceItems(names, checked, (d, which) -> {
                     prefs.setTileSize(Prefs.TILE_SIZES[which][0]);
@@ -765,7 +779,7 @@ public class SettingsActivity extends Activity {
             names[i] = modeName(modes[i]);
             if (modes[i].equals(prefs.bgMode())) checked = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Skift billede")
                 .setSingleChoiceItems(names, checked, (d, which) -> {
                     prefs.setBgMode(modes[which]);
@@ -793,7 +807,7 @@ public class SettingsActivity extends Activity {
             }
             names[i] = label;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Vis igen")
                 .setItems(names, (d, which) -> {
                     Set<String> h = prefs.hidden();
@@ -817,7 +831,7 @@ public class SettingsActivity extends Activity {
             }
             String code = res.optString("Code");
             String secret = res.optString("Secret");
-            AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            AlertDialog dialog = new AlertDialog.Builder(this, Ui.dialogTheme())
                     .setTitle("Quick Connect: " + code)
                     .setMessage("Åbn Jellyfin på telefonen eller pc'en, gå til din profil > Quick Connect og skriv koden " + code + ".")
                     .setNegativeButton("Annullér", null)
