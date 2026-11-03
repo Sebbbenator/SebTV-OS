@@ -154,7 +154,7 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.header(this, "APPS", c));
         Set<String> hidden = prefs.hidden();
         list.addView(Ui.row(this, "Skjulte apps", String.valueOf(hidden.size()), c, v -> unhide()));
-        list.addView(Ui.row(this, "Fire TV indstillinger", "", c, v -> FireTvMenu.show(this)));
+        list.addView(Ui.row(this, FireTvMenu.platform() + " indstillinger", "", c, v -> FireTvMenu.show(this)));
 
         list.addView(Ui.header(this, "SYSTEM", c));
         list.addView(Ui.row(this, "Om " + prefs.appName(), "Version " + Updater.installedName(this), c, v -> open(PAGE_ABOUT)));

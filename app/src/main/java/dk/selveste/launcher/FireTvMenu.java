@@ -9,11 +9,16 @@ import android.widget.Toast;
 /** Genveje til Fire TV's egne indstillinger plus Sov nu. */
 final class FireTvMenu {
 
+    /** "Fire TV" på Amazons sticks, ellers bare "Tv" (Google TV, Android TV). */
+    static String platform() {
+        return "Amazon".equalsIgnoreCase(android.os.Build.MANUFACTURER) ? "Fire TV" : "Tv";
+    }
+
     static void show(Activity a) {
         String[] labels = {"Wi-Fi", "Bluetooth og fjernbetjening", "Skærm og lyd", "Apps", "Udviklerindstillinger",
-                "Alle Fire TV indstillinger", "Sov nu"};
+                "Alle " + ("Tv".equals(platform()) ? "tv" : platform()) + " indstillinger", "Sov nu"};
         new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Fire TV")
+                .setTitle(platform())
                 .setItems(labels, (d, which) -> {
                     switch (which) {
                         case 0: open(a, Settings.ACTION_WIFI_SETTINGS); break;
