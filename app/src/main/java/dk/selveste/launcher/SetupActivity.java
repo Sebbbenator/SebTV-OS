@@ -39,7 +39,7 @@ public class SetupActivity extends Activity {
         prefs = new Prefs(this);
         Ui.loadFont(this, prefs.font());
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(Ui.BG);
+        scroll.setBackground(Ui.screenBackground());
         scroll.setFillViewport(true);
         box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);

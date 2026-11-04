@@ -1123,8 +1123,8 @@ public class MainActivity extends Activity {
             FrameLayout card = out[0];
             if (on) card.setBackground(Ui.apple() ? Ui.card(this, Color.argb(92, 255, 255, 255), Color.TRANSPARENT, 0)
                     : Ui.card(this, HudView.withAlpha(currentAccent(), 0.30f), currentAccent(), 2));
-            TextView t = Ui.text(this, option, 17, on ? Ui.TEXT : Ui.TEXT_DIM);
-            t.setTypeface(on ? Ui.headerFace : Typeface.DEFAULT);
+            TextView t = Ui.text(this, option, 17, on || Ui.apple() ? Ui.TEXT : Ui.TEXT_DIM);
+            t.setTypeface(on ? (Ui.apple() ? Typeface.create("sans-serif-medium", Typeface.NORMAL) : Ui.headerFace) : Typeface.DEFAULT);
             t.setGravity(Gravity.CENTER);
             t.setSingleLine(true);
             card.addView(t, match());
@@ -1159,9 +1159,12 @@ public class MainActivity extends Activity {
             LinearLayout inner = new LinearLayout(this);
             inner.setOrientation(LinearLayout.VERTICAL);
             inner.setPadding(dp(14), dp(10), dp(14), dp(10));
-            TextView w = Ui.text(this, whenText(u.when, day).toUpperCase(DANISH), 12, currentAccent());
-            w.setTypeface(Ui.headerFace);
-            w.setLetterSpacing(0.12f);
+            boolean apple = Ui.apple();
+            String when = whenText(u.when, day);
+            TextView w = Ui.text(this, apple ? Character.toUpperCase(when.charAt(0)) + when.substring(1) : when.toUpperCase(DANISH),
+                    apple ? 13 : 12, apple ? Ui.APPLE_GRAY : currentAccent());
+            w.setTypeface(apple ? Typeface.create("sans-serif-medium", Typeface.NORMAL) : Ui.headerFace);
+            w.setLetterSpacing(apple ? 0f : 0.12f);
             inner.addView(w);
             TextView t = Ui.text(this, u.title, 16, Ui.TEXT);
             t.setSingleLine(true);

@@ -173,6 +173,8 @@ final class Ui {
             t.setLetterSpacing(0f);
             t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
             t.setPadding(0, dp(c, 26), 0, dp(c, 2));
+            // Læsbar oven på lyse fotos
+            t.setShadowLayer(dp(c, 4), 0, dp(c, 1), Color.argb(120, 0, 0, 0));
         }
         return t;
     }
@@ -203,6 +205,22 @@ final class Ui {
     /** Dialogernes udseende: Apples mørkegrå med runde hjørner, ellers systemets. */
     static int dialogTheme() {
         return apple() ? R.style.AppleDialog : android.R.style.Theme_DeviceDefault_Dialog_Alert;
+    }
+
+    /** Baggrund bag fuldskærms sider (indstillinger, guide, telefonsiden): Apples dybe grå med lys fra oven. */
+    static android.graphics.drawable.Drawable screenBackground() {
+        if (!apple()) return new android.graphics.drawable.ColorDrawable(BG);
+        return new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.parseColor("#3A3A3C"), Color.parseColor("#1C1C1E"), Color.parseColor("#111112")});
+    }
+
+    /** Paneler (hurtigpanel, søgning): Apple bruger en mørkegrå flade med store runde hjørner. */
+    static GradientDrawable panel(Context c, float alpha) {
+        if (!apple()) return card(c, bg(alpha), CARD_STROKE, 1);
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(c, 26));
+        g.setColor(HudView.withAlpha(Color.parseColor("#2C2C2E"), 0.96f));
+        return g;
     }
 
     static StateListDrawable focusable(Context c, int accent) {

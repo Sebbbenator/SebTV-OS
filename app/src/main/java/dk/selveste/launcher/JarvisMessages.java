@@ -122,6 +122,12 @@ final class JarvisMessages {
         int pad = Ui.dp(service, 18);
         box.setPadding(pad, Ui.dp(service, 12), pad, Ui.dp(service, 14));
         GradientDrawable bg = Ui.card(service, HudView.withAlpha(Ui.CARD_FOCUS, 0.95f), accent, 2);
+        if (Ui.apple()) {
+            // Som Apple TV's notifikationer: mørkegrå, runde hjørner, ingen kant, titel som almindelige ord
+            bg = Ui.panel(service, 0.95f);
+            String t = title.toLowerCase(java.util.Locale.ROOT);
+            title = t.isEmpty() ? t : Character.toUpperCase(t.charAt(0)) + t.substring(1);
+        }
         box.setBackground(bg);
         box.setElevation(Ui.dp(service, 8));
         TextView head = Ui.header(service, title, accent);

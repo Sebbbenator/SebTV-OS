@@ -168,10 +168,7 @@ public class SettingsActivity extends Activity {
         }
         if (Ui.apple()) {
             loadApplePicture();
-            // tvOS indstillinger: dyb grå flade med lidt lys fra oven
-            appleRoot.setBackground(new android.graphics.drawable.GradientDrawable(
-                    android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                    new int[]{android.graphics.Color.parseColor("#3A3A3C"), android.graphics.Color.parseColor("#1C1C1E"), android.graphics.Color.parseColor("#111112")}));
+            appleRoot.setBackground(Ui.screenBackground());
         } else {
             ((View) list.getParent()).setBackgroundColor(Ui.BG);
         }
