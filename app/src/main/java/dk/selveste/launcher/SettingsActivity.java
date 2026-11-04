@@ -387,7 +387,16 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.text(this, "Flere opsætninger på samme tv, fx en til film aften og en til gæster. Skift også fra hurtigpanelet (hold ☰ nede).", 16, Ui.TEXT_DIM));
         String activeProfile = Profiles.active(prefs);
         for (String name : Profiles.names(prefs)) {
-            list.addView(Ui.row(this, name, name.equals(activeProfile) ? "I brug" : "Skift", c, v -> profileMenu(name)));
+            String state = (name.equals(activeProfile) ? "I brug" : "Skift") + (Profiles.hasLogin(prefs, name) ? "  ·  egen Jellyfin" : "");
+            list.addView(Ui.row(this, name, state, c, v -> profileMenu(name)));
+        }
+        if (Profiles.names(prefs).size() > 1) {
+            list.addView(Ui.row(this, "Spørg hvem der ser", prefs.flag(Profiles.ASK, false) ? "Når tv'et tændes" : "Fra", c, v -> {
+                prefs.setFlag(Profiles.ASK, !prefs.flag(Profiles.ASK, false));
+                build();
+            }));
+            list.addView(Ui.text(this, "Hver profil husker sit eget tema, sine mærkedage, sit profilbillede og sit Jellyfin login. "
+                    + "Log ind i Jellyfin, mens profilen er i brug, så følger Fortsæt at se og Min liste personen.", 14, Ui.TEXT_DIM));
         }
         list.addView(Ui.row(this, "Gem nuværende som profil", "", c,
                 v -> ask("Navn på profilen", activeProfile, "Film aften", t -> {

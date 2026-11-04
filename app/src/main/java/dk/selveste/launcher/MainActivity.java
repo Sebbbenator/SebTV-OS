@@ -1990,9 +1990,31 @@ public class MainActivity extends Activity {
         bgFrame.animate().translationX(-fx * dp(36)).translationY(-fy * dp(20)).setDuration(600).start();
     }
 
+    /** Hvem ser? er besvaret; næste bootIfWoken går direkte til opstarten. */
+    private static boolean whoAnswered;
+
     private void bootIfWoken() {
         if (!wokeUp || visible != this) return;
         wokeUp = false;
+        if (!whoAnswered && Profiles.ask(prefs)) {
+            WhoPicker.show(this, root, prefs, currentAccent(), name -> {
+                whoAnswered = true;
+                wokeUp = true;
+                if (name == null || name.equals(Profiles.active(prefs))) {
+                    bootIfWoken();
+                    return;
+                }
+                try {
+                    Profiles.load(this, name);
+                } catch (Exception e) {
+                    ErrorLog.note("Profil", e);
+                }
+                // Forsiden bygges forfra med den valgte profils tema; opstarten kommer bagefter
+                lookChangedFromOutside();
+            });
+            return;
+        }
+        whoAnswered = false;
         if (!Motion.NONE.equals(motion) && BootIntro.due(prefs)) BootIntro.play(BootIntro.make(this, prefs, greetingText(), currentAccent()), root);
         speakGreeting();
     }
