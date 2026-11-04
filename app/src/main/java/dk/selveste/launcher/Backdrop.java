@@ -43,7 +43,6 @@ final class Backdrop extends View {
     @Override
     protected void onSizeChanged(int w, int h, int ow, int oh) {
         super.onSizeChanged(w, h, ow, oh);
-        if (cache != null) cache.recycle();
         cache = null;
     }
 
@@ -61,6 +60,12 @@ final class Backdrop extends View {
             }
         }
         c.drawBitmap(cache, 0, 0, null);
+    }
+
+    /** Giver bitmappen fri; den tegnes igen næste gang skærmen vises. */
+    void trim() {
+        cache = null;
+        invalidate();
     }
 
     void paint(Canvas c, int w, int h) {

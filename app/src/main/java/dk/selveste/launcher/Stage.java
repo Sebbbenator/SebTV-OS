@@ -91,6 +91,12 @@ final class Stage extends View {
     private final RectF r = new RectF();
     private final Path path = new Path();
     private Shader dotsDark, dotsLight;
+    private final SimpleDateFormat MINUTE = new SimpleDateFormat("yyyyMMddHHmm", DA);
+    /** Jarvis: alt det stille ligger i en bitmap, så hvert sekund kun tegner sekundbuen og tallet. */
+    private Bitmap still;
+    private boolean stillDirty = true;
+    private static final int ALL = 0, STILL = 1, MOVING = 2;
+    private int pass = ALL;
 
     Stage(Context c) {
         super(c);
@@ -109,9 +115,12 @@ final class Stage extends View {
     /** Kaldes hvert sekund; tegner kun igen, når der er noget nyt at vise. */
     void tick(Date date) {
         now = date;
-        String minute = new SimpleDateFormat("yyyyMMddHHmm", DA).format(date);
-        if (Skin.is("jarvis") || !minute.equals(shownMinute)) {
+        String minute = MINUTE.format(date);
+        if (!minute.equals(shownMinute)) {
             shownMinute = minute;
+            stillDirty = true;
+            invalidate();
+        } else if (Skin.is("jarvis")) {
             invalidate();
         }
     }
@@ -135,11 +144,20 @@ final class Stage extends View {
         this.status = st;
         this.weather = w;
         this.name = n;
+        stillDirty = true;
+        invalidate();
+    }
+
+    /** Giver Jarvis' stille lag fri; det tegnes igen næste gang. */
+    void trim() {
+        still = null;
+        stillDirty = true;
         invalidate();
     }
 
     void setPhoto(Bitmap bmp) {
         photo = bmp;
+        stillDirty = true;
         invalidate();
     }
 
@@ -151,7 +169,32 @@ final class Stage extends View {
             case "superman": superman(c, w, h); break;
             case "spiderman": spiderman(c, w, h); break;
             case "batman": batman(c, w, h); break;
-            case "jarvis": jarvis(c, w, h); break;
+            case "jarvis": {
+                if (still == null || still.getWidth() != w || still.getHeight() != h) {
+                    try {
+                        still = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+                    } catch (OutOfMemoryError e) {
+                        still = null;
+                    }
+                    stillDirty = true;
+                }
+                if (still == null) {
+                    pass = ALL;
+                    jarvis(c, w, h);
+                    break;
+                }
+                if (stillDirty) {
+                    still.eraseColor(Color.TRANSPARENT);
+                    pass = STILL;
+                    jarvis(new Canvas(still), w, h);
+                    stillDirty = false;
+                }
+                c.drawBitmap(still, 0, 0, null);
+                pass = MOVING;
+                jarvis(c, w, h);
+                pass = ALL;
+                break;
+            }
             case "biograf": biograf(c, w, h); break;
             case "jul": jul(c, w, h); break;
             case "hygge": hygge(c, w, h); break;
@@ -628,6 +671,25 @@ final class Stage extends View {
         int cyan = Color.parseColor("#5EF2FF"), gold = Color.parseColor("#F2B33D");
         Typeface mono = Fonts.techMono(getContext()), raj = Fonts.rajdhani(getContext());
         float left = d(56);
+        float rad = Math.min(d(134), (w - left) / 2f - d(4));
+        float cx = left + (w - left) / 2f - d(6), cy = d(82) + rad + d(16);
+        float ar = rad - d(25);
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(now);
+        int sec = cal.get(Calendar.SECOND);
+        if (pass != STILL) {
+            // Det eneste, der flytter sig hvert sekund
+            s.setStyle(Paint.Style.STROKE);
+            s.setPathEffect(null);
+            s.setShader(null);
+            s.setStrokeWidth(d(4));
+            s.setColor(gold);
+            s.setStrokeCap(Paint.Cap.BUTT);
+            r.set(cx - ar, cy - ar, cx + ar, cy + ar);
+            c.drawArc(r, -90, 360f * Math.max(1, sec) / 60f, false, s);
+            text(c, String.format(DA, "%02d SEK", sec), mono, 11, gold, cx, cy + d(48), Paint.Align.CENTER, 0.2f);
+        }
+        if (pass == MOVING) return;
         text(c, "J.A.R.V.I.S // ONLINE", mono, 10.5f, cyan, left, d(44), Paint.Align.LEFT, 0.12f);
         String info = up(fmt("EEE dd.MM.yyyy")).replace(".", ".") + (weather.isEmpty() ? "" : "  " + up(weather));
         text(c, clip(info, mono, 9.5f, 0.08f, w - left - d(10)), mono, 9.5f, Color.parseColor("#8FDFEA"), left, d(60), Paint.Align.LEFT, 0.08f);
@@ -636,8 +698,6 @@ final class Stage extends View {
         c.drawRect(left, d(68), w, d(68) + Math.max(1, d(0.6f)), s);
         s.setShader(null);
 
-        float rad = Math.min(d(134), (w - left) / 2f - d(4));
-        float cx = left + (w - left) / 2f - d(6), cy = d(82) + rad + d(16);
         s.setStyle(Paint.Style.STROKE);
         s.setPathEffect(null);
         s.setStrokeWidth(d(1));
@@ -650,17 +710,9 @@ final class Stage extends View {
         s.setPathEffect(new DashPathEffect(new float[]{d(1), circ / 120 - d(1)}, 0));
         c.drawCircle(cx, cy, tr, s);
         s.setPathEffect(null);
-        float ar = rad - d(25);
         s.setStrokeWidth(d(4));
         s.setColor(HudView.withAlpha(cyan, 0.12f));
         c.drawCircle(cx, cy, ar, s);
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(now);
-        int sec = cal.get(Calendar.SECOND);
-        s.setColor(gold);
-        s.setStrokeCap(Paint.Cap.BUTT);
-        r.set(cx - ar, cy - ar, cx + ar, cy + ar);
-        c.drawArc(r, -90, 360f * Math.max(1, sec) / 60f, false, s);
         float sr = rad - d(46);
         float scirc = (float) (2 * Math.PI * sr);
         s.setStrokeWidth(d(15));
@@ -689,7 +741,6 @@ final class Stage extends View {
         p.setColor(Color.parseColor("#EAFDFF"));
         c.drawText(time(), cx, cy + d(22), p);
         p.clearShadowLayer();
-        text(c, String.format(DA, "%02d SEK", sec), mono, 11, gold, cx, cy + d(48), Paint.Align.CENTER, 0.2f);
 
         float gy = cy + rad + d(44);
         String g = up(greeting.replaceAll("[!.,]+$", ""));

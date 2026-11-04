@@ -179,6 +179,7 @@ public class MainActivity extends Activity {
     private final BroadcastReceiver packages = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            AppRepository.forget();
             appsDirty = true;
         }
     };
@@ -253,6 +254,11 @@ public class MainActivity extends Activity {
             prefs.setStr("skin_v3", "3");
             if (Themes.main(prefs.theme()) && !"apple".equals(prefs.theme())) Themes.apply(prefs, prefs.theme());
         }
+        if (!"4".equals(prefs.str("skin_v4", ""))) {
+            // De otte temaer står stille: intet langsomt zoom i fotoet
+            prefs.setStr("skin_v4", "4");
+            if (Themes.main(prefs.theme())) prefs.setFlag(Features.KEN_BURNS, false);
+        }
         builtTone = Looks.layoutSignature(prefs);
         motion = Motion.level(this, prefs);
         Ui.loadFont(this, prefs.font());
@@ -326,6 +332,18 @@ public class MainActivity extends Activity {
         bootIfWoken();
         AppUpdates.maybeCheckUpdate(this, prefs);
         AppUpdates.maybeShowChangelog(this, prefs);
+    }
+
+    /**
+     * En app fylder skærmen: slip forsidens store billeder (baggrund, papir, Jarvis' ur), så Fire TV'et
+     * har mere hukommelse til appen og ikke lukker launcheren. De tegnes igen, når Home vises.
+     */
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level < TRIM_MEMORY_UI_HIDDEN || visible == this && hasWindowFocus()) return;
+        if (backdrop != null) backdrop.trim();
+        if (stage != null) stage.trim();
     }
 
     @Override
@@ -1743,8 +1761,12 @@ public class MainActivity extends Activity {
         boolean wantAccent = "auto".equals(prefs.accentKey());
         int fixedAccent = prefs.accentColor();
         // Billedet læses på en baggrundstråd, så Home ikke hakker, når baggrunden skifter
+        // Papirtemaerne viser ikke fotoet; Spider-Man og Batman viser det kun i et felt, så et mindre billede er nok
+        boolean paper = stage != null && Backdrop.hidesPhoto();
+        boolean need = !paper || Stage.wantsPhoto() || wantAccent;
+        int decodeWidth = paper ? width / 2 : width;
         Net.async(() -> {
-            Bitmap bmp = f == null ? null : Backgrounds.decode(f, width);
+            Bitmap bmp = f == null || !need ? null : Backgrounds.decode(f, decodeWidth);
             return new Object[]{bmp, wantAccent ? Backgrounds.accent(bmp, Ui.CYAN) : fixedAccent};
         }, (res, err) -> {
             if (res == null || isDestroyed() || !name.equals(shownBackground)) return;

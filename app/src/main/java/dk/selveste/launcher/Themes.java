@@ -74,8 +74,8 @@ final class Themes {
         prefs.setFlag(Features.SOUNDS, true);
         // Minimal og Apple er stille: ingen glidende baggrund og ingen opstartsanimation
         boolean calm = "minimal".equals(l[0]) || "apple".equals(l[0]);
-        // Temaerne med papir, væg og karton har ingen glidende baggrund
-        prefs.setFlag(Features.KEN_BURNS, !"apple".equals(l[0]) && (!main(l[0]) || "jarvis".equals(l[0])));
+        // Ken Burns (det langsomme zoom i fotoet) kun i de ældre temaer: de otte står helt stille, så intet hakker
+        prefs.setFlag(Features.KEN_BURNS, !"apple".equals(l[0]) && !main(l[0]));
         prefs.setFlag(Features.SEASONS, true);
         prefs.setFlag(Features.PARALLAX, !calm);
         prefs.setFlag(Features.BOOT, !calm);
