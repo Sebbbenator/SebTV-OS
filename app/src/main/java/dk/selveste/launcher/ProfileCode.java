@@ -63,6 +63,20 @@ final class ProfileCode {
                 j.put(e.getKey(), v);
             }
         }
+        return encode(j);
+    }
+
+    /** Det, der kun handler om personen selv: navn, hilsen, kæreste og egen opstartstekst. Bliver hjemme, når koden deles med en ven. */
+    static final String[] PERSONAL = {"profile_name", "profile_greeting", "profile_partner", "profile_together", "boot_title", "boot_sub"};
+
+    /** Samme kode uden det personlige, til at dele med venner. */
+    static String forFriend(String code) throws Exception {
+        JSONObject j = decode(code);
+        for (String k : PERSONAL) j.remove(k);
+        return encode(j);
+    }
+
+    static String encode(JSONObject j) {
         byte[] raw = j.toString().getBytes(StandardCharsets.UTF_8);
         Deflater d = new Deflater(Deflater.BEST_COMPRESSION);
         d.setInput(raw);

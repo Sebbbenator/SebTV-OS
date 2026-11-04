@@ -453,7 +453,7 @@ public class SettingsActivity extends Activity {
             int pad = Ui.dp(this, 16);
             box.setPadding(pad, pad, pad, pad);
             box.addView(qr, new LinearLayout.LayoutParams(Ui.dp(this, 360), Ui.dp(this, 360)));
-            box.addView(Ui.text(this, "Scan med telefonen (samme wifi) og tryk Del eller gem.", 16, Ui.TEXT_DIM));
+            box.addView(Ui.text(this, "Scan med telefonen (samme wifi). Vælg Del med en ven eller Gem som backup.", 16, Ui.TEXT_DIM));
             new AlertDialog.Builder(this, Ui.dialogTheme())
                     .setTitle("Din profilkode")
                     .setView(box)

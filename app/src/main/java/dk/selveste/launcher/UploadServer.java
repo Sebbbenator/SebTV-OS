@@ -143,7 +143,7 @@ final class UploadServer {
                 // QR'en fra tv'et: koden hentes én gang med en tilfældig nøgle, uden PIN
                 String code = takeProfileCode(query.get("key"));
                 if (code == null) send(out, 404, "text/plain", bytes("QR koden er udløbet. Vis den igen på tv'et."));
-                else send(out, 200, "application/json", bytes(new JSONObject().put("code", code).toString()));
+                else send(out, 200, "application/json", bytes(new JSONObject().put("code", code).put("friend", ProfileCode.forFriend(code)).toString()));
                 return;
             }
             if (path.equals("/ha-login")) {
@@ -246,7 +246,8 @@ final class UploadServer {
             notifyChanged();
             send(out, 200, "application/json", bytes(state().toString()));
         } else if (path.equals("/api/profile-code")) {
-            send(out, 200, "application/json", bytes(new JSONObject().put("code", ProfileCode.export(context)).toString()));
+            String code = ProfileCode.export(context);
+            send(out, 200, "application/json", bytes(new JSONObject().put("code", code).put("friend", ProfileCode.forFriend(code)).toString()));
         } else if (path.equals("/api/profile-import") && method.equals("POST")) {
             try {
                 ProfileCode.apply(context, new String(body, StandardCharsets.UTF_8));
