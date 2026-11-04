@@ -28,6 +28,7 @@ final class Features {
     static final String NIGHT_UPDATE = "nightupdate";
     static final String COMPACT = "compact";
     static final String SOUNDS = "sounds";
+    static final String FAVORITES = "favorites";
 
     /** nøgle, navn, standard (1 = til), gruppe */
     static final String[][] ALL = {
@@ -35,6 +36,7 @@ final class Features {
             {RESUME, "Fortsæt at se", "1", "Rækker"},
             {NEXT_UP, "Næste afsnit i Fortsæt at se", "1", "Rækker"},
             {LATEST, "Nyt på serveren", "1", "Rækker"},
+            {FAVORITES, "Min liste (favoritter i Jellyfin)", "1", "Rækker"},
             {MODES, "Tilstande", "1", "Rækker"},
             {HA_BUTTONS, "Værelset (hurtigknapper)", "1", "Rækker"},
             {UPCOMING, "Kommer snart", "1", "Rækker"},

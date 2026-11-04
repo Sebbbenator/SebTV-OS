@@ -167,6 +167,13 @@ final class Jellyfin {
         return items(get("/Items/Latest?userId=" + u + "&" + q, "/Users/" + u + "/Items/Latest?" + q));
     }
 
+    /** Min liste: film og serier, der er markeret som favorit i Jellyfin (som Google TV's watchlist). */
+    List<Item> favorites() throws Exception {
+        String u = prefs.jfUser();
+        String q = "isFavorite=true&includeItemTypes=Movie,Series&recursive=true&sortBy=DateCreated&sortOrder=Descending&limit=16&enableUserData=true";
+        return items(get("/Items?userId=" + u + "&" + q, "/Users/" + u + "/Items?" + q));
+    }
+
     /** Hvad der afspilles lige nu på andre skærme (kræver at brugeren er administrator for at se andres). */
     List<Item> nowPlaying() throws Exception {
         JSONArray arr = new JSONArray(get("/Sessions?activeWithinSeconds=90"));

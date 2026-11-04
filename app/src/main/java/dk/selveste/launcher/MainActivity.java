@@ -105,6 +105,7 @@ public class MainActivity extends Activity {
     private TextView together;
     private TextView status;
     private ScrollView scroller;
+    private LinearLayout sectionFavorites;
     private LinearLayout sectionNowPlaying, sectionResume, sectionApps, sectionModes, sectionHa, sectionLatest, sectionUpcoming,
             sectionTools, sectionRest, sectionMore, moreBox;
     private boolean moreOpen;
@@ -639,6 +640,7 @@ public class MainActivity extends Activity {
         moreBox = section(rows);
         sectionHa = section(moreBox);
         sectionLatest = section(moreBox);
+        sectionFavorites = section(moreBox);
         sectionUpcoming = section(moreBox);
         sectionTools = section(moreBox);
         sectionRest = section(moreBox);
@@ -1227,6 +1229,12 @@ public class MainActivity extends Activity {
                 prefs.setHidden(h);
                 Toast.makeText(this, entry.label + " er skjult. Vis den igen under Indstillinger.", Toast.LENGTH_LONG).show();
             });
+            labels.add("Omdøb");
+            actions.add(() -> renameApp(entry));
+            if (!prefs.str("label:" + entry.packageName, "").isEmpty()) {
+                labels.add("Brug det oprindelige navn");
+                actions.add(() -> prefs.setStr("label:" + entry.packageName, ""));
+            }
             labels.add("App info");
             actions.add(() -> {
                 try {
@@ -1246,6 +1254,29 @@ public class MainActivity extends Activity {
                 .show();
     }
 
+    /** Eget navn til en app, fx "TV 2" i stedet for "TV 2 Play", som det står på flisen og i temaets overskrifter. */
+    private void renameApp(AppEntry entry) {
+        android.widget.EditText input = new android.widget.EditText(this);
+        input.setSingleLine(true);
+        input.setText(entry.label);
+        input.setSelectAllOnFocus(true);
+        FrameLayout box = new FrameLayout(this);
+        box.setPadding(dp(24), dp(8), dp(24), 0);
+        box.addView(input);
+        new AlertDialog.Builder(this, Ui.dialogTheme())
+                .setTitle("Omdøb " + entry.label)
+                .setView(box)
+                .setPositiveButton("Gem", (d, w) -> {
+                    String name = input.getText().toString().trim();
+                    prefs.setStr("label:" + entry.packageName, name);
+                    appsDirty = true;
+                    refreshApps();
+                    restoreFocus(entry.packageName);
+                })
+                .setNegativeButton("Annullér", null)
+                .show();
+    }
+
     // Jellyfin og Home Assistant
 
     /** Sidste kendte forside fra disken, vist med det samme ved start; refreshRemote henter det nye bagefter. */
@@ -1257,6 +1288,10 @@ public class MainActivity extends Activity {
         if (jf.configured() && Features.on(prefs, Features.LATEST)) {
             List<Jellyfin.Item> l = RemoteCache.loadItems(this, "latest");
             if (l != null) fillMedia(sectionLatest, "NYT PÅ SERVEREN", l, false, false);
+        }
+        if (jf.configured() && Features.on(prefs, Features.FAVORITES)) {
+            List<Jellyfin.Item> l = RemoteCache.loadItems(this, "favorites");
+            if (l != null) fillMedia(sectionFavorites, "MIN LISTE", l, false, false);
         }
         if (ha.configured()) {
             Map<String, JSONObject> states = RemoteCache.loadStates(this);
@@ -1304,9 +1339,17 @@ public class MainActivity extends Activity {
                     if (items != null) RemoteCache.saveItems(this, "latest", items);
                 });
             } else sectionLatest.removeAllViews();
+            if (Features.on(prefs, Features.FAVORITES)) {
+                Net.async(jf::favorites, (items, err) -> {
+                    if (items == null) return;
+                    fillMedia(sectionFavorites, "MIN LISTE", items, false, false);
+                    RemoteCache.saveItems(this, "favorites", items);
+                });
+            } else sectionFavorites.removeAllViews();
         } else {
             sectionResume.removeAllViews();
             sectionLatest.removeAllViews();
+            sectionFavorites.removeAllViews();
         }
         if (ha.configured() && (Features.on(prefs, Features.HA_STATUS) || Features.on(prefs, Features.HA_BUTTONS)
                 || Features.on(prefs, Features.MODES))) {

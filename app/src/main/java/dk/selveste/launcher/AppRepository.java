@@ -85,6 +85,12 @@ final class AppRepository {
         Map<String, AppEntry> all = new LinkedHashMap<>();
         collect(all, Intent.CATEGORY_LEANBACK_LAUNCHER);
         collect(all, Intent.CATEGORY_LAUNCHER);
+        // Egne navne fra "Omdøb" i appens menu
+        for (Map.Entry<String, AppEntry> en : all.entrySet()) {
+            String own = prefs.str("label:" + en.getKey(), "");
+            AppEntry e = en.getValue();
+            if (!own.isEmpty()) en.setValue(new AppEntry(e.packageName, own, e.banner, e.icon, e.launchIntent));
+        }
         all.remove(context.getPackageName());
         for (String h : prefs.hidden()) all.remove(h);
 

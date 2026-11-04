@@ -116,20 +116,24 @@ final class Tiles {
                 if ("APPS".equals(title)) return "DAGENS FORSIDE";
                 if ("FORTSÆT AT SE".equals(title)) return "FORTSAT FRA SIDE 1";
                 if ("NYT PÅ SERVEREN".equals(title)) return "NYHEDER";
+                if ("MIN LISTE".equals(title)) return "LÆSERNES VALG";
                 return title;
             case "batman":
                 if ("APPS".equals(title)) return "FILER";
                 if ("FORTSÆT AT SE".equals(title)) return "AKTIVE SAGER";
                 if ("VÆRKTØJER".equals(title)) return "UDSTYR";
+                if ("MIN LISTE".equals(title)) return "MISTÆNKTE";
                 return title;
             case "biograf":
                 if ("APPS".equals(title)) return "PÅ PLAKATEN";
                 if ("FORTSÆT AT SE".equals(title)) return "DINE BILLETTER";
                 if ("NYT PÅ SERVEREN".equals(title)) return "PREMIERER";
+                if ("MIN LISTE".equals(title)) return "HUSETS FAVORITTER";
                 return title;
             case "jul":
                 if ("APPS".equals(title)) return "LÅGERNE";
                 if ("FORTSÆT AT SE".equals(title)) return "FORTSÆT";
+                if ("MIN LISTE".equals(title)) return "ØNSKESEDLEN";
                 return title;
             case "jarvis":
             case "spiderman":
