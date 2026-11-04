@@ -28,18 +28,18 @@ final class Themes {
     /** tema: tone, accent, ur, skrift, cards størrelse, card stil, hjørner */
     private static final String[][] LOOK = {
             {"efteraar", "chokolade", "karamel", "analog", "playfair", "normal", "fast", "rund"},
-            {"rose", "rose", "rosa", "tynd", "playfair", "normal", "fast", "rund"},
-            {"hygge", "uld", "sennep", "stor", "caveat", "normal", "fast", "rund"},
-            {"salvie", "salvie", "eukalyptus", "tynd", "quicksand", "kompakt", "papir", "rund"},
-            {"natte", "nat", "maane", "tynd", "quicksand", "normal", "fast", "rund"},
-            {"jul", "skov", "jul", "analog", "playfair", "normal", "fast", "rund"},
-            {"hav", "hav", "skum", "tynd", "quicksand", "normal", "fast", "rund"},
+            {"rose", "rose", "rosa", "rosette", "playfair", "normal", "fast", "rund"},
+            {"hygge", "uld", "sennep", "lys", "caveat", "normal", "fast", "rund"},
+            {"salvie", "salvie", "eukalyptus", "blad", "quicksand", "kompakt", "papir", "rund"},
+            {"natte", "nat", "maane", "maane", "quicksand", "normal", "fast", "rund"},
+            {"jul", "skov", "jul", "kugle", "playfair", "normal", "fast", "rund"},
+            {"hav", "hav", "skum", "boelge", "quicksand", "normal", "fast", "rund"},
             {"jarvis", "kold", "cyan", "hud", "orbitron", "normal", "fast", "normal"},
-            {"ironman", "reaktor", "guld", "hud", "orbitron", "normal", "fast", "skarp"},
-            {"spiderman", "spider", "spider", "stor", "bangers", "normal", "tegneserie", "skarp"},
-            {"batman", "gotham", "flagermus", "tynd", "cinzel", "normal", "fast", "skarp"},
-            {"superman", "krypton", "sol", "stor", "bebas", "normal", "fast", "skarp"},
-            {"biograf", "biograf", "guld", "stor", "bebas", "stor", "fast", "skarp"},
+            {"ironman", "reaktor", "guld", "reaktor", "orbitron", "normal", "fast", "skarp"},
+            {"spiderman", "spider", "spider", "boble", "bangers", "normal", "tegneserie", "skarp"},
+            {"batman", "gotham", "flagermus", "signal", "cinzel", "normal", "fast", "skarp"},
+            {"superman", "krypton", "sol", "sol", "bebas", "normal", "fast", "skarp"},
+            {"biograf", "biograf", "guld", "tavle", "bebas", "stor", "fast", "skarp"},
             {"minimal", "grafit", "kridt", "tynd", "system", "kompakt", "papir", "skarp"},
             {"apple", "grafit", "kridt", "tynd", "system", "normal", "apple", "normal"},
     };
@@ -59,7 +59,12 @@ final class Themes {
         prefs.setStr("photo_theme", l[0]);
         prefs.setStr("bg_source", "tema");
         prefs.setStr("shade", "normal");
-        prefs.setParticles("auto");
+        // Temaets eget vejr: blade, rosenblade, stjerner, regn over Gotham og sne til jul
+        String weather = "efteraar".equals(l[0]) ? "blade" : "rose".equals(l[0]) ? "kronblade" : "natte".equals(l[0]) ? "stjerner"
+                : "batman".equals(l[0]) ? "regn" : "jul".equals(l[0]) ? "sne" : "auto";
+        prefs.setParticles(weather);
+        // Hvert tema har sine egne lyde, så de slås til sammen med temaet
+        prefs.setFlag(Features.SOUNDS, true);
         // Minimal og Apple er stille: ingen glidende baggrund og ingen opstartsanimation
         boolean calm = "minimal".equals(l[0]) || "apple".equals(l[0]);
         prefs.setFlag(Features.KEN_BURNS, !"apple".equals(l[0]));

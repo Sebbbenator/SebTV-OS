@@ -99,6 +99,6 @@ final class Looks {
 
     /** Alt der kræver, at forsiden bygges forfra, når det ændres. */
     static String layoutSignature(Prefs prefs) {
-        return prefs.tone() + "|" + prefs.str("cards", "fast") + "|" + prefs.str("corners", "normal") + "|" + prefs.str("shade", "normal");
+        return prefs.theme() + "|" + prefs.tone() + "|" + prefs.str("cards", "fast") + "|" + prefs.str("corners", "normal") + "|" + prefs.str("shade", "normal");
     }
 }

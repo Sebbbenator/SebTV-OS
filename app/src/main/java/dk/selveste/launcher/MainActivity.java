@@ -120,6 +120,8 @@ public class MainActivity extends Activity {
     private FrameLayout bgFrame;
     private LinearLayout column;
     private View appleDim;
+    private ThemeClock themeClock;
+    private Ambient ambientView;
     /** Apple TV: margen i siderne og afstand mellem ikonerne (dp). */
     private static final int APPLE_MARGIN = 26, APPLE_GAP = 14, APPLE_DOCK_PAD = 12;
     private static final int LABEL_ALWAYS = 0, LABEL_NONE = 1, LABEL_FOCUS = 2;
@@ -152,6 +154,7 @@ public class MainActivity extends Activity {
             set(nightClock, hm);
             set(clock, "sekunder".equals(prefs.clockStyle()) ? secondsFormat.format(now) : hm);
             if (clockRing.getVisibility() == View.VISIBLE && !ambient) clockRing.invalidate();
+            if (themeClock.getVisibility() == View.VISIBLE && !ambient) themeClock.invalidate();
             updateNight();
             if (newMinute) {
                 String d = dateFormat.format(now);
@@ -230,6 +233,14 @@ public class MainActivity extends Activity {
         jf = new Jellyfin(prefs);
         ErrorLog.init(this);
         installCrashHandler(this);
+        if (!"1".equals(prefs.str("skin_v", ""))) {
+            // Første gang med temaernes egne ure, vejr og lyde: giv det valgte tema dem med det samme
+            prefs.setStr("skin_v", "1");
+            String own = Skin.clockFor(prefs.theme());
+            String cur = prefs.clockStyle();
+            if (own != null && ("stor".equals(cur) || "tynd".equals(cur) || "analog".equals(cur) || "hud".equals(cur))) prefs.setClockStyle(own);
+            prefs.setFlag(Features.SOUNDS, true);
+        }
         builtTone = Looks.layoutSignature(prefs);
         motion = Motion.level(this, prefs);
         Ui.loadFont(this, prefs.font());
@@ -259,6 +270,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         visible = this;
+        if (ambientView != null) ambientView.setRunning(true);
         backgrounds.importShared();
         loadBackground(pendingHome);
         pendingHome = false;
@@ -310,6 +322,7 @@ public class MainActivity extends Activity {
         HaSocket.get(this).removeListener(haLive);
         handler.removeCallbacks(tick);
         if (kenBurns != null) kenBurns.pause();
+        if (ambientView != null) ambientView.setRunning(false);
     }
 
     @Override
@@ -460,6 +473,9 @@ public class MainActivity extends Activity {
         particles = new ParticleView(this);
         particles.setVisibility(View.GONE);
         root.addView(particles, match());
+        // Temaets stemning: spind, lyn, tæpper, lyskæde, bølger
+        ambientView = new Ambient(this);
+        root.addView(ambientView, match());
 
         column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
@@ -481,6 +497,9 @@ public class MainActivity extends Activity {
         clockRing = new ClockRingView(this);
         clockRing.setVisibility(View.GONE);
         left.addView(clockRing, new LinearLayout.LayoutParams(dp(150), dp(150)));
+        themeClock = new ThemeClock(this);
+        themeClock.setVisibility(View.GONE);
+        left.addView(themeClock, new LinearLayout.LayoutParams(dp(420), dp(140)));
         date = Ui.text(this, "", 18, Ui.TEXT_DIM);
         date.setLetterSpacing(0.08f);
         left.addView(date);
@@ -513,6 +532,7 @@ public class MainActivity extends Activity {
         status.setGravity(Gravity.END);
         status.setPadding(0, dp(6), 0, 0);
         right.addView(status);
+        arrangeTop(top, left, right);
 
         scroller = new ScrollView(this);
         scroller.setVerticalScrollBarEnabled(false);
@@ -580,6 +600,39 @@ public class MainActivity extends Activity {
         return root;
     }
 
+    /**
+     * Toppen er bygget forskelligt fra tema til tema: Batman og Iron Man har uret til højre og hilsenen
+     * til venstre; Superman, Biograf, Jul og Nattehimmel har uret i midten med hilsenen under, som en
+     * overskrift eller en biografs skilt.
+     */
+    private void arrangeTop(LinearLayout top, LinearLayout left, LinearLayout right) {
+        switch (Skin.key) {
+            case "batman":
+            case "ironman":
+                top.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+                break;
+            case "superman":
+            case "biograf":
+            case "jul":
+            case "natte": {
+                top.setOrientation(LinearLayout.VERTICAL);
+                top.setGravity(Gravity.CENTER_HORIZONTAL);
+                column.setPadding(dp(56), dp(28), 0, 0);
+                top.setPadding(0, 0, dp(56), 0);
+                left.setGravity(Gravity.CENTER_HORIZONTAL);
+                left.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                right.setGravity(Gravity.CENTER_HORIZONTAL);
+                right.setPadding(0, dp(4), 0, 0);
+                for (TextView t : new TextView[]{greeting, together, status}) t.setGravity(Gravity.CENTER_HORIZONTAL);
+                date.setGravity(Gravity.CENTER_HORIZONTAL);
+                themeClock.setCentered(true);
+                avatar.setVisibility(View.GONE);
+                avatar.setTag("skjult");
+                break;
+            }
+        }
+    }
+
     /** Apple: jo længere ned, jo mørkere og mere sløret bliver fotoet bag rækkerne. */
     private void appleScrolled() {
         if (appleDim == null || scroller == null) return;
@@ -600,9 +653,14 @@ public class MainActivity extends Activity {
         appliedLook = look;
         String style = prefs.clockStyle();
         boolean ring = "hud".equals(style) || "analog".equals(style);
+        boolean drawn = ThemeClock.has(style);
         clockRing.setAnalog("analog".equals(style));
-        clock.setVisibility(ring ? View.GONE : View.VISIBLE);
+        clock.setVisibility(ring || drawn ? View.GONE : View.VISIBLE);
         clockRing.setVisibility(ring ? View.VISIBLE : View.GONE);
+        themeClock.setVisibility(drawn ? View.VISIBLE : View.GONE);
+        themeClock.setStyle(style);
+        themeClock.setAnimate(!Motion.NONE.equals(motion));
+        ambientView.setAnimate(Motion.FULL.equals(motion));
         Typeface thin = "system".equals(prefs.font()) ? Typeface.create("sans-serif-thin", Typeface.NORMAL) : Ui.display;
         clock.setTypeface("tynd".equals(style) ? thin : Ui.display);
         clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, "tynd".equals(style) ? 96 : "sekunder".equals(style) ? 56 : 64);
@@ -614,7 +672,7 @@ public class MainActivity extends Activity {
         nightClock.setTypeface("system".equals(prefs.font()) ? Typeface.create("sans-serif-thin", Typeface.NORMAL) : Ui.display);
         Net.async(() -> ProfilePicture.load(this), (bmp, err) -> {
             avatar.setImageBitmap(bmp);
-            avatar.setVisibility(bmp == null ? View.GONE : View.VISIBLE);
+            avatar.setVisibility(bmp == null || "skjult".equals(avatar.getTag()) ? View.GONE : View.VISIBLE);
         });
     }
 
@@ -702,7 +760,23 @@ public class MainActivity extends Activity {
 
     private LinearLayout startRow(LinearLayout section, String title) {
         section.removeAllViews();
-        if (title != null) section.addView(Ui.header(this, title, accent));
+        LinearLayout target = section;
+        GradientDrawable frame = rowFrame();
+        if (frame != null) {
+            // Temaer med rammer om rækkerne: tegneseriestriber (Spider-Man) eller HUD paneler (Jarvis)
+            target = new LinearLayout(this);
+            target.setOrientation(LinearLayout.VERTICAL);
+            target.setBackground(frame);
+            target.setPadding(dp(16), dp(4), 0, dp(6));
+            target.setClipChildren(false);
+            target.setClipToPadding(false);
+            LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            fp.rightMargin = dp(56);
+            fp.topMargin = dp(12);
+            section.addView(target, fp);
+        }
+        if (title != null) target.addView(Ui.header(this, title, accent));
+        LinearLayout owner = section;
         HorizontalScrollView hscroll = new HorizontalScrollView(this);
         hscroll.setHorizontalScrollBarEnabled(false);
         hscroll.setClipToPadding(false);
@@ -713,8 +787,9 @@ public class MainActivity extends Activity {
         row.setClipChildren(false);
         row.setClipToPadding(false);
         hscroll.addView(row);
-        section.addView(hscroll);
-        if (staggered.add(section)) Motion.stagger(row, motion);
+        target.addView(hscroll);
+        if (frame != null) hscroll.setPadding(0, dp(10), dp(16), dp(10));
+        if (staggered.add(owner)) Motion.stagger(row, motion);
         return row;
     }
 
@@ -782,6 +857,23 @@ public class MainActivity extends Activity {
         return r;
     }
 
+    /** Bevægelsen, der hører temaet til: Spider-Man vipper, Superman letter, Havbrise vugger. */
+    private void skinFocus(View v, boolean has) {
+        if (Motion.NONE.equals(motion)) return;
+        switch (Skin.key) {
+            case "spiderman":
+                v.animate().rotation(has ? -2.5f : 0f).setDuration(180).start();
+                break;
+            case "superman":
+                v.animate().translationY(has ? -dp(12) : 0).setDuration(has ? 260 : 180).start();
+                break;
+            case "hav":
+                v.animate().translationY(has ? -dp(5) : 0).setDuration(600)
+                        .setInterpolator(new android.view.animation.OvershootInterpolator(3f)).start();
+                break;
+        }
+    }
+
     /** Teksten i et Apple kort bliver mørk på den lyse fokusflade og får sin farve igen bagefter. */
     private static void appleTint(View v, boolean dark, Map<TextView, Integer> saved) {
         if (v instanceof TextView) {
@@ -796,6 +888,25 @@ public class MainActivity extends Activity {
         } else if (v instanceof ViewGroup) {
             ViewGroup g = (ViewGroup) v;
             for (int i = 0; i < g.getChildCount(); i++) appleTint(g.getChildAt(i), dark, saved);
+        }
+    }
+
+    private GradientDrawable rowFrame() {
+        switch (Skin.key) {
+            case "spiderman": {
+                GradientDrawable g = new GradientDrawable();
+                g.setColor(Color.argb(150, 12, 20, 60));
+                g.setStroke(dp(4), Color.parseColor("#111111"));
+                return g;
+            }
+            case "jarvis": {
+                GradientDrawable g = new GradientDrawable();
+                g.setColor(Color.argb(40, 2, 20, 30));
+                g.setStroke(Math.max(1, dp(1)), Color.argb(70, 79, 216, 255));
+                return g;
+            }
+            default:
+                return null;
         }
     }
 
@@ -837,6 +948,8 @@ public class MainActivity extends Activity {
         }
         final GradientDrawable shadowF = shadow;
         holder.addView(card, new LinearLayout.LayoutParams(width, height));
+        // Temaets egen fokus (klammer, spind, pærer, gavebånd ...) ligger øverst i cardet
+        final Decor decor = !apple && Decor.active() ? new Decor(this, !Motion.NONE.equals(motion)) : null;
 
         TextView l = Ui.text(this, label, 13, Ui.TEXT_DIM);
         l.setSingleLine(true);
@@ -879,8 +992,14 @@ public class MainActivity extends Activity {
                     appleTint(card, has, tinted);
                 }
             } else {
+                if (decor != null) {
+                    if (decor.getParent() == null) card.addView(decor, match());
+                    decor.bringToFront();
+                    decor.setFocused(has);
+                    skinFocus(v, has);
+                }
                 if (shadowF != null) shadowF.setColor(has ? currentAccent() : Ui.INK);
-                else bg.setStroke(dp((has ? 3 : 1) + Ui.restStroke()), has ? currentAccent() : Ui.CARD_STROKE);
+                else if (decor == null) bg.setStroke(dp((has ? 3 : 1) + Ui.restStroke()), has ? currentAccent() : Ui.CARD_STROKE);
                 l.setTextColor(has ? Ui.TEXT : Ui.TEXT_DIM);
                 l.setAlpha(has ? 1f : 0.75f);
             }

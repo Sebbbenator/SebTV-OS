@@ -164,6 +164,7 @@ final class Ui {
         t.setLetterSpacing(0.25f);
         t.setTypeface(headerFace);
         t.setPadding(0, dp(c, 22), 0, dp(c, 8));
+        if (!apple()) Skin.header(c, t, text, accent);
         if (apple()) {
             // Apple skriver overskrifter som almindelige ord, grå og halvfede
             String s = text.toLowerCase(java.util.Locale.ROOT);
