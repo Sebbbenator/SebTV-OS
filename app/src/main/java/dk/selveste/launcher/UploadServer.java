@@ -294,7 +294,33 @@ final class UploadServer {
             if (p != null) {
                 prefs.setProfile(p.optString("name", null), p.optString("greeting", null),
                         p.optString("partner", null), p.optString("together", null));
+                if (p.has("city")) {
+                    String city = p.getString("city").trim();
+                    if (city.isEmpty()) Weather.set(prefs, null);
+                    else if (!city.equalsIgnoreCase(Weather.city(prefs))) {
+                        java.util.List<Weather.Place> places = Weather.search(city);
+                        if (places.isEmpty()) {
+                            send(out, 400, "text/plain", bytes("Fandt ingen by, der hedder " + city));
+                            return;
+                        }
+                        Weather.set(prefs, places.get(0));
+                        try {
+                            Weather.fetch(prefs);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
             }
+            JSONObject dayAdd = j.optJSONObject("dayAdd");
+            if (dayAdd != null) {
+                int[] d = Days.parse(dayAdd.optString("date"));
+                if (d == null || dayAdd.optString("name").trim().isEmpty()) {
+                    send(out, 400, "text/plain", bytes("Skriv navn og dato"));
+                    return;
+                }
+                Days.add(prefs, new Days.Day(dayAdd.optString("name").trim(), dayAdd.optString("kind", Days.BIRTHDAY), d[0], d[1], d[2]));
+            }
+            if (j.has("dayRemove")) Days.remove(prefs, j.getInt("dayRemove"));
             notifyChanged();
             send(out, 200, "application/json", bytes(state().toString()));
         } else {
@@ -337,7 +363,16 @@ final class UploadServer {
                 .put("greeting", prefs.customGreeting())
                 .put("partner", prefs.partnerName())
                 .put("together", prefs.togetherSinceText())
-                .put("picture", ProfilePicture.file(context).exists()));
+                .put("picture", ProfilePicture.file(context).exists())
+                .put("city", Weather.city(prefs)));
+        JSONArray days = new JSONArray();
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        for (Days.Day d : Days.all(prefs)) {
+            long u = Days.until(d, now);
+            days.put(new JSONObject().put("name", d.name).put("date", d.dateText()).put("kindName", d.kindName())
+                    .put("when", u < 0 ? "overstået" : u == 0 ? "i dag" : u == 1 ? "i morgen" : "om " + u + " dage"));
+        }
+        j.put("days", days);
         return j;
     }
 

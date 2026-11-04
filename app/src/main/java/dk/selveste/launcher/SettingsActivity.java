@@ -33,6 +33,7 @@ public class SettingsActivity extends Activity {
     static final String PAGE_LOOK = "look";
     static final String PAGE_HA = "ha";
     static final String PAGE_BOOT = "boot";
+    static final String PAGE_DAYS = "days";
 
     /** Domæner der giver mening som hurtigknap. */
     private static final List<String> BUTTON_DOMAINS = Arrays.asList(
@@ -286,6 +287,7 @@ public class SettingsActivity extends Activity {
             case PAGE_LOOK: buildLook(); break;
             case PAGE_HA: buildHa(); break;
             case PAGE_BOOT: buildBoot(); break;
+            case PAGE_DAYS: buildDays(); break;
             default: buildMain();
         }
         View first = null;
@@ -317,6 +319,9 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.row(this, "Udseende", Themes.name(prefs.theme()), c, v -> open(PAGE_LOOK)));
         list.addView(Ui.row(this, "Funktioner og rækker", countOn() + " slået til", c, v -> open(PAGE_FEATURES)));
         list.addView(Ui.row(this, "Opstart", Looks.name(Looks.find("boot"), BootIntro.style(prefs)), c, v -> open(PAGE_BOOT)));
+        int dayCount = Days.all(prefs).size() + (prefs.togetherSince() == null ? 0 : 1);
+        list.addView(Ui.row(this, "Mærkedage", dayCount == 0 ? "Ingen endnu" : dayCount + " i alt", c, v -> open(PAGE_DAYS)));
+        list.addView(Ui.row(this, "Vejr", Weather.on(prefs) ? Weather.city(prefs) : "Vælg by", c, v -> chooseWeather()));
 
         list.addView(Ui.header(this, "BAGGRUNDE", c));
         list.addView(Ui.row(this, "Læg billeder op fra telefonen", new Backgrounds(this).list().size() + " billeder", c,
@@ -515,6 +520,71 @@ public class SettingsActivity extends Activity {
     }
 
     /** Det, der kommer frem, når tv'et tændes: hver person vælger sin egen eller ingen. */
+    private void buildDays() {
+        int c = accent;
+        title("Mærkedage");
+        list.addView(Ui.text(this, "Forsiden viser de nærmeste: fødselsdage og faste dage to uger før, nedtællinger hele vejen. "
+                + "Skriv dit eget navn ved din fødselsdag, så siger tv'et tillykke. Det er lettest at skrive dem på telefonsiden.", 16, Ui.TEXT_DIM));
+        list.addView(Ui.header(this, "DAGE SAMMEN", c));
+        list.addView(Ui.row(this, "Kæreste", prefs.partnerName().isEmpty() ? "Ikke sat" : prefs.partnerName(), c,
+                v -> ask("Kærestens navn", prefs.partnerName(), "", t -> prefs.setProfile(null, null, t, null))));
+        list.addView(Ui.row(this, "Sammen siden", prefs.togetherSinceText().isEmpty() ? "Ikke sat" : prefs.togetherSinceText(), c,
+                v -> ask("Sammen siden (åååå-mm-dd, tom = fra)", prefs.togetherSinceText(), "2026-01-04", t -> {
+                    if (!t.trim().isEmpty() && !t.trim().matches("\\d{4}-\\d{2}-\\d{2}")) {
+                        Toast.makeText(this, "Skriv datoen som 2026-01-04", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    prefs.setProfile(null, null, null, t);
+                    prefs.setFlag(Features.TOGETHER, !t.trim().isEmpty());
+                })));
+        list.addView(Ui.header(this, "MÆRKEDAGE", c));
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        List<Days.Day> days = Days.all(prefs);
+        for (int i = 0; i < days.size(); i++) {
+            Days.Day d = days.get(i);
+            long u = Days.until(d, now);
+            String when = u < 0 ? "overstået" : u == 0 ? "i dag" : u == 1 ? "i morgen" : "om " + u + " dage";
+            int index = i;
+            list.addView(Ui.row(this, d.name, d.kindName() + "  ·  " + d.dateText() + "  ·  " + when, c,
+                    v -> new AlertDialog.Builder(this, Ui.dialogTheme())
+                            .setTitle(d.name)
+                            .setItems(new String[]{"Slet"}, (dlg, w) -> {
+                                Days.remove(prefs, index);
+                                build();
+                            })
+                            .show()));
+        }
+        list.addView(Ui.row(this, "Tilføj mærkedag", "", c, v -> addDay()));
+    }
+
+    /** Navn, dato og type i tre korte trin. */
+    private void addDay() {
+        ask("Hvad hedder dagen?", "", "Mor, Roskilde, Vores dag", name -> {
+            if (name.trim().isEmpty()) return;
+            ask("Dato (dd-mm-åååå, eller dd-mm uden år)", "", "12-03-1970", date -> {
+                int[] d = Days.parse(date);
+                if (d == null) {
+                    Toast.makeText(this, "Skriv datoen som 12-03-1970", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                String[] names = new String[Days.KINDS.length];
+                for (int i = 0; i < names.length; i++) names[i] = Days.KINDS[i][1];
+                new AlertDialog.Builder(this, Ui.dialogTheme())
+                        .setTitle("Hvad slags dag?")
+                        .setItems(names, (dlg, which) -> {
+                            String kind = Days.KINDS[which][0];
+                            if (Days.ONCE.equals(kind) && d[0] <= 0) {
+                                Toast.makeText(this, "En nedtælling skal have et år", Toast.LENGTH_LONG).show();
+                                return;
+                            }
+                            Days.add(prefs, new Days.Day(name.trim(), kind, d[0], d[1], d[2]));
+                            build();
+                        })
+                        .show();
+            });
+        });
+    }
+
     private void buildBoot() {
         int c = accent;
         title("Opstart");
@@ -935,6 +1005,35 @@ public class SettingsActivity extends Activity {
                     build();
                 })
                 .show();
+    }
+
+    /** By til vejret: skriv navnet, vælg den rigtige blandt dem, Open-Meteo finder. */
+    private void chooseWeather() {
+        ask("By til vejret (tom = intet)", Weather.city(prefs), "Aarhus", t -> {
+            if (t.trim().isEmpty()) {
+                Weather.set(prefs, null);
+                build();
+                return;
+            }
+            Net.async(() -> Weather.search(t), (places, err) -> {
+                if (places == null || places.isEmpty()) {
+                    Toast.makeText(this, err != null ? "Kunne ikke søge efter byen" : "Fandt ingen by med det navn", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                String[] names = new String[places.size()];
+                for (int i = 0; i < names.length; i++) names[i] = places.get(i).label();
+                new AlertDialog.Builder(this, Ui.dialogTheme())
+                        .setTitle("Hvilken by?")
+                        .setItems(names, (d, which) -> {
+                            Weather.set(prefs, places.get(which));
+                            Net.async(() -> Weather.fetch(prefs), (w, e) -> {
+                                if (w != null) Toast.makeText(this, "Vejret i " + Weather.city(prefs) + ": " + w, Toast.LENGTH_SHORT).show();
+                                build();
+                            });
+                        })
+                        .show();
+            });
+        });
     }
 
     /** Tekstfelt med fjernbetjeningens tastatur. Tryk Gem for at gemme. */

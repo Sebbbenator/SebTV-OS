@@ -127,6 +127,7 @@ public class MainActivity extends Activity {
     private Stage stage;
     private Backdrop backdrop;
     private List<String> stageParts = new ArrayList<>();
+    private List<String> haParts = new ArrayList<>();
     /** Hvilken slags card og nummer i rækken, næste tile() laver (til temaernes egne cards). */
     private int tileKind = Tiles.SMALL, tileIndex;
     /** Apple TV: margen i siderne og afstand mellem ikonerne (dp). */
@@ -1297,6 +1298,7 @@ public class MainActivity extends Activity {
             List<Jellyfin.Item> l = RemoteCache.loadItems(this, "favorites");
             if (l != null) fillMedia(sectionFavorites, "MIN LISTE", l, false, false);
         }
+        if (!ha.configured()) composeStatus();
         if (ha.configured()) {
             Map<String, JSONObject> states = RemoteCache.loadStates(this);
             if (states != null) {
@@ -1374,10 +1376,14 @@ public class MainActivity extends Activity {
                 RemoteCache.saveStates(this, states);
             });
         } else {
-            status.setText("");
+            haParts = new ArrayList<>();
+            composeStatus();
             sectionHa.removeAllViews();
             sectionModes.removeAllViews();
         }
+        if (Weather.stale(prefs)) Net.async(() -> Weather.fetch(prefs), (w, err) -> {
+            if (w != null) composeStatus();
+        });
         if (ha.configured() && Features.on(prefs, Features.UPCOMING)) {
             Net.async(ha::upcoming, (list, err) -> {
                 fillUpcoming(list);
@@ -1638,17 +1644,26 @@ public class MainActivity extends Activity {
     }
 
     private void fillStatus(Map<String, JSONObject> states) {
-        if (!Features.on(prefs, Features.HA_STATUS)) {
-            status.setText("");
-            return;
+        haParts = new ArrayList<>();
+        if (Features.on(prefs, Features.HA_STATUS)) {
+            for (String id : statusEntities(states)) {
+                JSONObject st = states.get(id);
+                if (st == null) continue;
+                String part = statusText(id, st);
+                if (part != null) haParts.add(part);
+            }
         }
+        composeStatus();
+    }
+
+    /** Statuslinjen: Home Assistants dele, og byens vejr først, hvis HA ikke selv har et vejr med. */
+    private void composeStatus() {
         List<String> parts = new ArrayList<>();
-        for (String id : statusEntities(states)) {
-            JSONObject st = states.get(id);
-            if (st == null) continue;
-            String part = statusText(id, st);
-            if (part != null) parts.add(part);
-        }
+        String wx = Weather.cached(prefs);
+        boolean haWeather = false;
+        for (String p : haParts) if (p.contains("°")) haWeather = true;
+        if (!wx.isEmpty() && !haWeather) parts.add(wx);
+        parts.addAll(haParts);
         status.setText(String.join("  ·  ", parts));
         stageParts = parts;
         updateStage();
@@ -1864,13 +1879,13 @@ public class MainActivity extends Activity {
 
     private void updateGreeting() {
         set(greeting, greetingText());
-        set(together, Greeting.together(prefs));
+        set(together, Days.line(prefs));
         updateStage();
     }
 
     private void updateStage() {
         if (stage == null) return;
-        stage.setInfo(greetingText(), stageParts, prefs.profileName());
+        stage.setInfo(greetingText(), stageParts, prefs.profileName(), Days.parts(prefs));
         stage.tick(new Date());
     }
 

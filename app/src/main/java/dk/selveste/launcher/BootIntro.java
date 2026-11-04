@@ -76,6 +76,9 @@ final class BootIntro extends View {
         String style = style(prefs);
         String title = prefs.str("boot_title", "").trim();
         String sub = prefs.str("boot_sub", "").trim();
+        // På en mærkedag siger opstarten det
+        String day = Days.today(prefs);
+        if (!day.isEmpty()) sub = day;
         long ms = "kort".equals(prefs.str("boot_length", "normal")) ? 2000 : "lang".equals(prefs.str("boot_length", "normal")) ? 5000 : 3200;
         String skin = Skin.key;
         if ("jarvis".equals(style) || "blod".equals(style) || ("tema".equals(style) && !own(skin))) {

@@ -107,4 +107,35 @@ public class LogicTest {
         assertEquals(256, sig.length);
         assertTrue(new BigInteger(1, sig).signum() > 0);
     }
+
+    @Test
+    public void maerkedage() {
+        assertTrue(java.util.Arrays.equals(new int[]{1970, 2, 12}, Days.parse("1970-03-12")));
+        assertTrue(java.util.Arrays.equals(new int[]{1970, 2, 12}, Days.parse("12-03-1970")));
+        assertTrue(java.util.Arrays.equals(new int[]{0, 2, 12}, Days.parse("12/3")));
+        assertNull(Days.parse("32-13-2000"));
+        Calendar today = day(2026, 3, 9);
+        Days.Day mor = new Days.Day("Mor", Days.BIRTHDAY, 1970, 2, 12);
+        assertEquals("Mor fylder 56 om 3 dage", Days.phrase(mor, today, "Seb"));
+        assertEquals("I dag fylder Mor 56", Days.phrase(mor, day(2026, 3, 12), "Seb"));
+        Days.Day hans = new Days.Day("Hans", Days.BIRTHDAY, 0, 2, 10);
+        assertEquals("Hans' fødselsdag i morgen", Days.phrase(hans, today, "Seb"));
+        Days.Day mig = new Days.Day("seb", Days.BIRTHDAY, 2000, 2, 9);
+        assertEquals("Tillykke med dagen!", Days.phrase(mig, today, "Seb"));
+        Days.Day rf = new Days.Day("Roskilde", Days.ONCE, 2026, 5, 27);
+        assertEquals("Roskilde om 110 dage", Days.phrase(rf, today, "Seb"));
+        assertEquals(-1, Days.until(rf, day(2026, 7, 1)));
+        // Årsskifte og skuddag
+        assertEquals(1, Days.until(new Days.Day("Nytår", Days.YEARLY, 0, 0, 1), day(2026, 12, 31)));
+        assertEquals(0, Days.until(new Days.Day("Leap", Days.BIRTHDAY, 2000, 1, 29), day(2027, 2, 28)));
+    }
+
+    @Test
+    public void vejrkoder() {
+        assertEquals("Sol", Weather.describe(0, true, 2));
+        assertEquals("Klart", Weather.describe(1, false, 2));
+        assertEquals("Blæst", Weather.describe(3, true, 14));
+        assertEquals("Regn", Weather.describe(61, true, 14));
+        assertEquals("Sne", Weather.describe(73, true, 2));
+    }
 }

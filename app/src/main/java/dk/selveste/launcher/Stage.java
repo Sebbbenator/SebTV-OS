@@ -85,6 +85,8 @@ final class Stage extends View {
     private Date now = new Date();
     private String shownMinute = "";
     private String greeting = "", status = "", weather = "", name = "";
+    /** Dage sammen og mærkedage; vises før statuslinjen. */
+    private List<String> days = new java.util.ArrayList<>();
     private Bitmap photo;
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final Paint s = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -125,7 +127,13 @@ final class Stage extends View {
         }
     }
 
-    void setInfo(String greeting, List<String> statusParts, String name) {
+    void setInfo(String greeting, List<String> statusParts, String name, List<String> days) {
+        List<String> dd = days == null ? new java.util.ArrayList<>() : days;
+        if (!dd.equals(this.days)) {
+            this.days = new java.util.ArrayList<>(dd);
+            stillDirty = true;
+            invalidate();
+        }
         String w = "";
         StringBuilder rest = new StringBuilder();
         for (String part : statusParts) {
@@ -146,6 +154,15 @@ final class Stage extends View {
         this.name = n;
         stillDirty = true;
         invalidate();
+    }
+
+    /** Mærkedagene og statuslinjen i én linje. */
+    private String line() {
+        // Den nærmeste mærkedag først, så den ikke bliver klippet af
+        List<String> all = new java.util.ArrayList<>(days);
+        java.util.Collections.reverse(all);
+        if (!status.isEmpty()) all.add(status);
+        return String.join("  ·  ", all);
     }
 
     /** Giver Jarvis' stille lag fri; det tegnes igen næste gang. */
@@ -442,7 +459,8 @@ final class Stage extends View {
         String head = "KLOKKEN ER " + time();
         text(c, head, pb, fit(head, pb, 82, -0.01f, span), ink, w / 2f, d(214), Paint.Align.CENTER, -0.01f);
         String g = greeting.replaceAll("[!.,]+$", "");
-        String sub = (g.isEmpty() ? "Redaktionen" : g) + ". Dagens program kan læses herunder.";
+        // Mærkedagene står i underrubrikken som avisens egne nyheder
+        String sub = (g.isEmpty() ? "Redaktionen" : g) + ". " + (days.isEmpty() ? "Dagens program kan læses herunder." : String.join(". ", days).replace("♥ ", "") + ".");
         Typeface it = Typeface.create(Fonts.playfair(getContext()), Typeface.ITALIC);
         text(c, sub, it, fit(sub, it, 15, 0, span), Color.parseColor("#333333"), w / 2f, d(243), Paint.Align.CENTER, 0);
         line(c, m, d(262), right, d(262), d(1), ink);
@@ -545,8 +563,9 @@ final class Stage extends View {
         p.setStyle(Paint.Style.FILL);
         p.setColor(Color.WHITE);
         c.drawText(big, b.right - d(22), b.top + d(122), p);
-        if (!status.isEmpty()) {
-            String part = up(status.split(" {2}· {2}")[0]);
+        if (!days.isEmpty() || !status.isEmpty()) {
+            // Den nærmeste mærkedag er mere værd end dage sammen og statuslinjen
+            String part = up(!days.isEmpty() ? days.get(days.size() - 1) : status.split(" {2}· {2}")[0]);
             p.setTypeface(comic);
             p.setTextSize(sp(12));
             p.setLetterSpacing(0.02f);
@@ -661,8 +680,8 @@ final class Stage extends View {
 
         String g = up(greeting.replaceAll("[!.,]+$", ""));
         text(c, g, bs, fit(g, bs, 22, 0.06f, right - left), Color.parseColor("#E9E4D6"), right, slab.bottom + d(34), Paint.Align.RIGHT, 0.06f);
-        if (!status.isEmpty())
-            text(c, clip(up(status), mono, 8.5f, 0.08f, right - left), mono, 8.5f, Color.parseColor("#8E8C84"), right, slab.bottom + d(54), Paint.Align.RIGHT, 0.08f);
+        if (!line().isEmpty())
+            text(c, clip(up(line()), mono, 8.5f, 0.08f, right - left), mono, 8.5f, Color.parseColor("#8E8C84"), right, slab.bottom + d(54), Paint.Align.RIGHT, 0.08f);
     }
 
     // Jarvis: buereaktoren
@@ -745,7 +764,7 @@ final class Stage extends View {
         float gy = cy + rad + d(44);
         String g = up(greeting.replaceAll("[!.,]+$", ""));
         text(c, g, raj, fit(g, raj, 20, 0.2f, w - left - d(6)), Color.parseColor("#EAFDFF"), cx, gy, Paint.Align.CENTER, 0.2f);
-        String st = status.isEmpty() ? "ALLE SYSTEMER KØRER" : up(status);
+        String st = line().isEmpty() ? "ALLE SYSTEMER KØRER" : up(line());
         text(c, clip(st, mono, 9.5f, 0.1f, w - left - d(6)), mono, 9.5f, cyan, cx, gy + d(22), Paint.Align.CENTER, 0.1f);
     }
 
@@ -776,7 +795,22 @@ final class Stage extends View {
         String wx = weather.isEmpty() ? up(fmt("d. MMMM")) : up(weather);
         text(c, wx, bebas, fit(wx, bebas, 13, 0.2f, mx - d(95)), gold, leftX, d(100), Paint.Align.CENTER, 0.2f);
         text(c, "SAL 1", lime, 19, light, rightX, d(80), Paint.Align.CENTER, 0);
-        text(c, "→ INDGANG", bebas, 13, gold, rightX, d(100), Paint.Align.CENTER, 0.2f);
+        // Højre side: den nærmeste mærkedag, ellers indgangen
+        String door = days.isEmpty() ? "→ INDGANG" : up(days.get(days.size() - 1)).replace("♥ ", "♥");
+        float room = mx - d(95);
+        if (fit(door, bebas, 13, 0.2f, room) >= 12 || !door.contains(" ")) {
+            text(c, door, bebas, fit(door, bebas, 13, 0.2f, room), gold, rightX, d(100), Paint.Align.CENTER, 0.2f);
+        } else {
+            // For lang til én linje: del ved mellemrummet tættest på midten
+            int cut = -1;
+            for (int i = 0; i < door.length(); i++) {
+                if (door.charAt(i) == ' ' && (cut < 0 || Math.abs(i - door.length() / 2) < Math.abs(cut - door.length() / 2))) cut = i;
+            }
+            String a = door.substring(0, cut), b = door.substring(cut + 1);
+            float size = Math.min(fit(a, bebas, 13, 0.2f, room), fit(b, bebas, 13, 0.2f, room));
+            text(c, a, bebas, size, gold, rightX, d(100), Paint.Align.CENTER, 0.2f);
+            text(c, b, bebas, size, gold, rightX, d(117), Paint.Align.CENTER, 0.2f);
+        }
     }
 
     // Jul: dagens store låge
@@ -801,8 +835,8 @@ final class Stage extends View {
         text(c, count, cav, fit(count, cav, 23, 0, door.width() - d(30)), cream, door.centerX(), door.top + size * 0.8f, Paint.Align.CENTER, 0);
         String g = greeting.replaceAll("[!.,]+$", "");
         text(c, g, cav, fit(g, cav, 22, 0, size), gold, door.centerX(), door.bottom + d(34), Paint.Align.CENTER, 0);
-        if (!status.isEmpty())
-            text(c, clip(status, fri, 11, 0, size), fri, 11, HudView.withAlpha(cream, 0.8f), door.centerX(), door.bottom + d(54), Paint.Align.CENTER, 0);
+        if (!line().isEmpty())
+            text(c, clip(line(), fri, 11, 0, size), fri, 11, HudView.withAlpha(cream, 0.8f), door.centerX(), door.bottom + d(54), Paint.Align.CENTER, 0);
         line(c, door.left + d(30), door.bottom + d(66), door.left + d(30), door.bottom + d(84), d(1), gold);
         heart(c, door.left + d(30), door.bottom + d(108), d(52), -6);
     }
@@ -850,7 +884,7 @@ final class Stage extends View {
         float maxW = w - gx - d(170);
         String g = greeting.replaceAll("[!.,]+$", "");
         text(c, g, it, fit(g, it, 40, 0, maxW), ink, gx, d(80), Paint.Align.LEFT, 0);
-        String st = status.isEmpty() ? up(fmt("EEEE d. MMMM")) : up(status);
+        String st = line().isEmpty() ? up(fmt("EEEE d. MMMM")) : up(line());
         text(c, clip(st, corm, 12.5f, 0.24f, maxW), corm, 12.5f, soft, gx + d(2), d(108), Paint.Align.LEFT, 0.24f);
 
         // Stearinlyset i hjørnet

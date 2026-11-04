@@ -66,8 +66,9 @@ final class ProfileCode {
         return encode(j);
     }
 
-    /** Det, der kun handler om personen selv: navn, hilsen, kæreste og egen opstartstekst. Bliver hjemme, når koden deles med en ven. */
-    static final String[] PERSONAL = {"profile_name", "profile_greeting", "profile_partner", "profile_together", "boot_title", "boot_sub"};
+    /** Det, der kun handler om personen selv: navn, hilsen, kæreste, mærkedage, egen opstartstekst og byen. Bliver hjemme, når koden deles med en ven. */
+    static final String[] PERSONAL = {"profile_name", "profile_greeting", "profile_partner", "profile_together", "boot_title", "boot_sub",
+            Days.KEY, Weather.CITY, Weather.LAT, Weather.LON, Weather.TEXT, Weather.AT};
 
     /** Samme kode uden det personlige, til at dele med venner. */
     static String forFriend(String code) throws Exception {
