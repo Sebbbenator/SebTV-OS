@@ -56,7 +56,11 @@ final class Decor extends View {
         float t = animate ? (System.currentTimeMillis() - since) / 1000f : 10f;
         float in = Math.min(1f, t / 0.25f);
         in = in * (2 - in);
-        if (paint(c, getWidth(), getHeight(), t, in) && animate || animate && in < 1f) postInvalidateDelayed(33);
+        boolean again = paint(c, getWidth(), getHeight(), t, in);
+        // Indgangen tegnes glat; det, der bliver ved (pærer, stjerner, lys), roligt, så resten ikke hakker
+        if (animate && in < 1f) postInvalidateDelayed(16);
+        else if (animate && again && t < 1.2f) postInvalidateDelayed(33);
+        else if (animate && again) postInvalidateDelayed(120);
     }
 
     /**

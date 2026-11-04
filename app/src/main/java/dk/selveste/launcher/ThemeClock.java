@@ -76,7 +76,7 @@ final class ThemeClock extends View {
     }
 
     private boolean moving() {
-        return !photo() && ("lys".equals(style) || "kugle".equals(style) || "boelge".equals(style) || "reaktor".equals(style));
+        return !photo() && ("lys".equals(style) || "boelge".equals(style));
     }
 
     @Override
@@ -113,7 +113,8 @@ final class ThemeClock extends View {
             case "blade": rosette(c, h, hm); break;
         }
         c.restore();
-        if (animate && moving() && isShown()) postInvalidateDelayed(40);
+        // Kun bølgen og flammen bevæger sig, og roligt; resten tegnes én gang i sekundet af forsiden
+        if (animate && moving() && isShown()) postInvalidateDelayed(100);
     }
 
     /** Hvor bred tegningen er, så den kan flugte højre. */

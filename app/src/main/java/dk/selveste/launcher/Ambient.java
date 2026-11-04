@@ -43,13 +43,21 @@ final class Ambient extends View {
         if (r) invalidate();
     }
 
-    private boolean moving() {
+    /** Millisekunder til næste tegning, eller 0 hvis billedet står stille. */
+    private long nextFrame(float t) {
         switch (Skin.key) {
-            case "jarvis": case "ironman": case "batman": case "superman": case "biograf": case "hygge":
-            case "salvie": case "natte": case "jul": case "hav":
-                return true;
+            case "batman": {
+                float cycle = t % 40f;
+                return cycle > 38.5f && cycle < 39.5f ? 40 : 500;
+            }
+            case "natte": {
+                float cycle = t % 25f;
+                return cycle < 1.25f || cycle > 24.9f ? 40 : 500;
+            }
+            case "jul":
+                return 667;
             default:
-                return false;
+                return 0;
         }
     }
 
@@ -75,7 +83,10 @@ final class Ambient extends View {
             case "jul": lights(c, w, h, t); break;
             case "hav": waves(c, w, h, t); break;
         }
-        if (animate && running && moving() && isShown()) postInvalidateDelayed(50);
+        // Stemningen står stille det meste af tiden, så forsiden ikke hakker på sticks: kun lyn,
+        // stjerneskud og julelysenes blink tegnes igen, og kun når de faktisk sker
+        long next = nextFrame(t);
+        if (animate && running && next > 0 && isShown()) postInvalidateDelayed(next);
     }
 
     // Jarvis: et svagt gitter og et sigtekorn, der drejer langsomt i hjørnet
