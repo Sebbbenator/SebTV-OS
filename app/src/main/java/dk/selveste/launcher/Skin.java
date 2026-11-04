@@ -49,6 +49,8 @@ final class Skin {
 
     /** Overskrifterne over rækkerne, i temaets eget sprog. */
     static void header(Context c, TextView t, String text, int accent) {
+        // Temaerne med en scene har deres egne overskrifter (Tiles)
+        if (Tiles.header(c, t, text)) return;
         String lower = text.toLowerCase(Locale.ROOT);
         String title = lower.isEmpty() ? lower : Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
         switch (key) {

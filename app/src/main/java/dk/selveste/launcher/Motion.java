@@ -59,6 +59,19 @@ final class Motion {
         }
     }
 
+    /** Som focus, men med temaets egen størrelse i fokus. */
+    static void focusTo(View v, float s, String level) {
+        if (NONE.equals(level)) {
+            v.animate().cancel();
+            v.setScaleX(s);
+            v.setScaleY(s);
+            return;
+        }
+        boolean up = s > 1f;
+        v.animate().scaleX(s).scaleY(s).setDuration(up && FULL.equals(level) ? 260 : 170)
+                .setInterpolator(up && FULL.equals(level) ? SPRING : EASE).start();
+    }
+
     /** Kortene i en række glider ind et ad gangen, første gang rækken vises. */
     static void stagger(ViewGroup row, String level) {
         if (!FULL.equals(level)) return;

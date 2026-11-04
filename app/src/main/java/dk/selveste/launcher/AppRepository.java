@@ -185,7 +185,11 @@ final class AppRepository {
         }
     }
 
+    /** Kun til skærmbilleder i test: bannere til opdigtede apps. */
+    static java.util.function.Function<String, Drawable> testBanners;
+
     private Drawable loadBanner(ActivityInfo ai) {
+        if (testBanners != null) return testBanners.apply(ai.packageName);
         try {
             Drawable banner = ai.loadBanner(pm);
             if (banner != null) return banner;

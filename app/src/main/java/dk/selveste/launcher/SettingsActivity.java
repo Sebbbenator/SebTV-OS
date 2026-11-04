@@ -61,6 +61,13 @@ public class SettingsActivity extends Activity {
             return;
         }
         builtSkin = Decor.active() ? Skin.key : "";
+        if (Sheet.on()) {
+            // De otte temaer: indstillingerne som temaets egen ting (panel, sagsmappe, avis, ønskeseddel ...)
+            TextView[] t = new TextView[1];
+            setContentView(Sheet.layout(this, scroll, list, t));
+            appleTitle = t[0];
+            return;
+        }
         if (!builtSkin.isEmpty()) {
             setContentView(skinLayout(scroll));
             return;
@@ -289,7 +296,8 @@ public class SettingsActivity extends Activity {
     private TextView title(String text) {
         if (appleTitle != null) {
             appleTitle.setText(text);
-            if (!builtSkin.isEmpty()) Skin.title(this, appleTitle, text);
+            if (Sheet.on()) Sheet.title(this, appleTitle, text);
+            else if (!builtSkin.isEmpty()) Skin.title(this, appleTitle, text);
             return appleTitle;
         }
         TextView t = Ui.text(this, text, 30, Ui.TEXT);
@@ -878,14 +886,14 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseTheme() {
-        // Udgavens egne temaer først, så de andre
+        // De 8 gennemførte temaer først, så de ældre temaer
         List<String[]> themes = new ArrayList<>();
-        for (String[] t : Themes.ALL) if (t[3].equals(prefs.edition())) themes.add(t);
-        for (String[] t : Themes.ALL) if (!t[3].equals(prefs.edition())) themes.add(t);
+        for (String k : Themes.MAIN) for (String[] t : Themes.ALL) if (t[0].equals(k)) themes.add(t);
+        for (String[] t : Themes.ALL) if (!Themes.main(t[0])) themes.add(t);
         String[] names = new String[themes.size()];
         int checked = -1;
         for (int i = 0; i < names.length; i++) {
-            names[i] = themes.get(i)[1] + "  ·  " + themes.get(i)[2];
+            names[i] = (Themes.main(themes.get(i)[0]) ? "" : "Ældre: ") + themes.get(i)[1] + "  ·  " + themes.get(i)[2];
             if (themes.get(i)[0].equals(prefs.theme())) checked = i;
         }
         new AlertDialog.Builder(this, Ui.dialogTheme())

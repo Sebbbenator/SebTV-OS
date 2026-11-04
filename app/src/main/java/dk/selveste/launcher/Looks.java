@@ -41,6 +41,10 @@ final class Looks {
             {"salvie", "Lys salvie"},
             {"skov", "Skovgrøn"},
             {"hav", "Dybt hav"},
+            {"avis", "Avispapir"},
+            {"tegneserie", "Tegneseriepapir"},
+            {"kalk", "Kalket væg"},
+            {"kalender", "Julekalender rød"},
     };
 
     static final String[][] CORNERS = {{"skarp", "Skarpe"}, {"normal", "Normale"}, {"rund", "Runde"}, {"ekstra", "Ekstra runde"}};

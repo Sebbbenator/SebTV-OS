@@ -41,6 +41,11 @@ final class Ui {
             {"salvie", "#E6EBE1", "#DCE4D5", "#CBD8C2", "#23331F", "#5E7357"},
             {"skov", "#0F2A1E", "#153526", "#1C4431", "#FBF5EA", "#BFD1C2"},
             {"hav", "#061419", "#0C222A", "#13323D", "#EAF8FA", "#9CC7CF"},
+            // Temaerne med en scene: avispapir, tegneseriepapir, kalket væg og julekalenderens karton
+            {"avis", "#EFE8D8", "#F7F2E6", "#FBF8F0", "#151515", "#4A4540"},
+            {"tegneserie", "#F6EDD3", "#FFFFFF", "#FFE14D", "#111111", "#3A3A3A"},
+            {"kalk", "#E6DBC9", "#FBF6EA", "#FFFFFF", "#3A2C22", "#7A6250"},
+            {"kalender", "#5C0B15", "#7D1420", "#8F1D2A", "#F6EAD2", "#E2BD62"},
     };
 
     static float radiusDp = 10;

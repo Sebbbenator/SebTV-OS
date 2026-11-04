@@ -47,6 +47,10 @@ final class Prefs {
             {"jul", "Julerød", "#D23B33"},
             {"petrol", "Petrol", "#1F7A8C"},
             {"skum", "Havskum", "#7FD6DC"},
+            {"avisrod", "Avisrød", "#C8102E"},
+            {"ravgul", "Ravgul", "#F5C518"},
+            {"terrakotta", "Terrakotta", "#9A5B3A"},
+            {"julegul", "Julegul", "#E2BD62"},
             {"auto", "Fra baggrunden", ""},
     };
 

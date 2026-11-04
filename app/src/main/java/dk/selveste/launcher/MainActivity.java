@@ -122,6 +122,12 @@ public class MainActivity extends Activity {
     private View appleDim;
     private ThemeClock themeClock;
     private Ambient ambientView;
+    /** Temaets scene (avisforside, markise, reaktor ...) og det den står på; null uden. */
+    private Stage stage;
+    private Backdrop backdrop;
+    private List<String> stageParts = new ArrayList<>();
+    /** Hvilken slags card og nummer i rækken, næste tile() laver (til temaernes egne cards). */
+    private int tileKind = Tiles.SMALL, tileIndex;
     /** Apple TV: margen i siderne og afstand mellem ikonerne (dp). */
     private static final int APPLE_MARGIN = 26, APPLE_GAP = 14, APPLE_DOCK_PAD = 12;
     private static final int LABEL_ALWAYS = 0, LABEL_NONE = 1, LABEL_FOCUS = 2;
@@ -155,6 +161,7 @@ public class MainActivity extends Activity {
             set(clock, "sekunder".equals(prefs.clockStyle()) ? secondsFormat.format(now) : hm);
             if (clockRing.getVisibility() == View.VISIBLE && !ambient) clockRing.invalidate();
             if (themeClock.getVisibility() == View.VISIBLE && !ambient) themeClock.invalidate();
+            if (stage != null && !ambient) stage.tick(now);
             updateNight();
             if (newMinute) {
                 String d = dateFormat.format(now);
@@ -241,10 +248,17 @@ public class MainActivity extends Activity {
             if (own != null && ("stor".equals(cur) || "tynd".equals(cur) || "analog".equals(cur) || "hud".equals(cur))) prefs.setClockStyle(own);
             prefs.setFlag(Features.SOUNDS, true);
         }
+        if (!"3".equals(prefs.str("skin_v3", ""))) {
+            // Første gang med de gennemførte temaer: læg temaets nye farver, skrift og papir på
+            prefs.setStr("skin_v3", "3");
+            if (Themes.main(prefs.theme()) && !"apple".equals(prefs.theme())) Themes.apply(prefs, prefs.theme());
+        }
         builtTone = Looks.layoutSignature(prefs);
         motion = Motion.level(this, prefs);
         Ui.loadFont(this, prefs.font());
         setContentView(buildLayout());
+        // En ny skærm har tomme rækker: appsene skal altid fyldes i første onResume
+        appsDirty = true;
         if (revealNext) {
             revealNext = false;
             Motion.reveal(root, motion, -1, -1);
@@ -452,13 +466,15 @@ public class MainActivity extends Activity {
         bgFrame.addView(background, match());
 
         boolean apple = Ui.apple();
+        boolean staged = !apple && Stage.on();
+        if (staged && Backdrop.hidesPhoto()) background.setVisibility(View.INVISIBLE);
         View shadeBottom = new View(this);
         shadeBottom.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, apple
                 // Apple: fotoet står klart hele vejen ned til ikonerne, kun bunden mørkner en anelse
                 ? new int[]{Color.argb((int) (150 * Math.min(1f, shade)), 0, 0, 0), Color.argb((int) (40 * Math.min(1f, shade)), 0, 0, 0), 0, 0}
                 : new int[]{Ui.bg(Math.min(1f, 0.95f * shade)), Ui.bg(Math.min(1f, 0.6f * shade)), Ui.bg(0f)}));
-        root.addView(shadeBottom, match());
-        if (!apple) {
+        if (!staged) root.addView(shadeBottom, match());
+        if (!apple && !staged) {
             View shadeTop = new View(this);
             shadeTop.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                     new int[]{Ui.bg(Math.min(1f, 0.6f * shade)), Ui.bg(0f), Ui.bg(0f)}));
@@ -470,22 +486,56 @@ public class MainActivity extends Activity {
         appleDim.setAlpha(0f);
         root.addView(appleDim, match());
 
+        if (staged) {
+            // Temaets papir, væg, karton eller skærm, tegnet én gang
+            backdrop = new Backdrop(this);
+            root.addView(backdrop, match());
+        }
         particles = new ParticleView(this);
         particles.setVisibility(View.GONE);
         root.addView(particles, match());
         // Temaets stemning: spind, lyn, tæpper, lyskæde, bølger
         ambientView = new Ambient(this);
+        if (staged) ambientView.setVisibility(View.GONE);
         root.addView(ambientView, match());
 
         column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
         column.setPadding(dp(apple ? APPLE_MARGIN : 56), apple ? 0 : dp(32), 0, 0);
-        root.addView(column, match());
+        if (staged) {
+            stage = new Stage(this);
+            int place = Stage.place();
+            if (place == Stage.TOP) {
+                // Scenen øverst i fuld bredde; rækkerne ruller under den
+                column.setPadding(0, 0, 0, 0);
+                column.addView(stage, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(Stage.sizeDp())));
+                root.addView(column, match());
+            } else {
+                // Scenen i siden: Jarvis og Jul til venstre, Batman til højre
+                LinearLayout body = new LinearLayout(this);
+                body.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(dp(Stage.sizeDp()), ViewGroup.LayoutParams.MATCH_PARENT);
+                LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+                int topPad = Skin.is("jul") ? 92 : Skin.is("jarvis") ? 30 : 26;
+                if (place == Stage.LEFT) {
+                    column.setPadding(dp(Skin.is("jul") ? 16 : 8), dp(topPad), 0, 0);
+                    body.addView(stage, sp);
+                    body.addView(column, cp);
+                } else {
+                    column.setPadding(dp(48), dp(topPad), 0, 0);
+                    body.addView(column, cp);
+                    body.addView(stage, sp);
+                }
+                root.addView(body, match());
+            }
+        } else {
+            root.addView(column, match());
+        }
 
         // Top: ur til venstre, hilsen og status til højre (Apple TV viser ingen af delene)
         LinearLayout top = new LinearLayout(this);
         top.setOrientation(LinearLayout.HORIZONTAL);
-        if (apple) top.setVisibility(View.GONE);
+        if (apple || staged) top.setVisibility(View.GONE);
         column.addView(top);
 
         LinearLayout left = new LinearLayout(this);
@@ -543,7 +593,8 @@ public class MainActivity extends Activity {
 
         LinearLayout rows = new LinearLayout(this);
         rows.setOrientation(LinearLayout.VERTICAL);
-        rows.setGravity(apple ? Gravity.TOP : Gravity.BOTTOM);
+        rows.setGravity(apple || staged ? Gravity.TOP : Gravity.BOTTOM);
+        if (staged && Stage.place() == Stage.TOP) rows.setPadding(dp(contentLeft()), 0, 0, 0);
         scroller.addView(rows, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         if (apple) {
             // Ikonrækken står lidt under midten med fotoet over sig, resten følger nedenunder
@@ -680,6 +731,15 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Venstre margen for rækkerne, når scenen står øverst (biografens tæpper fylder i siderne). */
+    private static int contentLeft() {
+        switch (Skin.key) {
+            case "biograf": return 92;
+            case "spiderman": return 26;
+            default: return 48;
+        }
+    }
+
     private LinearLayout section(LinearLayout parent) {
         LinearLayout s = new LinearLayout(this);
         s.setOrientation(LinearLayout.VERTICAL);
@@ -701,6 +761,11 @@ public class MainActivity extends Activity {
             fillAppleApps(all);
             sectionTools.removeAllViews();
             sectionRest.removeAllViews();
+        } else if (stage != null && Stage.gridColumns() > 0) {
+            fillGrid(sectionApps, "APPS", repository.apps, Stage.gridColumns());
+            fillRow(sectionTools, "VÆRKTØJER", repository.tools, false);
+            if (Features.on(prefs, Features.ALL_APPS)) fillRow(sectionRest, "ALLE APPS", repository.rest, false);
+            else sectionRest.removeAllViews();
         } else {
             fillRow(sectionApps, "APPS", repository.apps, true);
             fillRow(sectionTools, "VÆRKTØJER", repository.tools, false);
@@ -765,7 +830,7 @@ public class MainActivity extends Activity {
     private LinearLayout startRow(LinearLayout section, String title) {
         section.removeAllViews();
         LinearLayout target = section;
-        GradientDrawable frame = rowFrame();
+        GradientDrawable frame = stage != null ? null : rowFrame();
         if (frame != null) {
             // Temaer med rammer om rækkerne: tegneseriestriber (Spider-Man) eller HUD paneler (Jarvis)
             target = new LinearLayout(this);
@@ -793,6 +858,15 @@ public class MainActivity extends Activity {
         hscroll.addView(row);
         target.addView(hscroll);
         if (frame != null) hscroll.setPadding(0, dp(10), dp(16), dp(10));
+        if (stage != null) {
+            hscroll.setPadding(0, dp(Skin.is("batman") ? 18 : 12), dp(48), dp(14));
+            if (Skin.is("hygge") && section != sectionMore) {
+                // Rammerne står på en hylde
+                row.setGravity(Gravity.BOTTOM);
+                row.setPadding(dp(14), dp(10), dp(8), dp(13));
+                row.setBackground(new Tiles.Shelf(this));
+            }
+        }
         if (staggered.add(owner)) Motion.stagger(row, motion);
         return row;
     }
@@ -805,7 +879,36 @@ public class MainActivity extends Activity {
         LinearLayout row = startRow(section, title);
         int[] widths = prefs.tileWidths();
         int w = large ? widths[0] : widths[1];
-        for (AppEntry e : entries) row.addView(appTile(e, dp(w), dp(w * 9 / 16)));
+        int i = 0;
+        for (AppEntry e : entries) {
+            if (stage != null) {
+                // Temaets egne cards: artikler, felter, plakater, rammer
+                int[] size = Tiles.appSize(i);
+                float f = large ? 1f : 0.8f;
+                tileIndex = i++;
+                row.addView(appTile(e, dp(Math.round(size[0] * f)), dp(Math.round(size[1] * f))));
+            } else row.addView(appTile(e, dp(w), dp(w * 9 / 16)));
+        }
+    }
+
+    /** Apps i et gitter med et fast antal pr. række (Batmans sagsmapper, julekalenderens låger). */
+    private void fillGrid(LinearLayout section, String title, List<AppEntry> entries, int columns) {
+        section.removeAllViews();
+        if (entries.isEmpty()) return;
+        section.addView(Ui.header(this, title, accent));
+        LinearLayout row = null;
+        for (int i = 0; i < entries.size(); i++) {
+            if (i % columns == 0) {
+                row = appleRow();
+                LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                rp.topMargin = dp(i == 0 ? 8 : 16);
+                section.addView(row, rp);
+            }
+            int[] size = Tiles.appSize(i);
+            tileIndex = i;
+            row.addView(appTile(entries.get(i), dp(size[0]), dp(size[1])));
+        }
+        section.setClipChildren(false);
     }
 
     /**
@@ -926,8 +1029,10 @@ public class MainActivity extends Activity {
         boolean plain = apple && !(tag instanceof AppEntry) && !(tag instanceof String && ((String) tag).startsWith("jf:"));
         Map<TextView, Integer> tinted = new java.util.HashMap<>();
         android.content.res.ColorStateList[] baseFill = new android.content.res.ColorStateList[1];
+        final int kind = tileKind, index = tileIndex;
+        final boolean staged = stage != null;
         LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(width, ViewGroup.LayoutParams.WRAP_CONTENT);
-        hp.rightMargin = dp(apple ? APPLE_GAP : 18);
+        hp.rightMargin = dp(apple ? APPLE_GAP : staged ? Tiles.gap() : 18);
         holder.setLayoutParams(hp);
 
         FrameLayout card = new FrameLayout(this);
@@ -937,7 +1042,7 @@ public class MainActivity extends Activity {
         card.setClipToOutline(true);
         GradientDrawable bg = Ui.card(this, Ui.CARD, Ui.CARD_STROKE, 1);
         GradientDrawable shadow = null;
-        if ("tegneserie".equals(Ui.cardStyle)) {
+        if ("tegneserie".equals(Ui.cardStyle) && !staged) {
             // Tegneserie: tyk sort kant og en hård skygge forskudt ned til højre, der bliver til accentfarven i fokus
             shadow = Ui.card(this, Ui.INK, Ui.INK, 0);
             int o = dp(7);
@@ -953,7 +1058,7 @@ public class MainActivity extends Activity {
         final GradientDrawable shadowF = shadow;
         holder.addView(card, new LinearLayout.LayoutParams(width, height));
         // Temaets egen fokus (klammer, spind, pærer, gavebånd ...) ligger øverst i cardet
-        final Decor decor = !apple && Decor.active() ? new Decor(this, !Motion.NONE.equals(motion)) : null;
+        final Decor decor = !apple && !staged && Decor.active() ? new Decor(this, !Motion.NONE.equals(motion)) : null;
 
         TextView l = Ui.text(this, label, 13, Ui.TEXT_DIM);
         l.setSingleLine(true);
@@ -967,8 +1072,9 @@ public class MainActivity extends Activity {
             l.setShadowLayer(dp(6), 0, dp(1), Color.argb(160, 0, 0, 0));
         }
         holder.addView(l);
+        if (staged && kind == Tiles.SMALL) Tiles.dressSmall(this, card);
         TextView sub = null;
-        if (sublabel != null && !sublabel.isEmpty()) {
+        if (sublabel != null && !sublabel.isEmpty() && !staged) {
             sub = Ui.text(this, sublabel, 12, Ui.TEXT_DIM);
             sub.setSingleLine(true);
             sub.setPadding(dp(2), 0, 0, 0);
@@ -977,8 +1083,13 @@ public class MainActivity extends Activity {
         }
         final TextView subF = sub;
         card.setOnFocusChangeListener((v, has) -> {
-            Motion.focus(v, has, motion);
             if (has) Sounds.move(this, prefs);
+            if (staged) {
+                Tiles.focus(this, kind, holder, card, l, has, index, motion);
+                if (has && tag instanceof AppEntry) lightFollow((AppEntry) tag);
+                return;
+            }
+            Motion.focus(v, has, motion);
             if (apple) {
                 // Ingen ramme: ikonet løftes frem med en blød skygge
                 v.setElevation(has ? dp(14) : 0);
@@ -1017,7 +1128,10 @@ public class MainActivity extends Activity {
 
     private View appTile(AppEntry entry, int width, int height) {
         FrameLayout[] out = new FrameLayout[1];
+        int index = tileIndex;
+        tileKind = Tiles.APP;
         LinearLayout holder = tile(entry, width, height, entry.label, null, out);
+        tileKind = Tiles.SMALL;
         FrameLayout card = out[0];
         ImageView image = new ImageView(this);
         if (entry.banner != null) {
@@ -1031,6 +1145,7 @@ public class MainActivity extends Activity {
             int size = Math.min(height - dp(16), dp(56));
             card.addView(image, new FrameLayout.LayoutParams(size, size, Gravity.CENTER));
         }
+        if (stage != null) Tiles.dressApp(this, holder, card, image, (TextView) holder.getChildAt(1), entry.label, index);
         card.setOnClickListener(v -> launch(entry));
         card.setOnLongClickListener(v -> {
             tileMenu(entry);
@@ -1337,6 +1452,10 @@ public class MainActivity extends Activity {
             section.removeAllViews();
             return;
         }
+        if (stage != null) {
+            stagedMedia(section, title, items, progress, play);
+            return;
+        }
         String focusedKey = focusedKey();
         LinearLayout row = startRow(section, title);
         int w = dp(256), h = dp(144);
@@ -1363,6 +1482,49 @@ public class MainActivity extends Activity {
                 });
             } else card.setOnClickListener(v -> openInWholphin(it.id));
             row.addView(holder);
+        }
+        restoreFocus(focusedKey);
+    }
+
+    /** Fortsæt at se i temaets sprog: billetter, gavemærker, sagslister, avisnotitser, rammer. */
+    private void stagedMedia(LinearLayout section, String title, List<Jellyfin.Item> items, boolean progress, boolean play) {
+        String focusedKey = focusedKey();
+        int[] size = Tiles.mediaSize();
+        boolean list = Tiles.mediaList();
+        LinearLayout row;
+        if (list) {
+            section.removeAllViews();
+            section.addView(Ui.header(this, title, accent));
+            row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setClipChildren(false);
+            row.setPadding(0, dp(8), 0, dp(4));
+            section.addView(row);
+        } else row = startRow(section, title);
+        int i = 0;
+        for (Jellyfin.Item it : items) {
+            tileKind = Tiles.MEDIA;
+            tileIndex = i;
+            FrameLayout[] out = new FrameLayout[1];
+            LinearLayout holder = tile("jf:" + it.id, list ? ViewGroup.LayoutParams.MATCH_PARENT : dp(size[0]), dp(size[1]), it.title, null, out);
+            tileKind = Tiles.SMALL;
+            FrameLayout card = out[0];
+            ImageView img = Tiles.mediaContent(this, card, holder, (TextView) holder.getChildAt(1), it.title, it.subtitle, progress ? it.progress : 0, i);
+            if (img != null) loadImage(it.imageUrl, img);
+            if (list) {
+                LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) holder.getLayoutParams();
+                lp.rightMargin = dp(48);
+                lp.bottomMargin = dp(8);
+            }
+            if (play) {
+                card.setOnClickListener(v -> playInWholphin(it));
+                card.setOnLongClickListener(v -> {
+                    openInWholphin(it.id);
+                    return true;
+                });
+            } else card.setOnClickListener(v -> openInWholphin(it.id));
+            row.addView(holder);
+            i++;
         }
         restoreFocus(focusedKey);
     }
@@ -1423,6 +1585,8 @@ public class MainActivity extends Activity {
             if (part != null) parts.add(part);
         }
         status.setText(String.join("  ·  ", parts));
+        stageParts = parts;
+        updateStage();
         ambientText = String.join("  ·  ", parts.subList(0, Math.min(2, parts.size())));
         if (ambient) ambientInfo.setText(ambientText);
     }
@@ -1585,6 +1749,7 @@ public class MainActivity extends Activity {
         }, (res, err) -> {
             if (res == null || isDestroyed() || !name.equals(shownBackground)) return;
             Bitmap bmp = (Bitmap) res[0];
+            if (stage != null && Stage.wantsPhoto() && !Stage.photoBehind()) stage.setPhoto(bmp);
             background.setAlpha(0f);
             background.setImageBitmap(bmp);
             background.animate().alpha(1f).setDuration(400).start();
@@ -1595,7 +1760,8 @@ public class MainActivity extends Activity {
             }
             // En diskret skygge, så uret kan læses på lyse fotos
             clock.setShadowLayer(dp(6), 0, dp(1), Color.argb(110, 0, 0, 0));
-            startKenBurns(bmp != null && Features.on(prefs, Features.KEN_BURNS) && !Motion.NONE.equals(motion));
+            startKenBurns(bmp != null && Features.on(prefs, Features.KEN_BURNS) && !Motion.NONE.equals(motion)
+                    && background.getVisibility() == View.VISIBLE);
         });
     }
 
@@ -1630,6 +1796,13 @@ public class MainActivity extends Activity {
     private void updateGreeting() {
         set(greeting, greetingText());
         set(together, Greeting.together(prefs));
+        updateStage();
+    }
+
+    private void updateStage() {
+        if (stage == null) return;
+        stage.setInfo(greetingText(), stageParts, prefs.profileName());
+        stage.tick(new Date());
     }
 
     private void updateSeason() {
@@ -1642,6 +1815,8 @@ public class MainActivity extends Activity {
         if (Motion.LIGHT.equals(motion) && mode != ParticleView.FIREWORKS) mode = ParticleView.NONE;
         if (Motion.NONE.equals(motion)) mode = ParticleView.NONE;
         if (System.currentTimeMillis() < ironManUntil) mode = ParticleView.FIREWORKS;
+        // Temaer med en scene har deres stemning i selve designet; kun nytårets fyrværkeri kommer forbi
+        if (stage != null && mode != ParticleView.FIREWORKS) mode = ParticleView.NONE;
         particles.setMode(mode);
     }
 
