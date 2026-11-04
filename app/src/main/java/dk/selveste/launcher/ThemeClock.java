@@ -52,6 +52,18 @@ final class ThemeClock extends View {
         invalidate();
     }
 
+    /** Et ægte foto til uret (fx en julekugle); erstatter den tegnede figur. */
+    private android.graphics.Bitmap art;
+
+    void setArt(android.graphics.Bitmap b) {
+        art = b;
+        invalidate();
+    }
+
+    private boolean photo() {
+        return art != null && !"tavle".equals(style) && !"boble".equals(style);
+    }
+
     void setStyle(String s) {
         style = s;
         invalidate();
@@ -64,7 +76,7 @@ final class ThemeClock extends View {
     }
 
     private boolean moving() {
-        return "lys".equals(style) || "kugle".equals(style) || "boelge".equals(style) || "reaktor".equals(style);
+        return !photo() && ("lys".equals(style) || "kugle".equals(style) || "boelge".equals(style) || "reaktor".equals(style));
     }
 
     @Override
@@ -81,6 +93,11 @@ final class ThemeClock extends View {
         c.save();
         if (getLayoutDirection() == LAYOUT_DIRECTION_RTL) c.translate(w - contentWidth(h, hm) - 4 * d, 0);
         else if (centered) c.translate((w - contentWidth(h, hm)) / 2f, 0);
+        if (photo()) {
+            medallion(c, h, hm);
+            c.restore();
+            return;
+        }
         switch (style) {
             case "reaktor": reactor(c, h, hm, now, t); break;
             case "boble": bubble(c, w, h, hm); break;
@@ -100,6 +117,7 @@ final class ThemeClock extends View {
 
     /** Hvor bred tegningen er, så den kan flugte højre. */
     private float contentWidth(int h, String hm) {
+        if (photo()) return h * 0.9f + 22 * d + big(hm, h * 0.56f, Ui.display);
         switch (style) {
             case "reaktor": return h + 18 * d + big(hm, h * 0.42f, Ui.display);
             case "signal": return Math.max(big(hm, h * 0.34f, Ui.display) * 1.5f, h * 1.5f) + 6 * d;
@@ -112,6 +130,47 @@ final class ThemeClock extends View {
             case "lys": return h * 0.62f + big(hm, h * 0.62f, Ui.display);
             case "blad": return h * 0.62f + big(hm, h * 0.6f, Ui.display);
             default: return getWidth() - 4 * d;
+        }
+    }
+
+    // Fotoet i en rund ramme med en blød skygge og en tynd kant i temaets farve, tiden ved siden af
+    private void medallion(Canvas c, int h, String hm) {
+        float R = h * 0.45f, cx = R + 4 * d, cy = h / 2f;
+        int edge = edgeColor();
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.BLACK);
+        p.setShadowLayer(14 * d, 0, 4 * d, Color.argb(150, 0, 0, 0));
+        c.drawCircle(cx, cy, R, p);
+        p.setShadowLayer(0, 0, 0, 0);
+        android.graphics.BitmapShader sh = new android.graphics.BitmapShader(art, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+        android.graphics.Matrix m = new android.graphics.Matrix();
+        float scale = 2 * R / Math.min(art.getWidth(), art.getHeight());
+        m.setScale(scale, scale);
+        m.postTranslate(cx - art.getWidth() * scale / 2f, cy - art.getHeight() * scale / 2f);
+        sh.setLocalMatrix(m);
+        p.setShader(sh);
+        c.drawCircle(cx, cy, R, p);
+        p.setShader(null);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(2.5f * d);
+        p.setColor(edge);
+        c.drawCircle(cx, cy, R, p);
+        big(hm, h * 0.56f, Ui.display);
+        text.setColor(Ui.TEXT);
+        text.setShadowLayer(8 * d, 0, 2 * d, Color.argb(140, 0, 0, 0));
+        c.drawText(hm, cx + R + 18 * d, baseline(cy), text);
+    }
+
+    private int edgeColor() {
+        switch (Skin.key) {
+            case "jul": case "efteraar": case "ironman": return Color.parseColor("#E8C26B");
+            case "rose": return Color.parseColor("#E7B7A6");
+            case "hygge": return Color.parseColor("#FFB347");
+            case "salvie": return Color.parseColor("#8FA88A");
+            case "batman": return Color.parseColor("#E8C64A");
+            case "superman": return Color.parseColor("#D0202E");
+            case "hav": return Color.parseColor("#9CE0E6");
+            default: return Color.argb(200, 255, 255, 255);
         }
     }
 

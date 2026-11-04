@@ -33,6 +33,34 @@ final class ThemePhotos {
             {"hav", "1518837695005-2083093ee35b", "1559827260-dc66d52bef19", "1560260240-c6ef90a163a4", "1484387436194-cf7cb70800ce", "1785677516870-de1ebe79f4e9"},
     };
 
+    /**
+     * Ægte fotos til temaernes ure (julekugle, stearinlys, måne ...), vist i en rund ramme ved siden
+     * af tiden. Hentes kvadratisk og ligger for sig selv, så de ikke bliver baggrunde.
+     */
+    private static final String[][] ART = {
+    };
+
+    /** Urets foto for temaet, hentet første gang. Null, hvis temaet ikke har et. Kaldes på en baggrundstråd. */
+    static android.graphics.Bitmap art(Context c, String theme) {
+        String id = null;
+        for (String[] a : ART) if (a[0].equals(theme)) id = a[1];
+        if (id == null) return null;
+        File d = new File(new File(c.getFilesDir(), "tema-ur"), theme);
+        if (!d.isDirectory()) d.mkdirs();
+        File f = new File(d, id + ".jpg");
+        if (!f.isFile() || f.length() == 0) {
+            File tmp = new File(d, id + ".del");
+            try {
+                Net.download("https://images.unsplash.com/photo-" + id + "?w=480&h=480&q=85&fm=jpg&fit=crop&crop=entropy", tmp);
+                if (!tmp.renameTo(f)) return null;
+            } catch (Exception e) {
+                tmp.delete();
+                return null;
+            }
+        }
+        return android.graphics.BitmapFactory.decodeFile(f.getPath());
+    }
+
     static File dir(Context c, String theme) {
         File d = new File(new File(c.getFilesDir(), "tema"), safe(theme));
         if (!d.isDirectory()) d.mkdirs();

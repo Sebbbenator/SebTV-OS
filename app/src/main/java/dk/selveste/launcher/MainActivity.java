@@ -660,6 +660,10 @@ public class MainActivity extends Activity {
         themeClock.setVisibility(drawn ? View.VISIBLE : View.GONE);
         themeClock.setStyle(style);
         themeClock.setAnimate(!Motion.NONE.equals(motion));
+        if (drawn) {
+            String artTheme = prefs.theme();
+            Net.async(() -> ThemePhotos.art(this, artTheme), (bmp, err) -> themeClock.setArt(bmp));
+        }
         ambientView.setAnimate(Motion.FULL.equals(motion));
         Typeface thin = "system".equals(prefs.font()) ? Typeface.create("sans-serif-thin", Typeface.NORMAL) : Ui.display;
         clock.setTypeface("tynd".equals(style) ? thin : Ui.display);
