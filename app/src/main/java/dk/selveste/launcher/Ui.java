@@ -226,6 +226,13 @@ final class Ui {
 
     static StateListDrawable focusable(Context c, int accent) {
         StateListDrawable s = new StateListDrawable();
+        if (!apple() && Decor.active()) {
+            // Temaets egen fokus (klammer, spind, pærer, gavebånd ...) i stedet for en accentramme
+            s.addState(new int[]{android.R.attr.state_focused}, new android.graphics.drawable.LayerDrawable(
+                    new android.graphics.drawable.Drawable[]{card(c, CARD_FOCUS, CARD_STROKE, 1), Decor.focusDrawable(c)}));
+            s.addState(new int[]{}, card(c, CARD, CARD_STROKE, 1));
+            return s;
+        }
         if (apple()) {
             // tvOS: knappen bliver lys i fokus, ellers en svag lys flade uden kant
             s.addState(new int[]{android.R.attr.state_focused}, card(c, APPLE_LIGHT, Color.TRANSPARENT, 0));

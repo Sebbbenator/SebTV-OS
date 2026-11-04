@@ -157,6 +157,37 @@ final class Skin {
         }
     }
 
+    /** Sidetitler i indstillingerne: samme sprog som overskrifterne, bare større. */
+    static void title(Context c, TextView t, String text) {
+        t.setText(text);
+        switch (key) {
+            case "jarvis": t.setText("// " + text.toUpperCase(Locale.ROOT)); t.setLetterSpacing(0.2f); t.setTextColor(Color.parseColor("#4FD8FF")); break;
+            case "ironman": t.setText(text.toUpperCase(Locale.ROOT)); t.setTextColor(Color.parseColor("#F2C35A")); t.setLetterSpacing(0.12f); break;
+            case "spiderman": {
+                t.setText(text.toUpperCase(Locale.ROOT));
+                t.setTextColor(Color.parseColor("#111111"));
+                GradientDrawable box = new GradientDrawable();
+                box.setColor(Color.parseColor("#FFE14D"));
+                box.setStroke(Ui.dp(c, 4), Color.parseColor("#111111"));
+                t.setBackground(box);
+                t.setPadding(Ui.dp(c, 16), Ui.dp(c, 4), Ui.dp(c, 16), Ui.dp(c, 4));
+                t.setRotation(-1f);
+                android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(-2, -2);
+                lp.setMargins(Ui.dp(c, 64), Ui.dp(c, 36), 0, Ui.dp(c, 16));
+                t.setLayoutParams(lp);
+                break;
+            }
+            case "batman": t.setText(text.toUpperCase(Locale.ROOT)); t.setLetterSpacing(0.3f); t.setTextColor(Color.parseColor("#C9B37E")); break;
+            case "superman": t.setText(text.toUpperCase(Locale.ROOT)); t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 44); t.setShadowLayer(1, Ui.dp(c, 3), Ui.dp(c, 3), Color.parseColor("#D0202E")); break;
+            case "biograf": t.setText(text.toUpperCase(Locale.ROOT)); t.setLetterSpacing(0.25f); t.setTextColor(Color.parseColor("#FFE7A3")); t.setShadowLayer(Ui.dp(c, 10), 0, 0, Color.parseColor("#FFB02E")); break;
+            case "minimal": t.setText(text.toUpperCase(Locale.ROOT)); t.setLetterSpacing(0.5f); t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16); break;
+            case "efteraar": case "rose": case "jul": t.setTypeface(Typeface.create(Ui.display, Typeface.ITALIC)); t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 38); break;
+            case "hygge": t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 44); break;
+            case "salvie": case "hav": t.setText(text.toLowerCase(Locale.ROOT)); t.setLetterSpacing(0.08f); break;
+            case "natte": t.setText(text.toUpperCase(Locale.ROOT)); t.setLetterSpacing(0.4f); t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24); break;
+        }
+    }
+
     private static String spaced(String s) {
         return s.toUpperCase(Locale.ROOT);
     }

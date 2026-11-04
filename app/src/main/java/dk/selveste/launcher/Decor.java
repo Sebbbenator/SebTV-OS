@@ -53,10 +53,45 @@ final class Decor extends View {
     @Override
     protected void onDraw(Canvas c) {
         if (!focused) return;
-        float w = getWidth(), h = getHeight();
         float t = animate ? (System.currentTimeMillis() - since) / 1000f : 10f;
         float in = Math.min(1f, t / 0.25f);
         in = in * (2 - in);
+        if (paint(c, getWidth(), getHeight(), t, in) && animate || animate && in < 1f) postInvalidateDelayed(33);
+    }
+
+    /**
+     * Temaets fokus som en tegning, til rækkerne i indstillinger og panelerne: samme udtryk som på
+     * forsidens cards, bare stille.
+     */
+    static android.graphics.drawable.Drawable focusDrawable(Context c) {
+        Decor decor = new Decor(c, false);
+        return new android.graphics.drawable.Drawable() {
+            @Override
+            public void draw(Canvas canvas) {
+                android.graphics.Rect b = getBounds();
+                canvas.save();
+                canvas.translate(b.left, b.top);
+                decor.paint(canvas, b.width(), b.height(), 10f, 1f);
+                canvas.restore();
+            }
+
+            @Override
+            public void setAlpha(int alpha) {
+            }
+
+            @Override
+            public void setColorFilter(android.graphics.ColorFilter cf) {
+            }
+
+            @Override
+            public int getOpacity() {
+                return android.graphics.PixelFormat.TRANSLUCENT;
+            }
+        };
+    }
+
+    /** Tegner fokus for det aktive tema. Sand, hvis den bevæger sig og skal tegnes igen. */
+    boolean paint(Canvas c, float w, float h, float t, float in) {
         p.setShader(null);
         p.setShadowLayer(0, 0, 0, 0);
         boolean again = false;
@@ -76,7 +111,7 @@ final class Decor extends View {
             case "jul": present(c, w, h, in); break;
             case "hav": again = ripple(c, w, h, t); break;
         }
-        if (animate && (again || in < 1f)) postInvalidateDelayed(33);
+        return again;
     }
 
     // Jarvis: fire sigteklammer, der lukker sig om cardet, og en scanlinje der løber ned én gang

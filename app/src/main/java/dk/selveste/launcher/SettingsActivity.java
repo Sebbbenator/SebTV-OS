@@ -60,12 +60,92 @@ public class SettingsActivity extends Activity {
             setContentView(appleLayout(scroll));
             return;
         }
+        builtSkin = Decor.active() ? Skin.key : "";
+        if (!builtSkin.isEmpty()) {
+            setContentView(skinLayout(scroll));
+            return;
+        }
         list.setPadding(pad * 3, Ui.dp(this, 24), pad * 3, pad);
         scroll.addView(list);
         setContentView(scroll);
     }
 
     private boolean builtApple;
+    private String builtSkin = "";
+    private android.widget.ImageView skinPhoto;
+    private Ambient skinAmbient;
+
+    /**
+     * Indstillinger i temaets eget udseende: temaets foto bag det hele, dets stemning ovenpå og
+     * opbygningen fra forsiden. Batman og Iron Man har listen til venstre og billedet til højre;
+     * Superman, Biograf, Jul og Nattehimmel har listen i midten; de andre har billedet til venstre.
+     */
+    private View skinLayout(ScrollView scroll) {
+        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
+        root.setBackgroundColor(Ui.BG);
+        android.widget.ImageView bg = new android.widget.ImageView(this);
+        bg.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        root.addView(bg, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        View shade = new View(this);
+        shade.setBackgroundColor(Ui.bg(0.84f));
+        root.addView(shade, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        skinAmbient = new Ambient(this);
+        skinAmbient.setAnimate(Motion.FULL.equals(Motion.level(this, prefs)));
+        root.addView(skinAmbient, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        skinPhoto = bg;
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        root.addView(content, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        appleTitle = Ui.text(this, "", 32, Ui.TEXT);
+        appleTitle.setTypeface(Ui.display);
+        appleTitle.setPadding(Ui.dp(this, 64), Ui.dp(this, 40), Ui.dp(this, 64), Ui.dp(this, 16));
+        content.addView(appleTitle);
+
+        scroll.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setClipToPadding(false);
+        list.setClipChildren(false);
+        list.setClipToPadding(false);
+        scroll.addView(list);
+
+        boolean mirror = Skin.is("batman") || Skin.is("ironman");
+        boolean center = Skin.is("superman") || Skin.is("biograf") || Skin.is("jul") || Skin.is("natte");
+        if (center) {
+            appleTitle.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+            int side = Ui.dp(this, 56) * 4;
+            list.setPadding(side, Ui.dp(this, 8), side, Ui.dp(this, 56));
+            content.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+            return root;
+        }
+        if (mirror) appleTitle.setGravity(android.view.Gravity.END);
+        LinearLayout split = new LinearLayout(this);
+        split.setOrientation(LinearLayout.HORIZONTAL);
+        if (mirror) split.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        content.addView(split, new LinearLayout.LayoutParams(-1, 0, 1f));
+        // Temaets billede som et card i siden, i temaets egen ramme
+        android.widget.FrameLayout side = new android.widget.FrameLayout(this);
+        split.addView(side, new LinearLayout.LayoutParams(0, -1, 0.4f));
+        android.widget.FrameLayout card = new android.widget.FrameLayout(this);
+        card.setBackground(Ui.card(this, Ui.CARD, Ui.CARD_STROKE, 1));
+        card.setClipToOutline(true);
+        card.setElevation(Ui.dp(this, 12));
+        applePicture = new android.widget.ImageView(this);
+        applePicture.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        card.addView(applePicture, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        Decor frame = new Decor(this, false);
+        frame.setFocused(true);
+        card.addView(frame, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        android.widget.FrameLayout.LayoutParams cp = new android.widget.FrameLayout.LayoutParams(Ui.dp(this, 300), Ui.dp(this, 190),
+                android.view.Gravity.CENTER_HORIZONTAL | android.view.Gravity.TOP);
+        cp.topMargin = Ui.dp(this, 24);
+        side.addView(card, cp);
+        list.setPadding(Ui.dp(this, 8), Ui.dp(this, 8), Ui.dp(this, 64), Ui.dp(this, 56));
+        split.addView(scroll, new LinearLayout.LayoutParams(0, -1, 0.6f));
+        // Listen skal stadig læses fra venstre mod højre, selv når den står i venstre side
+        scroll.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        return root;
+    }
     private TextView appleTitle;
     private android.widget.ImageView applePicture;
     private View appleRoot;
@@ -115,20 +195,23 @@ public class SettingsActivity extends Activity {
         return root;
     }
 
-    /** Venstre sides billede: det nyeste foto fra temaet eller egne baggrunde. */
+    /** Sidens billede: et foto fra temaet. */
     private void loadApplePicture() {
         if (applePicture == null) return;
-        Net.async(() -> {
-            java.io.File dir = ThemePhotos.dir(this, prefs.str("photo_theme", prefs.theme()));
-            java.io.File[] files = dir.listFiles((d, n) -> n.endsWith(".jpg"));
-            if (files == null || files.length == 0) return null;
-            java.util.Arrays.sort(files);
-            android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
-            o.inSampleSize = 4;
-            return android.graphics.BitmapFactory.decodeFile(files[0].getPath(), o);
-        }, (bmp, err) -> {
+        Net.async(() -> themePhoto(0, 4), (bmp, err) -> {
             if (bmp != null) applePicture.setImageBitmap(bmp);
         });
+    }
+
+    /** Foto nummer n fra temaets fotoserie, skaleret ned (kaldes på en baggrundstråd). */
+    private android.graphics.Bitmap themePhoto(int n, int sample) {
+        java.io.File dir = ThemePhotos.dir(this, prefs.str("photo_theme", prefs.theme()));
+        java.io.File[] files = dir.listFiles((d, name) -> name.endsWith(".jpg") && !name.startsWith("art-"));
+        if (files == null || files.length == 0) return null;
+        java.util.Arrays.sort(files);
+        android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+        o.inSampleSize = sample;
+        return android.graphics.BitmapFactory.decodeFile(files[Math.min(n, files.length - 1)].getPath(), o);
     }
 
     @Override
@@ -142,8 +225,15 @@ public class SettingsActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (skinAmbient != null) skinAmbient.setRunning(false);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
+        if (skinAmbient != null) skinAmbient.setRunning(true);
         build();
     }
 
@@ -161,12 +251,18 @@ public class SettingsActivity extends Activity {
     private void build() {
         list.removeAllViews();
         Ui.applyStyle(prefs.tone(), prefs.str("cards", "fast"), prefs.str("corners", "normal"));
-        if (Ui.apple() != builtApple) {
+        String wantSkin = !Ui.apple() && Decor.active() ? Skin.key : "";
+        if (Ui.apple() != builtApple || !wantSkin.equals(builtSkin)) {
             // Temaet er skiftet til eller fra Apple: skærmen har en anden opbygning
             recreate();
             return;
         }
-        if (Ui.apple()) {
+        if (!builtSkin.isEmpty()) {
+            loadApplePicture();
+            Net.async(() -> themePhoto(1, 4), (bmp, err) -> {
+                if (bmp != null && skinPhoto != null) skinPhoto.setImageBitmap(bmp);
+            });
+        } else if (Ui.apple()) {
             loadApplePicture();
             appleRoot.setBackground(Ui.screenBackground());
         } else {
@@ -193,6 +289,7 @@ public class SettingsActivity extends Activity {
     private TextView title(String text) {
         if (appleTitle != null) {
             appleTitle.setText(text);
+            if (!builtSkin.isEmpty()) Skin.title(this, appleTitle, text);
             return appleTitle;
         }
         TextView t = Ui.text(this, text, 30, Ui.TEXT);
