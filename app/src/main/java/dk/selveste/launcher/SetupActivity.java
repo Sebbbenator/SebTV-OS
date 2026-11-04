@@ -176,6 +176,13 @@ public class SetupActivity extends Activity {
         e.setTextSize(22);
         e.setImeOptions(EditorInfo.IME_ACTION_DONE);
         e.setBackground(Ui.focusable(this, accent()));
+        if (Ui.apple()) {
+            // Feltet bliver lyst i fokus, så teksten skal være mørk
+            e.setOnFocusChangeListener((v, has) -> {
+                e.setTextColor(has ? Ui.APPLE_DARK : Ui.TEXT);
+                e.setHintTextColor(has ? android.graphics.Color.parseColor("#636366") : Ui.TEXT_DIM);
+            });
+        }
         int p = Ui.dp(this, 16);
         e.setPadding(p, p, p, p);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,

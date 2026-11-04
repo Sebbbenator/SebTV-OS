@@ -75,8 +75,8 @@ final class Ui {
                 CARD_STROKE = HudView.withAlpha(TEXT, 0.55f);
                 break;
             case "apple":
-                // Som på Apple TV: tætte flader uden kant; fokus vises med størrelse og skygge
-                CARD = HudView.withAlpha(CARD_FOCUS, 1f);
+                // Som på Apple TV: lyse, gennemsigtige flader uden kant; fokus vises med lys, størrelse og skygge
+                CARD = Color.argb(46, 255, 255, 255);
                 CARD_FOCUS = CARD;
                 CARD_STROKE = Color.TRANSPARENT;
                 break;

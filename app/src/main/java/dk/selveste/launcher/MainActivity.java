@@ -122,6 +122,9 @@ public class MainActivity extends Activity {
     private View appleDim;
     /** Apple TV: margen i siderne og afstand mellem ikonerne (dp). */
     private static final int APPLE_MARGIN = 26, APPLE_GAP = 14, APPLE_DOCK_PAD = 12;
+    private static final int LABEL_ALWAYS = 0, LABEL_NONE = 1, LABEL_FOCUS = 2;
+    /** Hvordan næste appflise viser sit navn (kun Apple). */
+    private int appleLabels = LABEL_ALWAYS;
     private TextView ambientClock;
     /** Over uret i rolig tilstand: vejret og det første fra statuslinjen. */
     private TextView ambientInfo;
@@ -628,10 +631,20 @@ public class MainActivity extends Activity {
         appsDirty = false;
         String focusedKey = focusedKey();
         repository.load(Features.on(prefs, Features.DICE) && jf.configured());
-        fillRow(sectionApps, "APPS", repository.apps, true);
-        fillRow(sectionTools, "VÆRKTØJER", repository.tools, false);
-        if (Features.on(prefs, Features.ALL_APPS)) fillRow(sectionRest, "ALLE APPS", repository.rest, false);
-        else sectionRest.removeAllViews();
+        if (Ui.apple()) {
+            // Apple TV har ét samlet gitter: Apps, så værktøjer og (hvis valgt) alle apps
+            List<AppEntry> all = new ArrayList<>(repository.apps);
+            all.addAll(repository.tools);
+            if (Features.on(prefs, Features.ALL_APPS)) all.addAll(repository.rest);
+            fillAppleApps(all);
+            sectionTools.removeAllViews();
+            sectionRest.removeAllViews();
+        } else {
+            fillRow(sectionApps, "APPS", repository.apps, true);
+            fillRow(sectionTools, "VÆRKTØJER", repository.tools, false);
+            if (Features.on(prefs, Features.ALL_APPS)) fillRow(sectionRest, "ALLE APPS", repository.rest, false);
+            else sectionRest.removeAllViews();
+        }
         if (!restoreFocus(focusedKey)) focusFirst();
     }
 
@@ -710,36 +723,80 @@ public class MainActivity extends Activity {
             section.removeAllViews();
             return;
         }
-        if (Ui.apple() && large) {
-            // Apple TV: fem ikoner i 5:3 fylder bredden; ingen overskrift over rækken
-            // Apple TV: rækken ligger i en lys, gennemsigtig boks med runde hjørner, fem ikoner fylder den
-            LinearLayout row = startRow(section, null);
-            View hscroll = section.getChildAt(section.getChildCount() - 1);
-            section.removeView(hscroll);
-            hscroll.setPadding(dp(APPLE_DOCK_PAD), dp(APPLE_DOCK_PAD), dp(APPLE_DOCK_PAD), dp(APPLE_DOCK_PAD));
-            FrameLayout dock = new FrameLayout(this);
-            GradientDrawable glass = new GradientDrawable();
-            glass.setCornerRadius(dp(24));
-            glass.setColor(Color.argb(92, 235, 235, 240));
-            glass.setStroke(Math.max(1, dp(1) / 2), Color.argb(70, 255, 255, 255));
-            dock.setBackground(glass);
-            dock.setClipChildren(false);
-            dock.setClipToPadding(false);
-            dock.addView(hscroll, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            LinearLayout.LayoutParams dockParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            dockParams.rightMargin = dp(APPLE_MARGIN);
-            section.addView(dock, dockParams);
-            int screen = (int) (getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density);
-            int w = (screen - 2 * APPLE_MARGIN - 2 * APPLE_DOCK_PAD - 4 * APPLE_GAP) / 5;
-            for (AppEntry e : entries) row.addView(appTile(e, dp(w), dp(w * 7 / 12)));
-            View last = row.getChildAt(row.getChildCount() - 1);
-            if (last != null) ((LinearLayout.LayoutParams) last.getLayoutParams()).rightMargin = 0;
-            return;
-        }
         LinearLayout row = startRow(section, title);
         int[] widths = prefs.tileWidths();
         int w = large ? widths[0] : widths[1];
         for (AppEntry e : entries) row.addView(appTile(e, dp(w), dp(w * 9 / 16)));
+    }
+
+    /**
+     * Apple TV: de første fem apps i en lys, gennemsigtig boks med runde hjørner; resten (også
+     * værktøjer og alle apps) i et gitter med fem pr. række nedenunder, som på tvOS.
+     */
+    private void fillAppleApps(List<AppEntry> entries) {
+        LinearLayout section = sectionApps;
+        section.removeAllViews();
+        if (entries.isEmpty()) return;
+        int screen = (int) (getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density);
+        int w = dp((screen - 2 * APPLE_MARGIN - 2 * APPLE_DOCK_PAD - 4 * APPLE_GAP) / 5);
+        int h = w * 3 / 5;
+
+        FrameLayout dock = new FrameLayout(this);
+        GradientDrawable glass = new GradientDrawable();
+        glass.setCornerRadius(dp(26));
+        glass.setColor(Color.argb(92, 235, 235, 240));
+        glass.setStroke(Math.max(1, dp(1) / 2), Color.argb(70, 255, 255, 255));
+        dock.setBackground(glass);
+        dock.setPadding(dp(APPLE_DOCK_PAD), dp(APPLE_DOCK_PAD), dp(APPLE_DOCK_PAD), dp(APPLE_DOCK_PAD));
+        dock.setClipChildren(false);
+        dock.setClipToPadding(false);
+        LinearLayout dockRow = appleRow();
+        dock.addView(dockRow);
+        LinearLayout.LayoutParams dockParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        dockParams.rightMargin = dp(APPLE_MARGIN);
+        section.addView(dock, dockParams);
+
+        LinearLayout row = dockRow;
+        for (int i = 0; i < entries.size(); i++) {
+            if (i > 0 && i % 5 == 0) {
+                // Ny gitterrække under boksen, med ikonerne lige under dem i boksen
+                row = appleRow();
+                LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                rp.leftMargin = dp(APPLE_DOCK_PAD);
+                rp.topMargin = dp(i == 5 ? 34 : 6);
+                section.addView(row, rp);
+            }
+            appleLabels = i < 5 ? LABEL_NONE : LABEL_FOCUS;
+            View t = appTile(entries.get(i), w, h);
+            if (i % 5 == 4) ((LinearLayout.LayoutParams) t.getLayoutParams()).rightMargin = 0;
+            row.addView(t);
+        }
+        appleLabels = LABEL_ALWAYS;
+    }
+
+    private LinearLayout appleRow() {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setClipChildren(false);
+        r.setClipToPadding(false);
+        return r;
+    }
+
+    /** Teksten i et Apple kort bliver mørk på den lyse fokusflade og får sin farve igen bagefter. */
+    private static void appleTint(View v, boolean dark, Map<TextView, Integer> saved) {
+        if (v instanceof TextView) {
+            TextView t = (TextView) v;
+            if (dark) {
+                if (!saved.containsKey(t)) saved.put(t, t.getCurrentTextColor());
+                t.setTextColor(Ui.APPLE_DARK);
+            } else {
+                Integer c = saved.remove(t);
+                if (c != null) t.setTextColor(c);
+            }
+        } else if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) appleTint(g.getChildAt(i), dark, saved);
+        }
     }
 
     /** Fælles flise: kort med fokusramme og tekst under. */
@@ -748,8 +805,12 @@ public class MainActivity extends Activity {
         holder.setOrientation(LinearLayout.VERTICAL);
         holder.setClipChildren(false);
         boolean apple = Ui.apple();
-        // Apple: appikonerne i boksen har intet navn under sig
-        boolean hideLabel = apple && tag instanceof AppEntry;
+        // Apple: ingen navne under ikonerne i boksen; i gitteret kommer navnet frem ved fokus
+        int labels = apple && tag instanceof AppEntry ? appleLabels : LABEL_ALWAYS;
+        // Apple: knapper med tekst (tilstande, Home Assistant, Mere) bliver lyse i fokus som på tvOS
+        boolean plain = apple && !(tag instanceof AppEntry) && !(tag instanceof String && ((String) tag).startsWith("jf:"));
+        Map<TextView, Integer> tinted = new java.util.HashMap<>();
+        android.content.res.ColorStateList[] baseFill = new android.content.res.ColorStateList[1];
         LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(width, ViewGroup.LayoutParams.WRAP_CONTENT);
         hp.rightMargin = dp(apple ? APPLE_GAP : 18);
         holder.setLayoutParams(hp);
@@ -781,8 +842,13 @@ public class MainActivity extends Activity {
         l.setSingleLine(true);
         l.setPadding(dp(2), dp(8), 0, 0);
         l.setAlpha(0.75f);
-        // Apple TV viser ingen navne under ikonerne i boksen
-        if (hideLabel) l.setVisibility(View.GONE);
+        if (labels == LABEL_NONE) l.setVisibility(View.GONE);
+        if (labels == LABEL_FOCUS) {
+            l.setAlpha(0f);
+            l.setTextColor(Ui.TEXT);
+            l.setGravity(Gravity.CENTER_HORIZONTAL);
+            l.setShadowLayer(dp(6), 0, dp(1), Color.argb(160, 0, 0, 0));
+        }
         holder.addView(l);
         TextView sub = null;
         if (sublabel != null && !sublabel.isEmpty()) {
@@ -799,7 +865,19 @@ public class MainActivity extends Activity {
             if (apple) {
                 // Ingen ramme: ikonet løftes frem med en blød skygge
                 v.setElevation(has ? dp(14) : 0);
-                if (!hideLabel) l.setAlpha(has ? 1f : 0.75f);
+                if (labels == LABEL_FOCUS) l.animate().alpha(has ? 1f : 0f).setDuration(160).start();
+                else if (labels == LABEL_ALWAYS) l.setAlpha(has ? 1f : 0.75f);
+                if (plain && card.getBackground() instanceof GradientDrawable) {
+                    GradientDrawable g = (GradientDrawable) card.getBackground();
+                    if (has) {
+                        if (baseFill[0] == null) baseFill[0] = g.getColor();
+                        g.setColor(Ui.APPLE_LIGHT);
+                    } else if (baseFill[0] != null) {
+                        g.setColor(baseFill[0]);
+                        baseFill[0] = null;
+                    }
+                    appleTint(card, has, tinted);
+                }
             } else {
                 if (shadowF != null) shadowF.setColor(has ? currentAccent() : Ui.INK);
                 else bg.setStroke(dp((has ? 3 : 1) + Ui.restStroke()), has ? currentAccent() : Ui.CARD_STROKE);
@@ -1043,7 +1121,8 @@ public class MainActivity extends Activity {
             FrameLayout[] out = new FrameLayout[1];
             LinearLayout holder = tile("mode:" + option, dp(150), dp(56), "", null, out);
             FrameLayout card = out[0];
-            if (on) card.setBackground(Ui.card(this, HudView.withAlpha(currentAccent(), 0.30f), currentAccent(), 2));
+            if (on) card.setBackground(Ui.apple() ? Ui.card(this, Color.argb(92, 255, 255, 255), Color.TRANSPARENT, 0)
+                    : Ui.card(this, HudView.withAlpha(currentAccent(), 0.30f), currentAccent(), 2));
             TextView t = Ui.text(this, option, 17, on ? Ui.TEXT : Ui.TEXT_DIM);
             t.setTypeface(on ? Ui.headerFace : Typeface.DEFAULT);
             t.setGravity(Gravity.CENTER);

@@ -47,6 +47,11 @@ final class Motion {
             v.setScaleY(s);
             return;
         }
+        if (Ui.apple()) {
+            // tvOS glider roligt op uden at fjedre
+            v.animate().scaleX(s).scaleY(s).setDuration(200).setInterpolator(EASE).start();
+            return;
+        }
         if (FULL.equals(level) && has) {
             v.animate().scaleX(s).scaleY(s).setDuration(280).setInterpolator(SPRING).start();
         } else {
