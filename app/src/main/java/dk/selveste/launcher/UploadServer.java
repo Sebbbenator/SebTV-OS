@@ -245,6 +245,41 @@ final class UploadServer {
             backgrounds.delete(query.get("name"));
             notifyChanged();
             send(out, 200, "application/json", bytes(state().toString()));
+        } else if (path.equals("/api/post-address")) {
+            send(out, 200, "application/json", bytes(new JSONObject().put("address", Post.address(prefs)).toString()));
+        } else if (path.equals("/api/post-send") && method.equals("POST")) {
+            JSONObject j = new JSONObject(new String(body, StandardCharsets.UTF_8));
+            String to = j.optString("to", "");
+            String address = to.isEmpty() ? null : Post.contacts(prefs).get(to);
+            if (!to.isEmpty() && address == null) {
+                send(out, 400, "text/plain", bytes("Kender ikke " + to));
+                return;
+            }
+            String from = prefs.profileName();
+            try {
+                Post.send(prefs, address, from, j.optString("text", ""));
+            } catch (IllegalArgumentException e) {
+                send(out, 400, "text/plain", bytes(e.getMessage()));
+                return;
+            } catch (Exception e) {
+                send(out, 502, "text/plain", bytes("Beskeden kunne ikke sendes. Er der internet?"));
+                return;
+            }
+            if (address == null) {
+                String text = j.optString("text", "").trim();
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                    if (!MainActivity.postArrived()) HomeService.testMessage((from.isEmpty() ? "Besked" : "Besked fra " + from) + " | " + text);
+                });
+            }
+            send(out, 200, "application/json", bytes(state().toString()));
+        } else if (path.equals("/api/post-contact") && method.equals("POST")) {
+            JSONObject j = new JSONObject(new String(body, StandardCharsets.UTF_8));
+            if (j.has("remove")) Post.removeContact(prefs, j.getString("remove"));
+            else if (!Post.addContact(prefs, j.optString("name"), j.optString("address"))) {
+                send(out, 400, "text/plain", bytes("Skriv et navn og indsæt adressen (den starter med " + Post.PREFIX + ")"));
+                return;
+            }
+            send(out, 200, "application/json", bytes(state().toString()));
         } else if (path.equals("/api/profile-code")) {
             String code = ProfileCode.export(context);
             send(out, 200, "application/json", bytes(new JSONObject().put("code", code).put("friend", ProfileCode.forFriend(code)).toString()));
@@ -373,6 +408,9 @@ final class UploadServer {
                     .put("when", u < 0 ? "overstået" : u == 0 ? "i dag" : u == 1 ? "i morgen" : "om " + u + " dage"));
         }
         j.put("days", days);
+        JSONArray contacts = new JSONArray();
+        for (String n : Post.contacts(prefs).keySet()) contacts.put(n);
+        j.put("contacts", contacts);
         return j;
     }
 

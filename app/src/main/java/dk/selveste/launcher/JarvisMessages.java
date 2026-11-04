@@ -42,6 +42,27 @@ final class JarvisMessages {
         }
     };
 
+    /** Beskeder fra telefonen og andre tv'er (Post): kig efter nye hvert minut, mens skærmen er tændt. */
+    private final Runnable post = new Runnable() {
+        @Override
+        public void run() {
+            if (!running) return;
+            checkPost();
+            handler.postDelayed(this, 60_000);
+        }
+    };
+
+    private void checkPost() {
+        if (!Features.on(prefs, Features.POST) || prefs.str(Post.TOPIC, "").isEmpty()) return;
+        Net.async(() -> Post.poll(prefs), (fresh, err) -> {
+            if (fresh == null || fresh.isEmpty() || !running) return;
+            // Står forsiden fremme, viser den beskeden selv; ellers et banner oven på appen
+            if (MainActivity.postArrived()) return;
+            Post.Message m = fresh.get(fresh.size() - 1);
+            show(Post.title(m) + " | " + m.text, null);
+        });
+    }
+
     /** Websocket: beskeden kommer i samme øjeblik, HA skriver den. */
     private final HaSocket.Listener live;
 
@@ -64,11 +85,13 @@ final class JarvisMessages {
         socket.addListener(live);
         socket.start();
         handler.post(poll);
+        handler.postDelayed(post, 3000);
     }
 
     void stop() {
         running = false;
         handler.removeCallbacks(poll);
+        handler.removeCallbacks(post);
         HaSocket socket = HaSocket.get(service);
         socket.removeListener(live);
         socket.stop();

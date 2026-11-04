@@ -34,6 +34,7 @@ public class SettingsActivity extends Activity {
     static final String PAGE_HA = "ha";
     static final String PAGE_BOOT = "boot";
     static final String PAGE_DAYS = "days";
+    static final String PAGE_POST = "post";
 
     /** Domæner der giver mening som hurtigknap. */
     private static final List<String> BUTTON_DOMAINS = Arrays.asList(
@@ -288,6 +289,7 @@ public class SettingsActivity extends Activity {
             case PAGE_HA: buildHa(); break;
             case PAGE_BOOT: buildBoot(); break;
             case PAGE_DAYS: buildDays(); break;
+            case PAGE_POST: buildPost(); break;
             default: buildMain();
         }
         View first = null;
@@ -321,6 +323,8 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.row(this, "Opstart", Looks.name(Looks.find("boot"), BootIntro.style(prefs)), c, v -> open(PAGE_BOOT)));
         int dayCount = Days.all(prefs).size() + (prefs.togetherSince() == null ? 0 : 1);
         list.addView(Ui.row(this, "Mærkedage", dayCount == 0 ? "Ingen endnu" : dayCount + " i alt", c, v -> open(PAGE_DAYS)));
+        int unseen = Post.unseen(prefs).size();
+        list.addView(Ui.row(this, "Beskeder", unseen > 0 ? unseen + " ulæst" : Post.contacts(prefs).size() + " tv", c, v -> open(PAGE_POST)));
         list.addView(Ui.row(this, "Vejr", Weather.on(prefs) ? Weather.city(prefs) : "Vælg by", c, v -> chooseWeather()));
 
         list.addView(Ui.header(this, "BAGGRUNDE", c));
@@ -555,6 +559,72 @@ public class SettingsActivity extends Activity {
                             .show()));
         }
         list.addView(Ui.row(this, "Tilføj mærkedag", "", c, v -> addDay()));
+    }
+
+    private void buildPost() {
+        int c = accent;
+        title("Beskeder");
+        list.addView(Ui.text(this, "Skriv fra telefonsiden til dette tv eller til andres tv. Beskeden står på forsiden, til den er læst. "
+                + "Til et andet tv sendes den krypteret via ntfy.sh og skal læses inden for 12 timer.", 16, Ui.TEXT_DIM));
+        list.addView(Ui.header(this, "INDBAKKE", c));
+        List<Post.Message> inbox = Post.inbox(prefs);
+        Post.markSeen(prefs);
+        if (inbox.isEmpty()) list.addView(Ui.text(this, "Ingen beskeder endnu.", 16, Ui.TEXT_DIM));
+        for (int i = inbox.size() - 1; i >= 0; i--) {
+            Post.Message m = inbox.get(i);
+            list.addView(Ui.row(this, (m.from.isEmpty() ? "" : m.from + ": ") + m.text, Post.when(m.at), c, v -> {
+            }));
+        }
+        list.addView(Ui.header(this, "SKRIV", c));
+        list.addView(Ui.row(this, "Send en besked", "", c, v -> writePost()));
+        list.addView(Ui.header(this, "TV'ER DU KAN SKRIVE TIL", c));
+        for (String name : Post.contacts(prefs).keySet()) {
+            list.addView(Ui.row(this, name, "Fjern", c, v -> new AlertDialog.Builder(this, Ui.dialogTheme())
+                    .setTitle("Fjern " + name + "?")
+                    .setPositiveButton("Fjern", (d, w) -> {
+                        Post.removeContact(prefs, name);
+                        build();
+                    })
+                    .setNegativeButton("Annullér", null)
+                    .show()));
+        }
+        list.addView(Ui.row(this, "Tilføj et tv", "Via telefonsiden", c, v -> startActivity(new Intent(this, UploadActivity.class))));
+        list.addView(Ui.row(this, "Dette tv's adresse", "Vis som QR", c, v -> {
+            String address = Post.address(prefs);
+            android.widget.ImageView qr = new android.widget.ImageView(this);
+            qr.setImageBitmap(UploadActivity.qrBitmap(address, Ui.dp(this, 320)));
+            LinearLayout box = new LinearLayout(this);
+            box.setOrientation(LinearLayout.VERTICAL);
+            box.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+            int pad = Ui.dp(this, 16);
+            box.setPadding(pad, pad, pad, pad);
+            box.addView(qr, new LinearLayout.LayoutParams(Ui.dp(this, 320), Ui.dp(this, 320)));
+            box.addView(Ui.text(this, "Scan med telefonens kamera, kopiér teksten og send den til dem, der skal kunne skrive hertil. "
+                    + "Den kan også deles fra telefonsiden.", 16, Ui.TEXT_DIM));
+            new AlertDialog.Builder(this, Ui.dialogTheme()).setTitle("Dette tv's adresse").setView(box).setPositiveButton("Luk", null).show();
+        }));
+        list.addView(Ui.text(this, "Kan slås fra under Funktioner og rækker.", 14, Ui.TEXT_DIM));
+    }
+
+    /** Skriv med fjernbetjeningen: vælg modtager, skriv, send. */
+    private void writePost() {
+        java.util.List<String> names = new java.util.ArrayList<>(Post.contacts(prefs).keySet());
+        names.add(0, "Dette tv");
+        new AlertDialog.Builder(this, Ui.dialogTheme())
+                .setTitle("Til hvem?")
+                .setItems(names.toArray(new String[0]), (d, which) -> {
+                    String to = which == 0 ? null : names.get(which);
+                    ask("Besked til " + names.get(which), "", "Husk at købe mælk", text -> {
+                        if (text.trim().isEmpty()) return;
+                        String address = to == null ? null : Post.contacts(prefs).get(to);
+                        Net.async(() -> {
+                            Post.send(prefs, address, prefs.profileName(), text);
+                            return true;
+                        }, (ok, err) -> Toast.makeText(this, ok != null ? "Sendt til " + names.get(which)
+                                : "Beskeden kunne ikke sendes", Toast.LENGTH_LONG).show());
+                    });
+                })
+                .show();
     }
 
     /** Navn, dato og type i tre korte trin. */

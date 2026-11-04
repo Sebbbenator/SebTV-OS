@@ -202,6 +202,40 @@ public class MainActivity extends Activity {
         return true;
     }
 
+    /** En ny besked er kommet. Står forsiden fremme, vises den her, og svaret er true. */
+    static boolean postArrived() {
+        MainActivity a = visible;
+        if (a == null || !a.hasWindowFocus()) return false;
+        a.showPost();
+        return true;
+    }
+
+    private android.app.Dialog postDialog;
+
+    /** Ulæste beskeder som en dialog i temaets udseende; OK markerer dem som læst. */
+    void showPost() {
+        if (!Features.on(prefs, Features.POST)) return;
+        List<Post.Message> unseen = Post.unseen(prefs);
+        if (unseen.isEmpty() || (postDialog != null && postDialog.isShowing())) return;
+        StringBuilder body = new StringBuilder();
+        java.util.Set<String> from = new java.util.LinkedHashSet<>();
+        for (Post.Message m : unseen) {
+            if (body.length() > 0) body.append("\n\n");
+            if (unseen.size() > 1 && !m.from.isEmpty()) body.append(m.from).append(": ");
+            body.append(m.text).append("  (").append(Post.when(m.at)).append(")");
+            if (!m.from.isEmpty()) from.add(m.from);
+        }
+        String title = unseen.size() == 1 ? Post.title(unseen.get(0))
+                : unseen.size() + " beskeder" + (from.isEmpty() ? "" : " fra " + String.join(" og ", from));
+        postDialog = new android.app.AlertDialog.Builder(this, Ui.dialogTheme())
+                .setTitle(title)
+                .setMessage(body.toString())
+                .setPositiveButton("OK", (d, w) -> Post.markSeen(prefs))
+                .setOnCancelListener(d -> Post.markSeen(prefs))
+                .show();
+        Sounds.select(this, prefs);
+    }
+
     static void onScreenOn() {
         MainActivity a = visible;
         if (a != null) a.handler.post(a::bootIfWoken);
@@ -336,6 +370,8 @@ public class MainActivity extends Activity {
         handler.removeCallbacks(tick);
         handler.post(tick);
         bootIfWoken();
+        // Beskeder, der kom, mens en app var fremme: vis dem, når forsiden er tegnet
+        handler.postDelayed(this::showPost, 1500);
         AppUpdates.maybeCheckUpdate(this, prefs);
         AppUpdates.maybeShowChangelog(this, prefs);
     }

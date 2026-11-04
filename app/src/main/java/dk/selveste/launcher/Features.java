@@ -29,6 +29,7 @@ final class Features {
     static final String COMPACT = "compact";
     static final String SOUNDS = "sounds";
     static final String FAVORITES = "favorites";
+    static final String POST = "post";
 
     /** nøgle, navn, standard (1 = til), gruppe */
     static final String[][] ALL = {
@@ -45,6 +46,7 @@ final class Features {
             {HA_STATUS, "Statuslinje fra Home Assistant", "1", "Forside"},
             {TOGETHER, "Dage sammen", "1", "Forside"},
             {DICE, "Hvad skal vi se?", "1", "Forside"},
+            {POST, "Beskeder fra telefonen og andre tv", "1", "Forside"},
             {AMBIENT, "Rolig tilstand efter 3 minutter", "1", "Forside"},
             {SOUNDS, "Lyde ved navigation", "0", "Forside"},
             {KEN_BURNS, "Langsom zoom", "1", "Baggrund"},
