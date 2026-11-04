@@ -32,6 +32,7 @@ public class SettingsActivity extends Activity {
     static final String PAGE_PROFILE = "profile";
     static final String PAGE_LOOK = "look";
     static final String PAGE_HA = "ha";
+    static final String PAGE_BOOT = "boot";
 
     /** Domæner der giver mening som hurtigknap. */
     private static final List<String> BUTTON_DOMAINS = Arrays.asList(
@@ -284,6 +285,7 @@ public class SettingsActivity extends Activity {
             case PAGE_PROFILE: buildProfile(); break;
             case PAGE_LOOK: buildLook(); break;
             case PAGE_HA: buildHa(); break;
+            case PAGE_BOOT: buildBoot(); break;
             default: buildMain();
         }
         View first = null;
@@ -314,6 +316,7 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.row(this, "Profil", prefs.profileName(), c, v -> open(PAGE_PROFILE)));
         list.addView(Ui.row(this, "Udseende", Themes.name(prefs.theme()), c, v -> open(PAGE_LOOK)));
         list.addView(Ui.row(this, "Funktioner og rækker", countOn() + " slået til", c, v -> open(PAGE_FEATURES)));
+        list.addView(Ui.row(this, "Opstart", Looks.name(Looks.find("boot"), BootIntro.style(prefs)), c, v -> open(PAGE_BOOT)));
 
         list.addView(Ui.header(this, "BAGGRUNDE", c));
         list.addView(Ui.row(this, "Læg billeder op fra telefonen", new Backgrounds(this).list().size() + " billeder", c,
@@ -509,6 +512,33 @@ public class SettingsActivity extends Activity {
                         v -> choose(o.title, o.values, Looks.get(prefs, o), value -> Looks.set(prefs, o, value))));
             }
         }
+    }
+
+    /** Det, der kommer frem, når tv'et tændes: hver person vælger sin egen eller ingen. */
+    private void buildBoot() {
+        int c = accent;
+        title("Opstart");
+        list.addView(Ui.header(this, "NÅR TV'ET TÆNDES", c));
+        for (String key : new String[]{"boot", "boot_when", "boot_length"}) {
+            Looks.Option o = Looks.find(key);
+            list.addView(Ui.row(this, o.title, Looks.name(o, Looks.get(prefs, o)), c,
+                    v -> choose(o.title, o.values, Looks.get(prefs, o), value -> Looks.set(prefs, o, value))));
+        }
+        list.addView(Ui.header(this, "DINE ORD", c));
+        String t = prefs.str("boot_title", ""), s = prefs.str("boot_sub", "");
+        list.addView(Ui.row(this, "Overskrift", t.isEmpty() ? "Temaets egen" : t, c,
+                v -> ask("Overskrift (tom = temaets egen)", t, "Fx GODMORGEN eller EKSTRA!", x -> prefs.setStr("boot_title", x.trim()))));
+        list.addView(Ui.row(this, "Undertekst", s.isEmpty() ? "Temaets egen" : s, c,
+                v -> ask("Undertekst (tom = temaets egen)", s, "Fx Klar til filmaften", x -> prefs.setStr("boot_sub", x.trim()))));
+        list.addView(Ui.text(this, "Hilsenen med dit navn kommer altid med. Det hele gemmes i din profil, så hver person har sin egen.", 16, Ui.TEXT_DIM));
+        list.addView(Ui.header(this, "PRØV", c));
+        list.addView(Ui.row(this, "Vis opstarten nu", "", c, v -> {
+            if ("fra".equals(BootIntro.style(prefs))) {
+                android.widget.Toast.makeText(this, "Opstarten er slået fra", android.widget.Toast.LENGTH_SHORT).show();
+                return;
+            }
+            BootIntro.play(BootIntro.make(this, prefs, Greeting.text(prefs), prefs.accentColor()), (android.view.ViewGroup) findViewById(android.R.id.content));
+        }));
     }
 
     private void buildHa() {

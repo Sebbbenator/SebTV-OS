@@ -49,7 +49,6 @@ final class Features {
             {SOUNDS, "Lyde ved navigation", "0", "Forside"},
             {KEN_BURNS, "Langsom zoom", "1", "Baggrund"},
             {PARALLAX, "Baggrunden følger fokus", "1", "Baggrund"},
-            {BOOT, "Jarvis opstart", "1", "Jarvis"},
             {VOICE, "Jarvis stemme (8 til 22)", "1", "Jarvis"},
             {KONAMI, "Konami kode", "1", "Jarvis"},
             {LIGHT_FOLLOW, "Lyset følger forsiden", "0", "Jarvis"},

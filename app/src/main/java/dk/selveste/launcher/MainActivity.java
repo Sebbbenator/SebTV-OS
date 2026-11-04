@@ -255,6 +255,10 @@ public class MainActivity extends Activity {
             prefs.setStr("skin_v3", "3");
             if (Themes.main(prefs.theme()) && !"apple".equals(prefs.theme())) Themes.apply(prefs, prefs.theme());
         }
+        if (prefs.str("boot_style", "").isEmpty()) {
+            // Opstarten er nu et valg pr. person; var den slået fra før, forbliver den det
+            prefs.setStr("boot_style", Features.on(prefs, Features.BOOT) ? "tema" : "fra");
+        }
         if (!"4".equals(prefs.str("skin_v4", ""))) {
             // De otte temaer står stille: intet langsomt zoom i fotoet
             prefs.setStr("skin_v4", "4");
@@ -1938,7 +1942,7 @@ public class MainActivity extends Activity {
     private void bootIfWoken() {
         if (!wokeUp || visible != this) return;
         wokeUp = false;
-        if (Features.on(prefs, Features.BOOT) && !Motion.NONE.equals(motion)) HudView.forPrefs(this, prefs, greetingText(), currentAccent()).play(root);
+        if (!Motion.NONE.equals(motion) && BootIntro.due(prefs)) BootIntro.play(BootIntro.make(this, prefs, greetingText(), currentAccent()), root);
         speakGreeting();
     }
 

@@ -78,7 +78,6 @@ final class Themes {
         prefs.setFlag(Features.KEN_BURNS, !"apple".equals(l[0]) && !main(l[0]));
         prefs.setFlag(Features.SEASONS, true);
         prefs.setFlag(Features.PARALLAX, !calm);
-        prefs.setFlag(Features.BOOT, !calm);
     }
 
     /** Skifter udgave og slår det fra, der kun giver mening i Jarvis (Konami, stemme). */

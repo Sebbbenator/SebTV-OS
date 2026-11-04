@@ -71,6 +71,9 @@ final class Looks {
             new Option("clock", "clock_style", "Ur", "Ur og skrift", "stor", Prefs.CLOCKS),
             new Option("font", "font", "Skrifttype", "Ur og skrift", "system", Prefs.FONTS),
             new Option("sort", "app_sort", "Rækkefølge i Apps", "Forside", "egen", SORT),
+            new Option("boot", "boot_style", "Opstart", "Opstart", "tema", BootIntro.STYLES),
+            new Option("boot_when", "boot_when", "Hvornår", "Opstart", "altid", BootIntro.WHEN),
+            new Option("boot_length", "boot_length", "Længde", "Opstart", "normal", BootIntro.LENGTH),
     };
 
     static final String[] GROUPS = {"Farver", "Stemning", "Form", "Ur og skrift", "Forside"};
@@ -90,7 +93,7 @@ final class Looks {
             if (v[0].equals(value)) {
                 prefs.setStr(o.pref, value);
                 // Sortering er ikke en del af udseendet, så temaet beholder sit navn
-                if (!"Forside".equals(o.group) && !"effects".equals(o.key)) prefs.setTheme("");
+                if (!"Forside".equals(o.group) && !"Opstart".equals(o.group) && !"effects".equals(o.key)) prefs.setTheme("");
                 return;
             }
         }
