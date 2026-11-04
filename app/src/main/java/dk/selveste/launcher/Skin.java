@@ -40,7 +40,7 @@ final class Skin {
             case "natte": return "maane";
             case "jul": return "kugle";
             case "hav": return "boelge";
-            case "efteraar": return "analog";
+            case "efteraar": return "blade";
             case "jarvis": return "hud";
             case "minimal": return "tynd";
             default: return null;

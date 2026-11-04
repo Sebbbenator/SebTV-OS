@@ -38,6 +38,16 @@ final class ThemePhotos {
      * af tiden. Hentes kvadratisk og ligger for sig selv, så de ikke bliver baggrunde.
      */
     private static final String[][] ART = {
+            {"jul", "1765372823786-1e6dd2c3c7ae"},       // guld julekugle på grantræet
+            {"hygge", "1787095544697-6fa650377d7b"},     // stearinlys i mørket
+            {"natte", "1522030299830-16b8d3d049fe"},     // fuldmåne
+            {"rose", "1773866035253-feccf6c5776a"},      // rose helt tæt på
+            {"salvie", "1611255550543-b5ecb01dfddc"},    // eukalyptus
+            {"efteraar", "1506193503569-d57d2a678510"},  // ahornblade i efterårsfarver
+            {"hav", "1616141893496-fbc65370493e"},       // bølge, der brydes
+            {"batman", "1715316110001-c2374d87e753"},    // Batsignalet på himlen
+            {"superman", "1615752592676-f6bd84f9419d"},  // solnedgang
+            {"ironman", "1776483289460-1ca426d583bf"},   // Iron Man hjelmen
     };
 
     /** Urets foto for temaet, hentet første gang. Null, hvis temaet ikke har et. Kaldes på en baggrundstråd. */

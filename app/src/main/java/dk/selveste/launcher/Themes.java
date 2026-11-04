@@ -27,7 +27,7 @@ final class Themes {
 
     /** tema: tone, accent, ur, skrift, cards størrelse, card stil, hjørner */
     private static final String[][] LOOK = {
-            {"efteraar", "chokolade", "karamel", "analog", "playfair", "normal", "fast", "rund"},
+            {"efteraar", "chokolade", "karamel", "blade", "playfair", "normal", "fast", "rund"},
             {"rose", "rose", "rosa", "rosette", "playfair", "normal", "fast", "rund"},
             {"hygge", "uld", "sennep", "lys", "caveat", "normal", "fast", "rund"},
             {"salvie", "salvie", "eukalyptus", "blad", "quicksand", "kompakt", "papir", "rund"},

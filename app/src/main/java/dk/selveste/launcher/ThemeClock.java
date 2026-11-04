@@ -22,7 +22,7 @@ import java.util.Locale;
  */
 final class ThemeClock extends View {
 
-    static final String[] STYLES = {"reaktor", "boble", "signal", "sol", "tavle", "rosette", "lys", "blad", "maane", "kugle", "boelge"};
+    static final String[] STYLES = {"reaktor", "boble", "signal", "sol", "tavle", "rosette", "lys", "blad", "maane", "kugle", "boelge", "blade"};
 
     static boolean has(String style) {
         for (String s : STYLES) if (s.equals(style)) return true;
@@ -110,6 +110,7 @@ final class ThemeClock extends View {
             case "maane": moon(c, h, hm, now); break;
             case "kugle": bauble(c, h, hm, t); break;
             case "boelge": wave(c, w, h, hm, t); break;
+            case "blade": rosette(c, h, hm); break;
         }
         c.restore();
         if (animate && moving() && isShown()) postInvalidateDelayed(40);

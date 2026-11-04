@@ -233,9 +233,9 @@ public class MainActivity extends Activity {
         jf = new Jellyfin(prefs);
         ErrorLog.init(this);
         installCrashHandler(this);
-        if (!"1".equals(prefs.str("skin_v", ""))) {
+        if (!"2".equals(prefs.str("skin_v", ""))) {
             // Første gang med temaernes egne ure, vejr og lyde: giv det valgte tema dem med det samme
-            prefs.setStr("skin_v", "1");
+            prefs.setStr("skin_v", "2");
             String own = Skin.clockFor(prefs.theme());
             String cur = prefs.clockStyle();
             if (own != null && ("stor".equals(cur) || "tynd".equals(cur) || "analog".equals(cur) || "hud".equals(cur))) prefs.setClockStyle(own);

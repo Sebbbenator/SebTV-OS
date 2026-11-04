@@ -475,6 +475,7 @@ final class Prefs {
             {"maane", "Månen i dag (Nattehimmel)"},
             {"kugle", "Julekugle (Jul)"},
             {"boelge", "Bølger (Havbrise)"},
+            {"blade", "Efterårsblade (Efterår)"},
     };
 
     static final String[][] FONTS = {
