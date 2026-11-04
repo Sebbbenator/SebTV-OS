@@ -55,9 +55,80 @@ public class SettingsActivity extends Activity {
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         int pad = Ui.dp(this, 56);
+        builtApple = Ui.apple();
+        if (builtApple) {
+            setContentView(appleLayout(scroll));
+            return;
+        }
         list.setPadding(pad * 3, Ui.dp(this, 24), pad * 3, pad);
         scroll.addView(list);
         setContentView(scroll);
+    }
+
+    private boolean builtApple;
+    private TextView appleTitle;
+    private android.widget.ImageView applePicture;
+    private View appleRoot;
+
+    /**
+     * Som indstillingerne på Apple TV: sidens navn fedt og centreret øverst, et stort billede i venstre
+     * side og listen i højre side. Rækkerne har ingen flade, kun den valgte bliver lys.
+     */
+    private View appleLayout(ScrollView scroll) {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        appleRoot = root;
+        appleTitle = Ui.text(this, "", 30, Ui.TEXT);
+        appleTitle.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        appleTitle.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        appleTitle.setPadding(0, Ui.dp(this, 36), 0, Ui.dp(this, 20));
+        root.addView(appleTitle);
+
+        LinearLayout split = new LinearLayout(this);
+        split.setOrientation(LinearLayout.HORIZONTAL);
+        root.addView(split, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        android.widget.FrameLayout left = new android.widget.FrameLayout(this);
+        split.addView(left, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 0.44f));
+        applePicture = new android.widget.ImageView(this);
+        applePicture.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        applePicture.setClipToOutline(true);
+        android.graphics.drawable.GradientDrawable round = new android.graphics.drawable.GradientDrawable();
+        round.setCornerRadius(Ui.dp(this, 18));
+        round.setColor(android.graphics.Color.parseColor("#2C2C2E"));
+        applePicture.setBackground(round);
+        applePicture.setElevation(Ui.dp(this, 16));
+        android.widget.FrameLayout.LayoutParams pp = new android.widget.FrameLayout.LayoutParams(Ui.dp(this, 300), Ui.dp(this, 169),
+                android.view.Gravity.CENTER_HORIZONTAL | android.view.Gravity.TOP);
+        pp.topMargin = Ui.dp(this, 60);
+        left.addView(applePicture, pp);
+
+        scroll.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setClipToPadding(false);
+        scroll.setClipChildren(false);
+        list.setClipChildren(false);
+        list.setClipToPadding(false);
+        list.setPadding(Ui.dp(this, 8), Ui.dp(this, 8), Ui.dp(this, 72), Ui.dp(this, 56));
+        scroll.addView(list);
+        split.addView(scroll, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 0.56f));
+        return root;
+    }
+
+    /** Venstre sides billede: det nyeste foto fra temaet eller egne baggrunde. */
+    private void loadApplePicture() {
+        if (applePicture == null) return;
+        Net.async(() -> {
+            java.io.File dir = ThemePhotos.dir(this, prefs.str("photo_theme", prefs.theme()));
+            java.io.File[] files = dir.listFiles((d, n) -> n.endsWith(".jpg"));
+            if (files == null || files.length == 0) return null;
+            java.util.Arrays.sort(files);
+            android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+            o.inSampleSize = 4;
+            return android.graphics.BitmapFactory.decodeFile(files[0].getPath(), o);
+        }, (bmp, err) -> {
+            if (bmp != null) applePicture.setImageBitmap(bmp);
+        });
     }
 
     @Override
@@ -90,9 +161,15 @@ public class SettingsActivity extends Activity {
     private void build() {
         list.removeAllViews();
         Ui.applyStyle(prefs.tone(), prefs.str("cards", "fast"), prefs.str("corners", "normal"));
+        if (Ui.apple() != builtApple) {
+            // Temaet er skiftet til eller fra Apple: skærmen har en anden opbygning
+            recreate();
+            return;
+        }
         if (Ui.apple()) {
+            loadApplePicture();
             // tvOS indstillinger: dyb grå flade med lidt lys fra oven
-            ((View) list.getParent()).setBackground(new android.graphics.drawable.GradientDrawable(
+            appleRoot.setBackground(new android.graphics.drawable.GradientDrawable(
                     android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
                     new int[]{android.graphics.Color.parseColor("#3A3A3C"), android.graphics.Color.parseColor("#1C1C1E"), android.graphics.Color.parseColor("#111112")}));
         } else {
@@ -117,15 +194,12 @@ public class SettingsActivity extends Activity {
     }
 
     private TextView title(String text) {
+        if (appleTitle != null) {
+            appleTitle.setText(text);
+            return appleTitle;
+        }
         TextView t = Ui.text(this, text, 30, Ui.TEXT);
         t.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 4));
-        if (Ui.apple()) {
-            // tvOS: sidens navn står fedt og centreret øverst
-            t.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
-            t.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
-            t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 34);
-            t.setPadding(0, Ui.dp(this, 16), 0, Ui.dp(this, 12));
-        }
         list.addView(t);
         return t;
     }

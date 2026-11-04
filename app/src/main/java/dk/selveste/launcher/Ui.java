@@ -246,13 +246,21 @@ final class Ui {
 
         if (apple()) {
             // Teksten skifter til mørk på den lyse fokusflade, og rækken løftes en anelse frem
-            row.setPadding(dp(c, 24), dp(c, 16), dp(c, 24), dp(c, 16));
+            // tvOS: rækkerne står uden flade tæt under hinanden; kun den valgte bliver lys med skygge
+            StateListDrawable bg = new StateListDrawable();
+            bg.addState(new int[]{android.R.attr.state_focused}, card(c, APPLE_LIGHT, Color.TRANSPARENT, 0));
+            bg.addState(new int[]{}, new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            row.setBackground(bg);
+            row.setPadding(dp(c, 22), dp(c, 15), dp(c, 22), dp(c, 15));
+            lp.bottomMargin = dp(c, 2);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19);
+            v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
             v.setTextColor(APPLE_GRAY);
             row.setOnFocusChangeListener((view, has) -> {
                 t.setTextColor(has ? APPLE_DARK : TEXT);
                 v.setTextColor(has ? Color.parseColor("#636366") : APPLE_GRAY);
-                view.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(150).start();
-                view.setElevation(has ? dp(c, 10) : 0);
+                view.animate().scaleX(has ? 1.02f : 1f).scaleY(has ? 1.02f : 1f).setDuration(180).start();
+                view.setElevation(has ? dp(c, 12) : 0);
             });
         }
         row.setOnClickListener(click);
