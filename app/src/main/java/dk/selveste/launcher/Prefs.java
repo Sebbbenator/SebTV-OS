@@ -400,6 +400,7 @@ final class Prefs {
         if (greeting != null) e.putString("profile_greeting", greeting.trim());
         if (partner != null) e.putString("profile_partner", partner.trim());
         if (together != null && together.trim().matches("\\d{4}-\\d{2}-\\d{2}")) e.putString("profile_together", together.trim());
+        else if (together != null && together.trim().isEmpty()) e.putString("profile_together", "");
         e.apply();
     }
 

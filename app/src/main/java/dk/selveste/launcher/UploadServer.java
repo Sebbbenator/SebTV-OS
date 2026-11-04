@@ -134,7 +134,7 @@ final class UploadServer {
             }
 
             if (path.equals("/") || path.equals("/index.html")) {
-                send(out, 200, "text/html; charset=utf-8", bytes(UploadPage.HTML
+                send(out, 200, "text/html; charset=utf-8", bytes(page()
                         .replace("JARVIS TV", prefs.appName().toUpperCase(Locale.ROOT))
                         .replace("<title>Jarvis TV</title>", "<title>" + prefs.appName() + "</title>")));
                 return;
@@ -356,6 +356,28 @@ final class UploadServer {
                 Days.add(prefs, new Days.Day(dayAdd.optString("name").trim(), dayAdd.optString("kind", Days.BIRTHDAY), d[0], d[1], d[2]));
             }
             if (j.has("dayRemove")) Days.remove(prefs, j.getInt("dayRemove"));
+            JSONObject boot = j.optJSONObject("bootText");
+            if (boot != null) {
+                prefs.setStr("boot_title", boot.optString("title", "").trim());
+                prefs.setStr("boot_sub", boot.optString("sub", "").trim());
+            }
+            if (j.has("profileAsk")) prefs.setFlag(Profiles.ASK, j.getBoolean("profileAsk"));
+            String newName = j.optString("profileNew", "").trim();
+            if (!newName.isEmpty()) {
+                if (newName.length() > 30) newName = newName.substring(0, 30);
+                Profiles.save(context, newName);
+            }
+            String switchTo = j.optString("profileSwitch", "");
+            if (!switchTo.isEmpty()) {
+                if (!Profiles.names(prefs).contains(switchTo)) {
+                    send(out, 400, "text/plain", bytes("Profilen findes ikke"));
+                    return;
+                }
+                Profiles.load(context, switchTo);
+                MainActivity.lookChangedFromOutside();
+            }
+            String del = j.optString("profileDelete", "");
+            if (!del.isEmpty()) Profiles.delete(context, del);
             notifyChanged();
             send(out, 200, "application/json", bytes(state().toString()));
         } else {
@@ -376,7 +398,7 @@ final class UploadServer {
         for (String[] f : Features.ALL) flags.put(f[0], Features.on(prefs, f[0]));
         j.put("flags", flags);
         JSONArray labels = new JSONArray();
-        for (String[] f : Features.ALL) labels.put(new JSONArray().put(f[0]).put(f[1]));
+        for (String[] f : Features.ALL) labels.put(new JSONArray().put(f[0]).put(f[1]).put(f.length > 3 ? f[3] : ""));
         j.put("flagLabels", labels);
         j.put("haUrl", prefs.haUrl());
         j.put("haTokenSet", !prefs.haToken().isEmpty());
@@ -405,13 +427,49 @@ final class UploadServer {
         for (Days.Day d : Days.all(prefs)) {
             long u = Days.until(d, now);
             days.put(new JSONObject().put("name", d.name).put("date", d.dateText()).put("kindName", d.kindName())
+                    .put("kind", d.kind).put("pretty", pretty(d)).put("inDays", u)
                     .put("when", u < 0 ? "overstået" : u == 0 ? "i dag" : u == 1 ? "i morgen" : "om " + u + " dage"));
         }
         j.put("days", days);
+        String together = Greeting.together(prefs);
+        j.put("together", together.isEmpty() ? "" : together.split(" {2}· {2}")[0]);
+        j.put("accent", String.format(Locale.ROOT, "#%06X", prefs.accentColor() & 0xFFFFFF));
+        String wx = Weather.cached(prefs);
+        j.put("wx", wx);
+        JSONArray profiles = new JSONArray();
+        for (String n : Profiles.names(prefs)) profiles.put(n);
+        j.put("profiles", profiles);
+        j.put("activeProfile", Profiles.active(prefs));
+        j.put("profileAsk", prefs.flag(Profiles.ASK, false));
+        j.put("bootTitle", prefs.str("boot_title", ""));
+        j.put("bootSub", prefs.str("boot_sub", ""));
         JSONArray contacts = new JSONArray();
         for (String n : Post.contacts(prefs).keySet()) contacts.put(n);
         j.put("contacts", contacts);
         return j;
+    }
+
+    private static final String[] MONTHS = {"jan.", "feb.", "marts", "april", "maj", "juni", "juli", "aug.", "sep.", "okt.", "nov.", "dec."};
+
+    /** "12. marts 1970" eller "12. marts". */
+    static String pretty(Days.Day d) {
+        return d.day + ". " + MONTHS[d.month] + (d.year > 0 ? " " + d.year : "");
+    }
+
+    private String page;
+
+    /** Telefonsiden ligger i assets/telefon.html. */
+    private synchronized String page() throws IOException {
+        if (page == null) {
+            try (InputStream in = context.getAssets().open("telefon.html")) {
+                java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[16384];
+                int n;
+                while ((n = in.read(buf)) > 0) b.write(buf, 0, n);
+                page = new String(b.toByteArray(), StandardCharsets.UTF_8);
+            }
+        }
+        return page;
     }
 
     /** Kun rigtige billeder gemmes: Android skal kunne læse deres størrelse. */

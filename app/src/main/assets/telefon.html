@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="da"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<title>Jarvis TV</title>
+<style>
+:root{--bg:#0b0d10;--card:#16191e;--card2:#1e2228;--line:#ffffff14;--text:#f2f4f7;--dim:#9aa3ad;--acc:#4fd8ff;--on:#06121a;--r:18px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif}
+body{padding:0 16px calc(96px + env(safe-area-inset-bottom))}
+h1{font-size:28px;line-height:1.15;margin:0;font-weight:700;letter-spacing:-.01em}
+h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:26px 4px 10px}
+p{margin:0}.dim{color:var(--dim)}.small{font-size:14px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:var(--card2);border-radius:12px;padding:11px 16px;font-weight:600}
+button.acc{background:var(--acc);color:var(--on)}
+button.ghost{background:none;color:var(--acc);padding:8px 4px}
+button.danger{background:none;color:#ff6b6b;padding:8px 4px}
+input[type=text],input[type=date],input[type=password],textarea,select{width:100%;background:var(--card2);border:1px solid transparent;border-radius:12px;padding:12px 14px;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--acc)}
+textarea{resize:none}
+.card{background:var(--card);border-radius:var(--r);padding:6px 16px}
+.card.pad{padding:16px}
+.row{display:flex;align-items:center;gap:12px;min-height:54px;padding:8px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .grow{flex:1;min-width:0}
+.row .val{color:var(--dim);text-align:right;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row.tap{cursor:pointer}.row.tap::after{content:"›";color:var(--dim);font-size:22px;margin-left:2px}
+.field{padding:10px 0;border-bottom:1px solid var(--line)}.field:last-child{border-bottom:0}
+.field label{display:block;font-size:13px;color:var(--dim);margin:0 0 6px 2px}
+.switch{position:relative;width:51px;height:31px;flex:none}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch span{position:absolute;inset:0;background:#3a3f47;border-radius:31px;transition:.2s}
+.switch span::after{content:"";position:absolute;left:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;transition:.2s}
+.switch input:checked+span{background:var(--acc)}.switch input:checked+span::after{transform:translateX(20px)}
+.seg{display:flex;background:var(--card2);border-radius:12px;padding:3px;gap:3px;overflow-x:auto;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:1 0 auto;background:none;padding:8px 12px;border-radius:9px;font-weight:500;font-size:14px;color:var(--dim);white-space:nowrap}
+.seg button.on{background:var(--text);color:#111}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:var(--card2);border-radius:999px;padding:8px 14px;font-weight:500;font-size:15px}
+.chip.on{background:var(--acc);color:var(--on)}
+/* Toppen */
+.top{display:flex;align-items:center;gap:14px;padding:calc(18px + env(safe-area-inset-top)) 0 6px}
+.avatar{width:52px;height:52px;border-radius:50%;background:var(--card2) center/cover;flex:none;display:grid;place-items:center;font-weight:700;font-size:21px;color:var(--text);border:2px solid var(--acc);overflow:hidden}
+.avatar.big{width:84px;height:84px;font-size:34px}
+.who{flex:1;min-width:0}.who .dim{font-size:14px}
+.switcher{background:var(--card2);border-radius:999px;padding:8px 12px 8px 14px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
+/* Faner */
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0b0d10ee;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:5}
+nav button{flex:1;background:none;border-radius:12px;padding:6px 0 4px;color:var(--dim);font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button svg{width:24px;height:24px}
+nav button.on{color:var(--acc)}
+section{display:none}section.on{display:block;animation:in .2s ease}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* Temaer */
+.themes{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.theme{position:relative;aspect-ratio:16/10;border-radius:14px;overflow:hidden;cursor:pointer;border:2px solid transparent;text-align:left;padding:0;background:#222}
+.theme.on{border-color:var(--acc)}
+.theme .art{position:absolute;inset:0}
+.theme .name{position:absolute;left:10px;bottom:8px;font-size:15px;font-weight:700;text-shadow:0 1px 6px #0008;color:#fff}
+.theme.on .name::after{content:" ✓"}
+/* Billeder */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.img{position:relative;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#000;border:2px solid transparent}
+.img.cur{border-color:var(--acc)}.img img{width:100%;height:100%;object-fit:cover;display:block}
+.add-img{aspect-ratio:16/9;border-radius:10px;border:1.5px dashed #ffffff30;display:grid;place-items:center;color:var(--dim);font-size:26px;background:none;padding:0}
+/* Beskeder */
+.compose{display:flex;gap:8px;align-items:flex-end;margin-top:12px}
+.compose textarea{min-height:48px;max-height:140px}
+.compose button{flex:none;width:48px;height:48px;border-radius:50%;padding:0;display:grid;place-items:center}
+.day{display:flex;align-items:center;gap:12px;min-height:56px;border-bottom:1px solid var(--line)}
+.day:last-child{border-bottom:0}
+.day .ico{width:38px;height:38px;border-radius:12px;background:var(--card2);display:grid;place-items:center;font-size:18px;flex:none}
+.day .when{color:var(--acc);font-size:14px;font-weight:600;white-space:nowrap}
+.del{background:var(--card2);width:30px;height:30px;border-radius:50%;padding:0;color:var(--dim);font-size:18px;line-height:30px;flex:none}
+.empty{color:var(--dim);padding:14px 0;font-size:15px}
+/* Ark (bundark) */
+.sheet-bg{position:fixed;inset:0;background:#0009;z-index:9;display:none}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-radius:22px 22px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom));z-index:10;transform:translateY(105%);transition:transform .25s ease;max-height:88vh;overflow:auto}
+.sheet:not(.open){visibility:hidden;transition:transform .25s ease,visibility 0s .25s}.sheet.open{transform:none}.sheet-bg.open{display:block}
+.sheet .grab{width:38px;height:5px;border-radius:3px;background:#ffffff30;margin:0 auto 14px}
+.sheet h3{margin:0 0 14px;font-size:20px}
+.sheet .stack>*{margin-bottom:12px}
+details{border-bottom:1px solid var(--line)}details:last-child{border-bottom:0}
+summary{list-style:none;display:flex;justify-content:space-between;align-items:center;min-height:54px;cursor:pointer;font-weight:500}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"›";color:var(--dim);font-size:22px;transition:.2s}details[open] summary::after{transform:rotate(90deg)}
+details .inner{padding:0 0 12px}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--text);color:#111;padding:10px 16px;border-radius:999px;font-weight:600;font-size:14px;opacity:0;transition:.25s;z-index:20;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+/* Log ind */
+#login{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:18px;padding-bottom:80px}
+#pin{width:220px;text-align:center;font-size:34px;letter-spacing:.5em;padding:14px 0 14px .5em;font-weight:700}
+.hint{font-size:13px;color:var(--dim);margin:8px 4px 0}
+</style></head><body>
+
+<div id="login">
+ <div class="avatar big" style="border-color:var(--acc)">📺</div>
+ <h1>JARVIS TV</h1>
+ <p class="dim">Skriv koden, der står på tv'et</p>
+ <input id="pin" type="text" inputmode="numeric" maxlength="4" autocomplete="one-time-code">
+ <button class="acc" style="width:220px" onclick="go()">Forbind</button>
+</div>
+
+<div id="app" hidden>
+ <div class="top">
+  <div class="avatar" id="topPic"></div>
+  <div class="who"><h1 id="hello">Hej</h1><div class="dim" id="sub"></div></div>
+  <button class="switcher" id="switchBtn" onclick="openProfiles()"><span id="switchName">Profil</span> ▾</button>
+ </div>
+
+ <!-- HJEM -->
+ <section id="t-home" class="on">
+  <h2>Besked</h2>
+  <div class="card pad">
+   <div class="chips" id="postTo"></div>
+   <div class="compose"><textarea id="postText" rows="1" maxlength="300" placeholder="Skriv en besked til tv'et"></textarea>
+    <button class="acc" onclick="sendPost()" aria-label="Send"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+  </div>
+  <h2>Snart</h2>
+  <div class="card" id="soon"></div>
+  <button class="ghost" onclick="openDay()">+ Tilføj mærkedag</button>
+  <h2>Tema</h2>
+  <div class="themes" id="themesHome"></div>
+ </section>
+
+ <!-- MIG -->
+ <section id="t-me">
+  <h2>Om dig</h2>
+  <div class="card pad" style="display:flex;align-items:center;gap:16px">
+   <div class="avatar big" id="mePic"></div>
+   <div><button onclick="picFile.click()">Skift billede</button><br><button class="danger" id="picDel" onclick="removePic()">Fjern</button></div>
+   <input id="picFile" type="file" accept="image/*" hidden onchange="uploadPic(this.files[0])">
+  </div>
+  <div class="card" style="margin-top:10px">
+   <div class="field"><label>Navn</label><input id="pName" type="text" data-p="name" placeholder="Dit navn"></div>
+   <div class="field"><label>Hilsen på forsiden</label><input id="pGreeting" type="text" data-p="greeting" placeholder="Godaften, Seb (efter tidspunktet)"></div>
+   <div class="field"><label>By til vejret</label><input id="pCity" type="text" data-p="city" placeholder="Fx Aarhus"></div>
+  </div>
+  <p class="hint">Gemmes af sig selv. Har tv'et vejr fra Home Assistant, bruges det.</p>
+
+  <h2>Kæreste</h2>
+  <div class="card">
+   <div class="field"><label>Navn</label><input id="pPartner" type="text" data-p="partner" placeholder="Ingen"></div>
+   <div class="field"><label>Sammen siden</label><input id="pTogether" type="date" data-p="together"></div>
+  </div>
+  <p class="hint">Tom = ingen "dage sammen" på forsiden.</p>
+
+  <h2>Mærkedage</h2>
+  <div class="card" id="days"></div>
+  <button class="ghost" onclick="openDay()">+ Tilføj mærkedag</button>
+
+  <h2>Når tv'et tændes</h2>
+  <div class="card pad stackish">
+   <div class="chips" id="bootStyle"></div>
+   <div id="bootMore">
+    <p class="small dim" style="margin:14px 2px 6px">Hvornår</p><div class="chips" id="bootWhen"></div>
+    <p class="small dim" style="margin:14px 2px 6px">Længde</p><div class="chips" id="bootLength"></div>
+    <p class="small dim" style="margin:14px 2px 6px">Egen tekst (tom = temaets egen)</p>
+    <input id="bootTitle" type="text" placeholder="Overskrift" style="margin-bottom:8px">
+    <input id="bootSub" type="text" placeholder="Undertekst">
+   </div>
+  </div>
+ </section>
+
+ <!-- TV -->
+ <section id="t-tv">
+  <h2>Tema</h2>
+  <div class="themes" id="themesAll"></div>
+  <button class="ghost" id="olderBtn" onclick="toggleOlder()">Vis ældre temaer</button>
+  <div class="card" id="older" hidden></div>
+  <h2>Finjustér</h2>
+  <div class="card" id="looks"></div>
+  <p class="hint">Ændringer ses på tv'et, når du trykker Tilbage på fjernbetjeningen.</p>
+  <h2>Baggrunde</h2>
+  <div class="grid" id="grid"></div>
+  <div class="card" style="margin-top:10px">
+   <div class="row"><div class="grow">Skift billede</div><select id="mode" style="width:auto" onchange="saveBg()"><option value="fast">Fast</option><option value="home">Ved hver Home</option><option value="time">Hver time</option><option value="dag">Hver dag</option></select></div>
+   <div class="row"><div class="grow">Tilfældig rækkefølge</div><label class="switch"><input type="checkbox" id="random" onchange="saveBg()"><span></span></label></div>
+  </div>
+  <input id="file" type="file" accept="image/*" multiple hidden onchange="upload(this.files)">
+  <h2>Rækker og funktioner</h2>
+  <div class="card" id="flags"></div>
+ </section>
+
+ <!-- MERE -->
+ <section id="t-more">
+  <h2>Del og gem</h2>
+  <div class="card">
+   <div class="row tap" onclick="shareFriend()"><div class="grow">Del med en ven<div class="small dim">Dit udseende, uden navn, kæreste og mærkedage</div></div></div>
+   <div class="row tap" onclick="shareBackup()"><div class="grow">Gem en backup<div class="small dim">Alt, så du har det på en ny stick</div></div></div>
+   <div class="row tap" onclick="shareAddress()"><div class="grow">Del dette tv's adresse<div class="small dim">Så andre kan skrive beskeder hertil</div></div></div>
+  </div>
+  <h2>Indsæt en kode</h2>
+  <div class="card pad">
+   <textarea id="code" rows="2" placeholder="Indsæt en profilkode eller en tv-adresse" style="font:14px ui-monospace,monospace"></textarea>
+   <div id="codeWhat" class="small dim" style="margin:8px 2px 0"></div>
+   <div id="codeName" hidden style="margin-top:10px"><input id="codeNameIn" type="text" placeholder="Hvis tv er det? Fx Johanne"></div>
+   <button class="acc" id="codeBtn" style="margin-top:10px;width:100%" disabled onclick="useCode()">Brug koden</button>
+  </div>
+  <h2>Tv'er du kan skrive til</h2>
+  <div class="card" id="contacts"></div>
+  <h2>Home Assistant</h2>
+  <div class="card">
+   <div class="field"><label>Adresse</label><input id="haUrl" type="text" placeholder="http://homeassistant.local:8123"></div>
+   <div class="row"><div class="grow">Login<div class="small dim" id="haState"></div></div><button class="acc" onclick="haLogin()">Log ind</button></div>
+   <details><summary>Brug et token i stedet</summary><div class="inner">
+    <input id="haToken" type="password" placeholder="Long-lived access token" autocomplete="off">
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="acc" onclick="saveHa()">Gem token</button><button onclick="forget()">Glem token</button></div>
+   </div></details>
+  </div>
+  <p class="hint">Statuslinje, knapper og tilstande vælges på tv'et under Indstillinger > Home Assistant.</p>
+  <h2>Konami klip</h2>
+  <div class="card">
+   <div class="row"><div class="grow" id="clipState"></div><button onclick="clipFile.click()">Vælg</button></div>
+   <details><summary>Sådan laver du et klip</summary><div class="inner small dim">MP4, højst 60 MB. Med gennemsigtighed: billedet øverst og en sort/hvid maske nederst i samme video. Forsiden skifter under blitzet midt i klippet. Koden er op op ned ned venstre højre venstre højre.<br><button class="danger" onclick="removeClip()">Fjern klippet</button></div></details>
+  </div>
+  <input id="clipFile" type="file" accept="video/mp4,video/quicktime" hidden onchange="uploadClip(this.files[0])">
+ </section>
+</div>
+
+<nav id="nav" hidden>
+ <button class="on" data-t="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Hjem</button>
+ <button data-t="me"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Mig</button>
+ <button data-t="tv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8" stroke-linecap="round"/></svg>Tv'et</button>
+ <button data-t="more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>Mere</button>
+</nav>
+
+<div class="sheet-bg" id="sheetBg" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
+<div id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+let PIN=localStorage.getItem('pin')||'';let S=null;let DEMO=!!window.DEMO;
+const MAIN={
+ apple:{n:'Apple',bg:'linear-gradient(160deg,#3a3d44,#16171a)',f:'-apple-system,sans-serif',c:'#fff',x:'<div style="position:absolute;left:12%;right:12%;bottom:22%;height:22%;border-radius:8px;background:#ffffff30"></div>'},
+ jarvis:{n:'Jarvis',bg:'radial-gradient(circle at 30% 45%,#0e3a4a,#03121a 70%)',c:'#bff3ff',x:'<div style="position:absolute;left:14%;top:22%;width:34%;aspect-ratio:1;border-radius:50%;border:3px solid #4fd8ff;box-shadow:0 0 0 4px #03121a,0 0 0 6px #e8b04b"></div>'},
+ spiderman:{n:'Spider-Man',bg:'#f6ecd0',c:'#111',f:'Impact,sans-serif',x:'<div style="position:absolute;left:6%;top:8%;width:42%;height:48%;background:#c8102e;border:2px solid #111"></div><div style="position:absolute;right:6%;top:8%;width:42%;height:48%;background:#1b3f8f;border:2px solid #111"></div>',shadow:'none'},
+ batman:{n:'Batman',bg:'#0b0b0b',c:'#f2c230',f:'Impact,"Arial Narrow",sans-serif',x:'<div style="position:absolute;right:8%;top:14%;font:900 30px Impact,sans-serif;color:#f2c230">22:30</div>'},
+ superman:{n:'Superman',bg:'#f1eadb',c:'#151515',f:'Georgia,serif',x:'<div style="position:absolute;left:8%;right:8%;top:12%;border-top:2px solid #151515;border-bottom:1px solid #151515;padding:3px 0;text-align:center;font:700 italic 15px Georgia,serif;color:#151515">Daily Planet</div><div style="position:absolute;left:8%;top:12%;width:14%;height:12%;background:#c8102e"></div>',shadow:'none'},
+ biograf:{n:'Biograf',bg:'linear-gradient(90deg,#5a0b12 0 9%,#2a0f0f 9% 91%,#5a0b12 91%)',c:'#f6ead2',x:'<div style="position:absolute;left:22%;right:22%;top:14%;height:34%;background:#f4efe3;outline:3px dotted #e2bd62;outline-offset:3px"></div>'},
+ jul:{n:'Jul',bg:'#7a121c',c:'#f6ead2',f:'Georgia,serif',x:'<div style="position:absolute;left:8%;top:14%;width:36%;height:52%;background:#174a35;border:2px solid #e2bd62"></div><div style="position:absolute;right:10%;top:16%;font-size:28px">❤︎</div>'},
+ hygge:{n:'Hygge',bg:'#efe6d6',c:'#3b2f25',f:'Georgia,serif',x:'<div style="position:absolute;left:8%;top:12%;width:34%;height:40%;background:#fbf6ea;box-shadow:0 2px 6px #0003;transform:rotate(-3deg)"></div><div style="position:absolute;right:16%;top:16%;width:7%;height:34%;background:#f7f1e3;border-radius:3px;box-shadow:0 -8px 10px -2px #f6a94a88"></div>',shadow:'none'}
+};
+const ICON={birthday:'🎂',yearly:'♥',once:'⏳'};
+
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1800)}
+async function api(path,opt={}){
+ if(DEMO)return demo(path,opt);
+ opt.headers=Object.assign({'X-Pin':PIN},opt.headers||{});
+ const r=await fetch(path,opt);
+ if(r.status==403){$('app').hidden=true;$('nav').hidden=true;$('login').hidden=false;throw new Error('Forkert kode')}
+ if(!r.ok)throw new Error(await r.text());return r.json()}
+async function post(o,msg){try{S=await api('/api/settings',{method:'POST',body:JSON.stringify(o)});render();toast(msg||'Gemt')}catch(e){toast(e.message)}}
+async function go(auto){if(!DEMO)PIN=$('pin').value.trim();try{S=await api('/api/state');localStorage.setItem('pin',PIN);
+ $('login').hidden=true;$('app').hidden=false;$('nav').hidden=false;render();
+ if(location.hash.startsWith('#kode=')||location.hash.startsWith('#profil='))fromHash()}catch(e){if(!auto)toast(e.message)}}
+
+// Faner
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
+function tab(t){document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.t==t));
+ document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id=='t-'+t));window.scrollTo(0,0);try{sessionStorage.setItem('tab',t)}catch(e){}}
+
+function imgUrl(n){return DEMO?demoImg(n):'/img/'+encodeURIComponent(n)+'?pin='+PIN}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function hello(){const h=new Date().getHours();return h<5?'Godnat':h<10?'Godmorgen':h<17?'Goddag':h<23?'Godaften':'Godnat'}
+function avatar(el){const P=S.profile;el.style.backgroundImage=P.picture?'url(/profil.jpg?pin='+PIN+'&t='+(S._pt||0)+')':'';el.textContent=P.picture?'':(P.name||'?').slice(0,1).toUpperCase()}
+
+function render(){
+ const P=S.profile;document.documentElement.style.setProperty('--acc',S.accent||'#4fd8ff');
+ $('hello').textContent=hello()+(P.name?', '+P.name:'');
+ const th=(S.themes.find(t=>t[0]==S.theme)||[])[1];
+ $('sub').textContent=[th?th.split(' · ')[0]:'Eget udseende',S.wx].filter(Boolean).join(' · ');
+ avatar($('topPic'));avatar($('mePic'));$('picDel').hidden=!P.picture;
+ $('switchBtn').hidden=!(S.profiles&&S.profiles.length);$('switchName').textContent=S.activeProfile||'Profiler';
+ // Felter: rør ikke det, man skriver i
+ const a=document.activeElement;
+ [['pName','name'],['pGreeting','greeting'],['pCity','city'],['pPartner','partner'],['pTogether','together']].forEach(([id,k])=>{if(a!==$(id))$(id).value=P[k]||''});
+ if(a!==$('bootTitle'))$('bootTitle').value=S.bootTitle||'';if(a!==$('bootSub'))$('bootSub').value=S.bootSub||'';
+ if(a!==$('haUrl'))$('haUrl').value=S.haUrl||'';
+ $('haState').textContent=S.haTokenSet?'Forbundet':'Ikke forbundet';
+ // Til hvem
+ const to=$('postTo');const cur=to.dataset.v||'';to.innerHTML='';
+ [['','Dette tv']].concat((S.contacts||[]).map(n=>[n,n])).forEach(([v,l])=>{const c=document.createElement('button');c.className='chip'+(v==cur?' on':'');c.textContent=l;c.onclick=()=>{to.dataset.v=v;render()};to.appendChild(c)});
+ // Mærkedage
+ const days=S.days||[];const soon=days.map((d,i)=>Object.assign({i},d)).filter(d=>d.when!='overstået').sort((x,y)=>(x.inDays??999)-(y.inDays??999));
+ $('soon').innerHTML=soon.length?'':'<div class="empty">Ingen mærkedage endnu. Fødselsdage, jeres dag eller en nedtælling til en ferie.</div>';
+ soon.slice(0,3).forEach(d=>$('soon').appendChild(dayRow(d,false)));
+ if(S.together)$('soon').insertAdjacentHTML('afterbegin','<div class="day"><div class="ico">♥</div><div class="grow" style="flex:1">'+esc(S.together)+'</div></div>');
+ $('days').innerHTML=days.length?'':'<div class="empty">Ingen endnu.</div>';days.map((d,i)=>Object.assign({i},d)).sort((x,y)=>(x.inDays<0?9999:x.inDays)-(y.inDays<0?9999:y.inDays)).forEach(d=>$('days').appendChild(dayRow(d,true)));
+ // Opstart
+ seg('bootStyle','boot',v=>{$('bootMore').hidden=v=='fra'});seg('bootWhen','boot_when');seg('bootLength','boot_length');
+ $('bootMore').hidden=look('boot').value=='fra';
+ // Temaer
+ themes($('themesHome'),true);themes($('themesAll'),false);
+ const old=$('older');old.innerHTML='';S.themes.filter(t=>!MAIN[t[0]]).forEach(t=>{const r=document.createElement('div');r.className='row tap';
+  r.innerHTML='<div class="grow">'+esc(t[1])+'</div>'+(t[0]==S.theme?'<span class="val">I brug</span>':'');r.onclick=()=>post({theme:t[0]},'Tema skiftet');old.appendChild(r)});
+ // Finjustér
+ const L=$('looks');const open=[...L.querySelectorAll('details[open]')].map(d=>d.dataset.k);L.innerHTML='';
+ S.looks.filter(o=>o.group!='Opstart'&&o.key!='photos').forEach(o=>{const d=document.createElement('details');d.dataset.k=o.key;if(open.includes(o.key))d.open=true;
+  const cur=(o.values.find(v=>v[0]==o.value)||[,''])[1];
+  d.innerHTML='<summary><span>'+esc(o.title)+'</span><span class="val" style="margin-left:auto;margin-right:8px;color:var(--dim)">'+esc(cur)+'</span></summary><div class="inner"><div class="chips"></div></div>';
+  const ch=d.querySelector('.chips');o.values.forEach(([k,n])=>{const b=document.createElement('button');b.className='chip'+(k==o.value?' on':'');b.textContent=n;
+   b.onclick=()=>{const l={};l[o.key]=k;post({look:l})};ch.appendChild(b)});L.appendChild(d)});
+ // Baggrunde
+ const g=$('grid');g.innerHTML='';const add=document.createElement('button');add.className='add-img';add.textContent='+';add.onclick=()=>$('file').click();g.appendChild(add);
+ S.images.slice().reverse().forEach(n=>{const d=document.createElement('div');d.className='img'+(n==S.current?' cur':'');
+  d.innerHTML='<img loading=lazy src="'+imgUrl(n)+'">';d.onclick=()=>imgSheet(n);g.appendChild(d)});
+ $('mode').value=S.mode;$('random').checked=S.random;
+ // Funktioner i grupper
+ const F=$('flags');const fo=[...F.querySelectorAll('details[open]')].map(d=>d.dataset.g);F.innerHTML='';
+ const groups={};S.flagLabels.forEach(f=>{const gname=f[2]||'Andet';(groups[gname]=groups[gname]||[]).push(f)});
+ Object.keys(groups).forEach(gname=>{const d=document.createElement('details');d.dataset.g=gname;if(fo.includes(gname))d.open=true;
+  const on=groups[gname].filter(f=>S.flags[f[0]]).length;
+  d.innerHTML='<summary><span>'+esc(gname)+'</span><span class="val" style="margin-left:auto;margin-right:8px;color:var(--dim)">'+on+' af '+groups[gname].length+'</span></summary><div class="inner"></div>';
+  const inner=d.querySelector('.inner');groups[gname].forEach(([k,l])=>{const r=document.createElement('div');r.className='row';
+   r.innerHTML='<div class="grow">'+esc(l)+'</div><label class="switch"><input type="checkbox"><span></span></label>';const c=r.querySelector('input');c.checked=S.flags[k];
+   c.onchange=()=>{const o={};o[k]=c.checked;post({flags:o})};inner.appendChild(r)});F.appendChild(d)});
+ // Kontakter
+ const C=$('contacts');C.innerHTML=(S.contacts||[]).length?'':'<div class="empty">Ingen endnu. Få en tv-adresse fra en ven og indsæt den under Indsæt en kode.</div>';
+ (S.contacts||[]).forEach(n=>{const r=document.createElement('div');r.className='row';r.innerHTML='<div class="grow">'+esc(n)+'</div><button class="danger">Fjern</button>';
+  r.querySelector('button').onclick=async()=>{if(!confirm('Fjern '+n+'?'))return;try{S=await api('/api/post-contact',{method:'POST',body:JSON.stringify({remove:n})});render();toast('Fjernet')}catch(e){toast(e.message)}};C.appendChild(r)});
+ $('clipState').textContent=S.konamiClip?'Dit eget klip':'Appens egen hjelmsekvens';
+}
+function look(k){return S.looks.find(o=>o.key==k)||{values:[],value:''}}
+function seg(id,key,after){const o=look(key);const el=$(id);el.innerHTML='';o.values.forEach(([k,n])=>{const b=document.createElement('button');b.className='chip'+(k==o.value?' on':'');b.textContent=n;
+ b.onclick=()=>{const l={};l[key]=k;post({look:l});if(after)after(k)};el.appendChild(b)})}
+function themes(el,short){el.innerHTML='';Object.keys(MAIN).forEach(k=>{if(!S.themes.find(t=>t[0]==k))return;const m=MAIN[k];const b=document.createElement('button');
+ b.className='theme'+(k==S.theme?' on':'');b.innerHTML='<div class="art" style="background:'+m.bg+'">'+m.x+'</div><div class="name" style="'+(m.shadow=='none'?'color:'+m.c+';text-shadow:none':'')+(m.f?';font-family:'+m.f:'')+'">'+m.n+'</div>';
+ b.onclick=()=>post({theme:k},m.n+' er sat på tv\'et');el.appendChild(b)});
+ if(short){/* Hjem viser kun 4: det valgte først */const kids=[...el.children];const on=kids.findIndex(c=>c.classList.contains('on'));if(on>0)el.prepend(kids[on]);[...el.children].slice(4).forEach(c=>c.remove());
+  const more=document.createElement('button');more.className='ghost';more.textContent='Alle temaer og finjustering ›';more.style.gridColumn='1/-1';more.onclick=()=>tab('tv');el.appendChild(more)}}
+function toggleOlder(){const o=$('older');o.hidden=!o.hidden;$('olderBtn').textContent=o.hidden?'Vis ældre temaer':'Skjul ældre temaer'}
+function dayRow(d,edit){const r=document.createElement('div');r.className='day';
+ r.innerHTML='<div class="ico">'+(ICON[d.kind]||'•')+'</div><div style="flex:1;min-width:0"><div>'+esc(d.name)+'</div><div class="small dim">'+({birthday:'Fødselsdag',yearly:'Hvert år',once:'Nedtælling'}[d.kind]||esc(d.kindName))+' · '+esc(d.pretty||d.date)+'</div></div><div class="when">'+esc(d.when)+'</div>';
+ if(edit){const x=document.createElement('button');x.className='del';x.setAttribute('aria-label','Slet');x.textContent='×';x.onclick=()=>{if(confirm('Slet '+d.name+'?'))post({dayRemove:d.i},'Slettet')};r.appendChild(x)}
+ return r}
+
+// Gem af sig selv
+let tmr={};
+document.querySelectorAll('[data-p]').forEach(el=>{const ev=el.type=='date'?'change':'input';el.addEventListener(ev,()=>{clearTimeout(tmr.p);tmr.p=setTimeout(saveProfile,el.type=='date'?0:700)})});
+['bootTitle','bootSub'].forEach(id=>$(id).addEventListener('input',()=>{clearTimeout(tmr.b);tmr.b=setTimeout(()=>post({bootText:{title:$('bootTitle').value,sub:$('bootSub').value}}),700)}));
+$('haUrl').addEventListener('change',()=>post({haUrl:$('haUrl').value}));
+function saveProfile(){const p={};document.querySelectorAll('[data-p]').forEach(el=>p[el.dataset.p]=el.value);post({profile:p})}
+function saveBg(){post({mode:$('mode').value,random:$('random').checked})}
+
+// Ark
+function sheet(html){$('sheetBody').innerHTML=html;$('sheet').classList.add('open');$('sheetBg').classList.add('open')}
+function closeSheet(){$('sheet').classList.remove('open');$('sheetBg').classList.remove('open')}
+function openDay(){sheet('<h3>Ny mærkedag</h3><div class="stack"><input id="dName" type="text" placeholder="Mor, Roskilde, Vores dag"><input id="dDate" type="date">'
+ +'<div class="seg" id="dKind"><button class="on" data-k="birthday">Fødselsdag</button><button data-k="yearly">Hvert år</button><button data-k="once">Nedtælling</button></div>'
+ +'<p class="small dim" id="dHelp">Skriv dit eget navn ved din fødselsdag, så siger tv\'et tillykke.</p>'
+ +'<button class="acc" style="width:100%" onclick="addDay()">Tilføj</button></div>');
+ const help={birthday:'Skriv dit eget navn ved din fødselsdag, så siger tv\'et tillykke.',yearly:'Vises to uger før, hvert år. Fx jeres dag eller en bryllupsdag.',once:'Tæller ned til dagen og forsvinder bagefter. Fx en ferie eller en koncert.'};
+ document.querySelectorAll('#dKind button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#dKind button').forEach(x=>x.classList.toggle('on',x==b));$('dHelp').textContent=help[b.dataset.k]});
+ setTimeout(()=>$('dName').focus(),250)}
+function addDay(){const n=$('dName').value.trim(),d=$('dDate').value,k=document.querySelector('#dKind .on').dataset.k;if(!n||!d){toast('Skriv navn og dato');return}
+ closeSheet();post({dayAdd:{name:n,date:d,kind:k}},n+' er tilføjet')}
+function openProfiles(){const ps=S.profiles||[];
+ sheet('<h3>Hvem bruger tv\'et?</h3><div class="card" style="background:var(--card2)">'+ps.map(n=>'<div class="row tap" data-n="'+esc(n)+'"><div class="grow">'+esc(n)+'</div>'+(n==S.activeProfile?'<span class="val">I brug</span>':'')+'</div>').join('')+'</div>'
+ +'<div class="row" style="margin-top:6px"><div class="grow">Spørg hvem der ser, når tv\'et tændes</div><label class="switch"><input type="checkbox" id="askWho" '+(S.profileAsk?'checked':'')+'><span></span></label></div>'
+ +'<div class="stack" style="margin-top:10px"><input id="newProf" type="text" placeholder="Ny profil, fx Anna eller Gæst"><button style="width:100%" onclick="newProfile()">Gem det nuværende som ny profil</button></div>'
+ +'<p class="hint">Hver profil husker sit tema, sine mærkedage, sit billede og sit Jellyfin login.</p>');
+ document.querySelectorAll('#sheetBody .row.tap').forEach(r=>r.onclick=()=>{closeSheet();post({profileSwitch:r.dataset.n},r.dataset.n+' er i brug')});
+ $('askWho').onchange=e=>post({profileAsk:e.target.checked})}
+function newProfile(){const n=$('newProf').value.trim();if(!n)return;closeSheet();post({profileNew:n},n+' er gemt')}
+function imgSheet(n){sheet('<img src="'+imgUrl(n)+'" style="width:100%;border-radius:14px;display:block;margin-bottom:14px">'
+ +'<div style="display:flex;gap:8px"><button class="acc" style="flex:1" id="iShow">Vis på tv\'et</button><button class="danger" id="iDel">Slet</button></div>');
+ $('iShow').onclick=()=>{closeSheet();act('select',n,'Vises nu')};$('iDel').onclick=()=>{if(confirm('Slet billedet?')){closeSheet();act('delete',n,'Slettet')}}}
+async function act(a,n,msg){try{S=await api('/api/'+a+'?name='+encodeURIComponent(n),{method:'POST'});render();toast(msg)}catch(e){toast(e.message)}}
+
+// Beskeder
+async function sendPost(){const t=$('postText').value.trim();if(!t){toast('Skriv en besked');return}const to=$('postTo').dataset.v||'';
+ try{S=await api('/api/post-send',{method:'POST',body:JSON.stringify({to,text:t})});$('postText').value='';grow();render();toast('Sendt til '+(to||'dette tv'))}catch(e){toast(e.message)}}
+function grow(){const t=$('postText');t.style.height='auto';t.style.height=Math.min(140,t.scrollHeight)+'px'}
+$('postText').addEventListener('input',grow);
+
+// Koder
+function share(text,title){if(navigator.share)navigator.share({title,text}).catch(()=>{});else if(navigator.clipboard)navigator.clipboard.writeText(text).then(()=>toast('Kopieret'));else prompt('Kopiér',text)}
+async function shareFriend(){try{const r=await api('/api/profile-code');share(r.friend||r.code,'Tv profil')}catch(e){toast(e.message)}}
+async function shareBackup(){try{const r=await api('/api/profile-code');share(r.code,'Min tv profil (backup)')}catch(e){toast(e.message)}}
+async function shareAddress(){try{const r=await api('/api/post-address');share(r.address,'Skriv til mit tv')}catch(e){toast(e.message)}}
+function kind(c){c=c.trim();return c.includes('SEBTV-POST:')?'post':c.includes('SEBTV1:')?'profile':c?'?':''}
+$('code').addEventListener('input',()=>{const k=kind($('code').value);
+ $('codeWhat').textContent=k=='post'?'Det er en tv-adresse. Giv tv\'et et navn, så kan du skrive til det.':k=='profile'?'Det er en profilkode. Den lægger tema og indstillinger ind på dette tv.':k=='?'?'Den kode kender jeg ikke.':'';
+ $('codeName').hidden=k!='post';$('codeBtn').disabled=!(k=='post'||k=='profile');$('codeBtn').textContent=k=='post'?'Tilføj tv':k=='profile'?'Brug profilen':'Brug koden'});
+async function useCode(){const c=$('code').value.trim();const k=kind(c);
+ try{if(k=='post'){S=await api('/api/post-contact',{method:'POST',body:JSON.stringify({name:$('codeNameIn').value,address:c})});toast('Tilføjet')}
+  else if(k=='profile'){if(!confirm('Lægge profilen ind? Det du har nu, bliver overskrevet.'))return;
+   if(DEMO)S=await api('/api/state');else{const r=await fetch('/api/profile-import',{method:'POST',headers:{'X-Pin':PIN},body:c});if(!r.ok)throw new Error(await r.text());S=await r.json()}toast('Profilen er lagt ind')}
+  $('code').value='';$('codeNameIn').value='';$('code').dispatchEvent(new Event('input'));render()}catch(e){toast(e.message)}}
+function fromHash(){const h=location.hash;if(h.startsWith('#kode=')){fetch('/api/profile-once?key='+encodeURIComponent(h.slice(6))).then(async r=>{if(!r.ok)throw new Error(await r.text());const j=await r.json();
+  history.replaceState(null,'','#');tab('more');sheet('<h3>Din profilkode</h3><p class="dim" style="margin-bottom:14px">Del den med en ven, eller gem den som backup.</p><div class="stack"><button class="acc" style="width:100%" id="hF">Del med en ven</button><button style="width:100%" id="hB">Gem som backup</button></div>');
+  $('hF').onclick=()=>share(j.friend||j.code,'Tv profil');$('hB').onclick=()=>share(j.code,'Min tv profil (backup)')}).catch(e=>toast(e.message))}}
+
+// Upload
+function shrink(file,max,q){return new Promise((ok,bad)=>{const img=new Image();img.onload=()=>{
+ const s=Math.min(1,max/Math.max(img.width,img.height*16/9));const c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
+ c.getContext('2d').drawImage(img,0,0,c.width,c.height);c.toBlob(b=>b?ok(b):bad(new Error('Kunne ikke læse billedet')),'image/jpeg',q)};img.onerror=()=>bad(new Error('Kunne ikke læse '+file.name));img.src=URL.createObjectURL(file)})}
+function square(file){return new Promise((ok,bad)=>{const img=new Image();img.onload=()=>{const s=Math.min(img.width,img.height);const c=document.createElement('canvas');c.width=c.height=320;
+ c.getContext('2d').drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,320,320);c.toBlob(b=>b?ok(b):bad(new Error('Kunne ikke læse billedet')),'image/jpeg',0.9)};img.onerror=()=>bad(new Error('Kunne ikke læse billedet'));img.src=URL.createObjectURL(file)})}
+async function upload(files){for(const [i,f] of [...files].entries()){toast('Lægger billede '+(i+1)+' af '+files.length+' op');
+ try{const b=await shrink(f,1920,0.88);S=await api('/api/upload',{method:'POST',headers:{'Content-Type':'image/jpeg'},body:b})}catch(e){toast(e.message);return}}
+ render();toast('Det nyeste billede vises nu på tv\'et');$('file').value=''}
+async function uploadPic(f){if(!f)return;try{const b=await square(f);S=await api('/api/profile-picture',{method:'POST',headers:{'Content-Type':'image/jpeg'},body:b});S._pt=Date.now();render();toast('Billedet er gemt')}catch(e){toast(e.message)}}
+async function removePic(){try{S=await api('/api/profile-picture',{method:'POST'});render();toast('Billedet er fjernet')}catch(e){toast(e.message)}}
+function uploadClip(f){if(!f)return;if(f.size>60*1024*1024){toast('Klippet må højst fylde 60 MB');return}
+ const x=new XMLHttpRequest();x.open('POST','/api/konami-clip');x.setRequestHeader('X-Pin',PIN);
+ x.upload.onprogress=e=>{if(e.lengthComputable)toast('Lægger klip op: '+Math.round(e.loaded*100/e.total)+' %')};
+ x.onload=()=>{if(x.status==200){S=JSON.parse(x.responseText);render();toast('Klippet er gemt')}else toast(x.responseText);$('clipFile').value=''};x.onerror=()=>toast('Overførslen fejlede');x.send(f)}
+async function removeClip(){if(!confirm('Fjern klippet?'))return;try{S=await api('/api/konami-clip',{method:'POST'});render();toast('Klippet er fjernet')}catch(e){toast(e.message)}}
+
+// Home Assistant
+async function haLogin(){const u=$('haUrl').value.trim();if(!u){toast('Skriv adressen først');return}
+ try{const r=await api('/api/ha-login-url?haUrl='+encodeURIComponent(u)+'&host='+encodeURIComponent(location.host));location.href=r.url}catch(e){toast(e.message)}}
+function saveHa(){const o={haUrl:$('haUrl').value};if($('haToken').value)o.haToken=$('haToken').value;$('haToken').value='';post(o)}
+function forget(){if(confirm('Glem token på tv\'et?'))post({haForget:true})}
+
+$('pin').value=PIN;
+$('pin').addEventListener('input',()=>{if($('pin').value.length==4)go()});
+try{const t=sessionStorage.getItem('tab');if(t)tab(t)}catch(e){}
+if(PIN||DEMO)go(true);
+</script></body></html>
