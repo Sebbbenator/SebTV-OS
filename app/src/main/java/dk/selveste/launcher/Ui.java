@@ -41,6 +41,11 @@ final class Ui {
             {"salvie", "#E6EBE1", "#DCE4D5", "#CBD8C2", "#23331F", "#5E7357"},
             {"skov", "#0F2A1E", "#153526", "#1C4431", "#FBF5EA", "#BFD1C2"},
             {"hav", "#061419", "#0C222A", "#13323D", "#EAF8FA", "#9CC7CF"},
+            // Temaerne med en scene: avispapir, tegneseriepapir, kalket væg og julekalenderens karton
+            {"avis", "#EFE8D8", "#F7F2E6", "#FBF8F0", "#151515", "#4A4540"},
+            {"tegneserie", "#F6EDD3", "#FFFFFF", "#FFE14D", "#111111", "#3A3A3A"},
+            {"kalk", "#E6DBC9", "#FBF6EA", "#FFFFFF", "#3A2C22", "#7A6250"},
+            {"kalender", "#5C0B15", "#7D1420", "#8F1D2A", "#F6EAD2", "#E2BD62"},
     };
 
     static float radiusDp = 10;
@@ -74,6 +79,12 @@ final class Ui {
                 CARD_FOCUS = HudView.withAlpha(BG, 0.8f);
                 CARD_STROKE = HudView.withAlpha(TEXT, 0.55f);
                 break;
+            case "apple":
+                // Som på Apple TV: lyse, gennemsigtige flader uden kant; fokus vises med lys, størrelse og skygge
+                CARD = Color.argb(46, 255, 255, 255);
+                CARD_FOCUS = CARD;
+                CARD_STROKE = Color.TRANSPARENT;
+                break;
             case "tegneserie":
                 CARD = HudView.withAlpha(CARD, 1f);
                 CARD_FOCUS = HudView.withAlpha(CARD_FOCUS, 1f);
@@ -81,6 +92,7 @@ final class Ui {
                 break;
         }
         radiusDp = "ekstra".equals(corners) ? 26 : "rund".equals(corners) ? 18 : "skarp".equals(corners) ? 2 : 10;
+        if ("apple".equals(cards)) radiusDp = 14;
     }
 
     static void applyTone(String key) {
@@ -157,7 +169,25 @@ final class Ui {
         t.setLetterSpacing(0.25f);
         t.setTypeface(headerFace);
         t.setPadding(0, dp(c, 22), 0, dp(c, 8));
+        if (!apple()) Skin.header(c, t, text, accent);
+        if (apple()) {
+            // Apple skriver overskrifter som almindelige ord, grå og halvfede
+            String s = text.toLowerCase(java.util.Locale.ROOT);
+            t.setText(s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1));
+            t.setTextColor(APPLE_GRAY);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            t.setLetterSpacing(0f);
+            t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            t.setPadding(0, dp(c, 26), 0, dp(c, 2));
+            // Læsbar oven på lyse fotos
+            t.setShadowLayer(dp(c, 4), 0, dp(c, 1), Color.argb(120, 0, 0, 0));
+        }
         return t;
+    }
+
+    /** Apple TV forsiden: én række store ikoner over et helt foto, uden ur og hilsen. */
+    static boolean apple() {
+        return "apple".equals(cardStyle);
     }
 
     static GradientDrawable card(Context c, int fill, int stroke, int strokeDp) {
@@ -173,8 +203,47 @@ final class Ui {
         return "tegneserie".equals(cardStyle) ? 2 : "streg".equals(cardStyle) ? 1 : 0;
     }
 
+    /** Apples farver: lys flade i fokus, mørk tekst på den, grå sekundær tekst. */
+    static final int APPLE_LIGHT = Color.parseColor("#F2F2F7");
+    static final int APPLE_DARK = Color.parseColor("#1C1C1E");
+    static final int APPLE_GRAY = Color.parseColor("#A1A1A6");
+
+    /** Dialogernes udseende: Apples mørkegrå med runde hjørner, ellers systemets. */
+    static int dialogTheme() {
+        return apple() ? R.style.AppleDialog : android.R.style.Theme_DeviceDefault_Dialog_Alert;
+    }
+
+    /** Baggrund bag fuldskærms sider (indstillinger, guide, telefonsiden): Apples dybe grå med lys fra oven. */
+    static android.graphics.drawable.Drawable screenBackground() {
+        if (!apple()) return new android.graphics.drawable.ColorDrawable(BG);
+        return new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.parseColor("#3A3A3C"), Color.parseColor("#1C1C1E"), Color.parseColor("#111112")});
+    }
+
+    /** Paneler (hurtigpanel, søgning): Apple bruger en mørkegrå flade med store runde hjørner. */
+    static GradientDrawable panel(Context c, float alpha) {
+        if (!apple()) return card(c, bg(alpha), CARD_STROKE, 1);
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(c, 26));
+        g.setColor(HudView.withAlpha(Color.parseColor("#2C2C2E"), 0.96f));
+        return g;
+    }
+
     static StateListDrawable focusable(Context c, int accent) {
         StateListDrawable s = new StateListDrawable();
+        if (!apple() && Decor.active()) {
+            // Temaets egen fokus (klammer, spind, pærer, gavebånd ...) i stedet for en accentramme
+            s.addState(new int[]{android.R.attr.state_focused}, new android.graphics.drawable.LayerDrawable(
+                    new android.graphics.drawable.Drawable[]{card(c, CARD_FOCUS, CARD_STROKE, 1), Decor.focusDrawable(c)}));
+            s.addState(new int[]{}, card(c, CARD, CARD_STROKE, 1));
+            return s;
+        }
+        if (apple()) {
+            // tvOS: knappen bliver lys i fokus, ellers en svag lys flade uden kant
+            s.addState(new int[]{android.R.attr.state_focused}, card(c, APPLE_LIGHT, Color.TRANSPARENT, 0));
+            s.addState(new int[]{}, card(c, Color.argb(26, 255, 255, 255), Color.TRANSPARENT, 0));
+            return s;
+        }
         s.addState(new int[]{android.R.attr.state_focused}, card(c, CARD_FOCUS, accent, 2));
         s.addState(new int[]{}, card(c, CARD, CARD_STROKE, 1));
         return s;
@@ -206,6 +275,25 @@ final class Ui {
         v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         row.addView(v);
 
+        if (apple()) {
+            // Teksten skifter til mørk på den lyse fokusflade, og rækken løftes en anelse frem
+            // tvOS: rækkerne står uden flade tæt under hinanden; kun den valgte bliver lys med skygge
+            StateListDrawable bg = new StateListDrawable();
+            bg.addState(new int[]{android.R.attr.state_focused}, card(c, APPLE_LIGHT, Color.TRANSPARENT, 0));
+            bg.addState(new int[]{}, new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            row.setBackground(bg);
+            row.setPadding(dp(c, 22), dp(c, 15), dp(c, 22), dp(c, 15));
+            lp.bottomMargin = dp(c, 2);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19);
+            v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            v.setTextColor(APPLE_GRAY);
+            row.setOnFocusChangeListener((view, has) -> {
+                t.setTextColor(has ? APPLE_DARK : TEXT);
+                v.setTextColor(has ? Color.parseColor("#636366") : APPLE_GRAY);
+                view.animate().scaleX(has ? 1.02f : 1f).scaleY(has ? 1.02f : 1f).setDuration(180).start();
+                view.setElevation(has ? dp(c, 12) : 0);
+            });
+        }
         row.setOnClickListener(click);
         return row;
     }

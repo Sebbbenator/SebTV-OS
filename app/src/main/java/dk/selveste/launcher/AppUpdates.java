@@ -38,7 +38,7 @@ final class AppUpdates {
                 if (err != null) Toast.makeText(a, "Kunne ikke hente noterne", Toast.LENGTH_SHORT).show();
                 return;
             }
-            new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            new AlertDialog.Builder(a, Ui.dialogTheme())
                     .setTitle("Nyt i " + new Prefs(a).appName() + " " + version)
                     .setMessage(body.trim())
                     .setPositiveButton("Fedt", null)
@@ -52,7 +52,7 @@ final class AppUpdates {
         prefs.setLastUpdateCheck(System.currentTimeMillis());
         Net.async(() -> Updater.check(a), (r, err) -> {
             if (r == null || a.isFinishing()) return;
-            new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            new AlertDialog.Builder(a, Ui.dialogTheme())
                     .setTitle("Ny version af " + prefs.appName())
                     .setMessage("Version " + r.number + " er klar. Installér nu?")
                     .setPositiveButton("Installér", (d, w) -> installUpdate(a, r))

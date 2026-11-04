@@ -28,6 +28,8 @@ final class Features {
     static final String NIGHT_UPDATE = "nightupdate";
     static final String COMPACT = "compact";
     static final String SOUNDS = "sounds";
+    static final String FAVORITES = "favorites";
+    static final String POST = "post";
 
     /** nøgle, navn, standard (1 = til), gruppe */
     static final String[][] ALL = {
@@ -35,6 +37,7 @@ final class Features {
             {RESUME, "Fortsæt at se", "1", "Rækker"},
             {NEXT_UP, "Næste afsnit i Fortsæt at se", "1", "Rækker"},
             {LATEST, "Nyt på serveren", "1", "Rækker"},
+            {FAVORITES, "Min liste (favoritter i Jellyfin)", "1", "Rækker"},
             {MODES, "Tilstande", "1", "Rækker"},
             {HA_BUTTONS, "Værelset (hurtigknapper)", "1", "Rækker"},
             {UPCOMING, "Kommer snart", "1", "Rækker"},
@@ -43,11 +46,11 @@ final class Features {
             {HA_STATUS, "Statuslinje fra Home Assistant", "1", "Forside"},
             {TOGETHER, "Dage sammen", "1", "Forside"},
             {DICE, "Hvad skal vi se?", "1", "Forside"},
+            {POST, "Beskeder fra telefonen og andre tv", "1", "Forside"},
             {AMBIENT, "Rolig tilstand efter 3 minutter", "1", "Forside"},
             {SOUNDS, "Lyde ved navigation", "0", "Forside"},
             {KEN_BURNS, "Langsom zoom", "1", "Baggrund"},
             {PARALLAX, "Baggrunden følger fokus", "1", "Baggrund"},
-            {BOOT, "Jarvis opstart", "1", "Jarvis"},
             {VOICE, "Jarvis stemme (8 til 22)", "1", "Jarvis"},
             {KONAMI, "Konami kode", "1", "Jarvis"},
             {LIGHT_FOLLOW, "Lyset følger forsiden", "0", "Jarvis"},

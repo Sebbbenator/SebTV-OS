@@ -32,6 +32,9 @@ public class SettingsActivity extends Activity {
     static final String PAGE_PROFILE = "profile";
     static final String PAGE_LOOK = "look";
     static final String PAGE_HA = "ha";
+    static final String PAGE_BOOT = "boot";
+    static final String PAGE_DAYS = "days";
+    static final String PAGE_POST = "post";
 
     /** Domæner der giver mening som hurtigknap. */
     private static final List<String> BUTTON_DOMAINS = Arrays.asList(
@@ -55,9 +58,170 @@ public class SettingsActivity extends Activity {
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         int pad = Ui.dp(this, 56);
+        builtApple = Ui.apple();
+        if (builtApple) {
+            setContentView(appleLayout(scroll));
+            return;
+        }
+        builtSkin = Decor.active() ? Skin.key : "";
+        if (Sheet.on()) {
+            // De otte temaer: indstillingerne som temaets egen ting (panel, sagsmappe, avis, ønskeseddel ...)
+            TextView[] t = new TextView[1];
+            setContentView(Sheet.layout(this, scroll, list, t));
+            appleTitle = t[0];
+            return;
+        }
+        if (!builtSkin.isEmpty()) {
+            setContentView(skinLayout(scroll));
+            return;
+        }
         list.setPadding(pad * 3, Ui.dp(this, 24), pad * 3, pad);
         scroll.addView(list);
         setContentView(scroll);
+    }
+
+    private boolean builtApple;
+    private String builtSkin = "";
+    private android.widget.ImageView skinPhoto;
+    private Ambient skinAmbient;
+
+    /**
+     * Indstillinger i temaets eget udseende: temaets foto bag det hele, dets stemning ovenpå og
+     * opbygningen fra forsiden. Batman og Iron Man har listen til venstre og billedet til højre;
+     * Superman, Biograf, Jul og Nattehimmel har listen i midten; de andre har billedet til venstre.
+     */
+    private View skinLayout(ScrollView scroll) {
+        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
+        root.setBackgroundColor(Ui.BG);
+        android.widget.ImageView bg = new android.widget.ImageView(this);
+        bg.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        root.addView(bg, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        View shade = new View(this);
+        shade.setBackgroundColor(Ui.bg(0.84f));
+        root.addView(shade, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        skinAmbient = new Ambient(this);
+        skinAmbient.setAnimate(Motion.FULL.equals(Motion.level(this, prefs)));
+        root.addView(skinAmbient, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        skinPhoto = bg;
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        root.addView(content, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        appleTitle = Ui.text(this, "", 32, Ui.TEXT);
+        appleTitle.setTypeface(Ui.display);
+        appleTitle.setPadding(Ui.dp(this, 64), Ui.dp(this, 40), Ui.dp(this, 64), Ui.dp(this, 16));
+        content.addView(appleTitle);
+
+        scroll.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setClipToPadding(false);
+        list.setClipChildren(false);
+        list.setClipToPadding(false);
+        scroll.addView(list);
+
+        boolean mirror = Skin.is("batman") || Skin.is("ironman");
+        boolean center = Skin.is("superman") || Skin.is("biograf") || Skin.is("jul") || Skin.is("natte");
+        if (center) {
+            appleTitle.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+            int side = Ui.dp(this, 56) * 4;
+            list.setPadding(side, Ui.dp(this, 8), side, Ui.dp(this, 56));
+            content.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+            return root;
+        }
+        if (mirror) appleTitle.setGravity(android.view.Gravity.END);
+        LinearLayout split = new LinearLayout(this);
+        split.setOrientation(LinearLayout.HORIZONTAL);
+        if (mirror) split.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        content.addView(split, new LinearLayout.LayoutParams(-1, 0, 1f));
+        // Temaets billede som et card i siden, i temaets egen ramme
+        android.widget.FrameLayout side = new android.widget.FrameLayout(this);
+        split.addView(side, new LinearLayout.LayoutParams(0, -1, 0.4f));
+        android.widget.FrameLayout card = new android.widget.FrameLayout(this);
+        card.setBackground(Ui.card(this, Ui.CARD, Ui.CARD_STROKE, 1));
+        card.setClipToOutline(true);
+        card.setElevation(Ui.dp(this, 12));
+        applePicture = new android.widget.ImageView(this);
+        applePicture.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        card.addView(applePicture, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        Decor frame = new Decor(this, false);
+        frame.setFocused(true);
+        card.addView(frame, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        android.widget.FrameLayout.LayoutParams cp = new android.widget.FrameLayout.LayoutParams(Ui.dp(this, 300), Ui.dp(this, 190),
+                android.view.Gravity.CENTER_HORIZONTAL | android.view.Gravity.TOP);
+        cp.topMargin = Ui.dp(this, 24);
+        side.addView(card, cp);
+        list.setPadding(Ui.dp(this, 8), Ui.dp(this, 8), Ui.dp(this, 64), Ui.dp(this, 56));
+        split.addView(scroll, new LinearLayout.LayoutParams(0, -1, 0.6f));
+        // Listen skal stadig læses fra venstre mod højre, selv når den står i venstre side
+        scroll.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        return root;
+    }
+    private TextView appleTitle;
+    private android.widget.ImageView applePicture;
+    private View appleRoot;
+
+    /**
+     * Som indstillingerne på Apple TV: sidens navn fedt og centreret øverst, et stort billede i venstre
+     * side og listen i højre side. Rækkerne har ingen flade, kun den valgte bliver lys.
+     */
+    private View appleLayout(ScrollView scroll) {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        appleRoot = root;
+        appleTitle = Ui.text(this, "", 30, Ui.TEXT);
+        appleTitle.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        appleTitle.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        appleTitle.setPadding(0, Ui.dp(this, 36), 0, Ui.dp(this, 20));
+        root.addView(appleTitle);
+
+        LinearLayout split = new LinearLayout(this);
+        split.setOrientation(LinearLayout.HORIZONTAL);
+        root.addView(split, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        android.widget.FrameLayout left = new android.widget.FrameLayout(this);
+        split.addView(left, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 0.44f));
+        applePicture = new android.widget.ImageView(this);
+        applePicture.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        applePicture.setClipToOutline(true);
+        android.graphics.drawable.GradientDrawable round = new android.graphics.drawable.GradientDrawable();
+        round.setCornerRadius(Ui.dp(this, 18));
+        round.setColor(android.graphics.Color.parseColor("#2C2C2E"));
+        applePicture.setBackground(round);
+        applePicture.setElevation(Ui.dp(this, 16));
+        android.widget.FrameLayout.LayoutParams pp = new android.widget.FrameLayout.LayoutParams(Ui.dp(this, 300), Ui.dp(this, 169),
+                android.view.Gravity.CENTER_HORIZONTAL | android.view.Gravity.TOP);
+        pp.topMargin = Ui.dp(this, 60);
+        left.addView(applePicture, pp);
+
+        scroll.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setClipToPadding(false);
+        scroll.setClipChildren(false);
+        list.setClipChildren(false);
+        list.setClipToPadding(false);
+        list.setPadding(Ui.dp(this, 8), Ui.dp(this, 8), Ui.dp(this, 72), Ui.dp(this, 56));
+        scroll.addView(list);
+        split.addView(scroll, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 0.56f));
+        return root;
+    }
+
+    /** Sidens billede: et foto fra temaet. */
+    private void loadApplePicture() {
+        if (applePicture == null) return;
+        Net.async(() -> themePhoto(0, 4), (bmp, err) -> {
+            if (bmp != null) applePicture.setImageBitmap(bmp);
+        });
+    }
+
+    /** Foto nummer n fra temaets fotoserie, skaleret ned (kaldes på en baggrundstråd). */
+    private android.graphics.Bitmap themePhoto(int n, int sample) {
+        java.io.File dir = ThemePhotos.dir(this, prefs.str("photo_theme", prefs.theme()));
+        java.io.File[] files = dir.listFiles((d, name) -> name.endsWith(".jpg") && !name.startsWith("art-"));
+        if (files == null || files.length == 0) return null;
+        java.util.Arrays.sort(files);
+        android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+        o.inSampleSize = sample;
+        return android.graphics.BitmapFactory.decodeFile(files[Math.min(n, files.length - 1)].getPath(), o);
     }
 
     @Override
@@ -71,8 +235,15 @@ public class SettingsActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (skinAmbient != null) skinAmbient.setRunning(false);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
+        if (skinAmbient != null) skinAmbient.setRunning(true);
         build();
     }
 
@@ -90,7 +261,23 @@ public class SettingsActivity extends Activity {
     private void build() {
         list.removeAllViews();
         Ui.applyStyle(prefs.tone(), prefs.str("cards", "fast"), prefs.str("corners", "normal"));
-        ((View) list.getParent()).setBackgroundColor(Ui.BG);
+        String wantSkin = !Ui.apple() && Decor.active() ? Skin.key : "";
+        if (Ui.apple() != builtApple || !wantSkin.equals(builtSkin)) {
+            // Temaet er skiftet til eller fra Apple: skærmen har en anden opbygning
+            recreate();
+            return;
+        }
+        if (!builtSkin.isEmpty()) {
+            loadApplePicture();
+            Net.async(() -> themePhoto(1, 4), (bmp, err) -> {
+                if (bmp != null && skinPhoto != null) skinPhoto.setImageBitmap(bmp);
+            });
+        } else if (Ui.apple()) {
+            loadApplePicture();
+            appleRoot.setBackground(Ui.screenBackground());
+        } else {
+            ((View) list.getParent()).setBackgroundColor(Ui.BG);
+        }
         accent = prefs.accentColor();
         Ui.loadFont(this, prefs.font());
         switch (page) {
@@ -100,6 +287,9 @@ public class SettingsActivity extends Activity {
             case PAGE_PROFILE: buildProfile(); break;
             case PAGE_LOOK: buildLook(); break;
             case PAGE_HA: buildHa(); break;
+            case PAGE_BOOT: buildBoot(); break;
+            case PAGE_DAYS: buildDays(); break;
+            case PAGE_POST: buildPost(); break;
             default: buildMain();
         }
         View first = null;
@@ -110,6 +300,12 @@ public class SettingsActivity extends Activity {
     }
 
     private TextView title(String text) {
+        if (appleTitle != null) {
+            appleTitle.setText(text);
+            if (Sheet.on()) Sheet.title(this, appleTitle, text);
+            else if (!builtSkin.isEmpty()) Skin.title(this, appleTitle, text);
+            return appleTitle;
+        }
         TextView t = Ui.text(this, text, 30, Ui.TEXT);
         t.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 4));
         list.addView(t);
@@ -124,6 +320,12 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.row(this, "Profil", prefs.profileName(), c, v -> open(PAGE_PROFILE)));
         list.addView(Ui.row(this, "Udseende", Themes.name(prefs.theme()), c, v -> open(PAGE_LOOK)));
         list.addView(Ui.row(this, "Funktioner og rækker", countOn() + " slået til", c, v -> open(PAGE_FEATURES)));
+        list.addView(Ui.row(this, "Opstart", Looks.name(Looks.find("boot"), BootIntro.style(prefs)), c, v -> open(PAGE_BOOT)));
+        int dayCount = Days.all(prefs).size() + (prefs.togetherSince() == null ? 0 : 1);
+        list.addView(Ui.row(this, "Mærkedage", dayCount == 0 ? "Ingen endnu" : dayCount + " i alt", c, v -> open(PAGE_DAYS)));
+        int unseen = Post.unseen(prefs).size();
+        list.addView(Ui.row(this, "Beskeder", unseen > 0 ? unseen + " ulæst" : Post.contacts(prefs).size() + " tv", c, v -> open(PAGE_POST)));
+        list.addView(Ui.row(this, "Vejr", Weather.on(prefs) ? Weather.city(prefs) : "Vælg by", c, v -> chooseWeather()));
 
         list.addView(Ui.header(this, "BAGGRUNDE", c));
         list.addView(Ui.row(this, "Læg billeder op fra telefonen", new Backgrounds(this).list().size() + " billeder", c,
@@ -185,7 +387,16 @@ public class SettingsActivity extends Activity {
         list.addView(Ui.text(this, "Flere opsætninger på samme tv, fx en til film aften og en til gæster. Skift også fra hurtigpanelet (hold ☰ nede).", 16, Ui.TEXT_DIM));
         String activeProfile = Profiles.active(prefs);
         for (String name : Profiles.names(prefs)) {
-            list.addView(Ui.row(this, name, name.equals(activeProfile) ? "I brug" : "Skift", c, v -> profileMenu(name)));
+            String state = (name.equals(activeProfile) ? "I brug" : "Skift") + (Profiles.hasLogin(prefs, name) ? "  ·  egen Jellyfin" : "");
+            list.addView(Ui.row(this, name, state, c, v -> profileMenu(name)));
+        }
+        if (Profiles.names(prefs).size() > 1) {
+            list.addView(Ui.row(this, "Spørg hvem der ser", prefs.flag(Profiles.ASK, false) ? "Når tv'et tændes" : "Fra", c, v -> {
+                prefs.setFlag(Profiles.ASK, !prefs.flag(Profiles.ASK, false));
+                build();
+            }));
+            list.addView(Ui.text(this, "Hver profil husker sit eget tema, sine mærkedage, sit profilbillede og sit Jellyfin login. "
+                    + "Log ind i Jellyfin, mens profilen er i brug, så følger Fortsæt at se og Min liste personen.", 14, Ui.TEXT_DIM));
         }
         list.addView(Ui.row(this, "Gem nuværende som profil", "", c,
                 v -> ask("Navn på profilen", activeProfile, "Film aften", t -> {
@@ -215,7 +426,7 @@ public class SettingsActivity extends Activity {
     }
 
     private void profileMenu(String name) {
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle(name)
                 .setItems(new String[]{"Skift til " + name, "Gem nuværende indstillinger her", "Slet profilen"}, (d, which) -> {
                     try {
@@ -260,8 +471,8 @@ public class SettingsActivity extends Activity {
             int pad = Ui.dp(this, 16);
             box.setPadding(pad, pad, pad, pad);
             box.addView(qr, new LinearLayout.LayoutParams(Ui.dp(this, 360), Ui.dp(this, 360)));
-            box.addView(Ui.text(this, "Scan med telefonen (samme wifi) og tryk Del eller gem.", 16, Ui.TEXT_DIM));
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            box.addView(Ui.text(this, "Scan med telefonen (samme wifi). Vælg Del med en ven eller Gem som backup.", 16, Ui.TEXT_DIM));
+            new AlertDialog.Builder(this, Ui.dialogTheme())
                     .setTitle("Din profilkode")
                     .setView(box)
                     .setPositiveButton("Luk", null)
@@ -279,7 +490,7 @@ public class SettingsActivity extends Activity {
                 if (tellIfNone) Toast.makeText(this, "Der ligger ingen profil på Jellyfin endnu", Toast.LENGTH_LONG).show();
                 return;
             }
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            new AlertDialog.Builder(this, Ui.dialogTheme())
                     .setTitle("Profil fundet på Jellyfin")
                     .setMessage("Vil du hente tema, rækker og indstillinger fra din profil? Det du har nu, bliver overskrevet.")
                     .setPositiveButton("Hent", (d, w) -> {
@@ -319,6 +530,164 @@ public class SettingsActivity extends Activity {
                         v -> choose(o.title, o.values, Looks.get(prefs, o), value -> Looks.set(prefs, o, value))));
             }
         }
+    }
+
+    /** Det, der kommer frem, når tv'et tændes: hver person vælger sin egen eller ingen. */
+    private void buildDays() {
+        int c = accent;
+        title("Mærkedage");
+        list.addView(Ui.text(this, "Forsiden viser de nærmeste: fødselsdage og faste dage to uger før, nedtællinger hele vejen. "
+                + "Skriv dit eget navn ved din fødselsdag, så siger tv'et tillykke. Det er lettest at skrive dem på telefonsiden.", 16, Ui.TEXT_DIM));
+        list.addView(Ui.header(this, "DAGE SAMMEN", c));
+        list.addView(Ui.row(this, "Kæreste", prefs.partnerName().isEmpty() ? "Ikke sat" : prefs.partnerName(), c,
+                v -> ask("Kærestens navn", prefs.partnerName(), "", t -> prefs.setProfile(null, null, t, null))));
+        list.addView(Ui.row(this, "Sammen siden", prefs.togetherSinceText().isEmpty() ? "Ikke sat" : prefs.togetherSinceText(), c,
+                v -> ask("Sammen siden (åååå-mm-dd, tom = fra)", prefs.togetherSinceText(), "2026-01-04", t -> {
+                    if (!t.trim().isEmpty() && !t.trim().matches("\\d{4}-\\d{2}-\\d{2}")) {
+                        Toast.makeText(this, "Skriv datoen som 2026-01-04", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    prefs.setProfile(null, null, null, t);
+                    prefs.setFlag(Features.TOGETHER, !t.trim().isEmpty());
+                })));
+        list.addView(Ui.header(this, "MÆRKEDAGE", c));
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        List<Days.Day> days = Days.all(prefs);
+        for (int i = 0; i < days.size(); i++) {
+            Days.Day d = days.get(i);
+            long u = Days.until(d, now);
+            String when = u < 0 ? "overstået" : u == 0 ? "i dag" : u == 1 ? "i morgen" : "om " + u + " dage";
+            int index = i;
+            list.addView(Ui.row(this, d.name, d.kindName() + "  ·  " + d.dateText() + "  ·  " + when, c,
+                    v -> new AlertDialog.Builder(this, Ui.dialogTheme())
+                            .setTitle(d.name)
+                            .setItems(new String[]{"Slet"}, (dlg, w) -> {
+                                Days.remove(prefs, index);
+                                build();
+                            })
+                            .show()));
+        }
+        list.addView(Ui.row(this, "Tilføj mærkedag", "", c, v -> addDay()));
+    }
+
+    private void buildPost() {
+        int c = accent;
+        title("Beskeder");
+        list.addView(Ui.text(this, "Skriv fra telefonsiden til dette tv eller til andres tv. Beskeden står på forsiden, til den er læst. "
+                + "Til et andet tv sendes den krypteret via ntfy.sh og skal læses inden for 12 timer.", 16, Ui.TEXT_DIM));
+        list.addView(Ui.header(this, "INDBAKKE", c));
+        List<Post.Message> inbox = Post.inbox(prefs);
+        Post.markSeen(prefs);
+        if (inbox.isEmpty()) list.addView(Ui.text(this, "Ingen beskeder endnu.", 16, Ui.TEXT_DIM));
+        for (int i = inbox.size() - 1; i >= 0; i--) {
+            Post.Message m = inbox.get(i);
+            list.addView(Ui.row(this, (m.from.isEmpty() ? "" : m.from + ": ") + m.text, Post.when(m.at), c, v -> {
+            }));
+        }
+        list.addView(Ui.header(this, "SKRIV", c));
+        list.addView(Ui.row(this, "Send en besked", "", c, v -> writePost()));
+        list.addView(Ui.header(this, "TV'ER DU KAN SKRIVE TIL", c));
+        for (String name : Post.contacts(prefs).keySet()) {
+            list.addView(Ui.row(this, name, "Fjern", c, v -> new AlertDialog.Builder(this, Ui.dialogTheme())
+                    .setTitle("Fjern " + name + "?")
+                    .setPositiveButton("Fjern", (d, w) -> {
+                        Post.removeContact(prefs, name);
+                        build();
+                    })
+                    .setNegativeButton("Annullér", null)
+                    .show()));
+        }
+        list.addView(Ui.row(this, "Tilføj et tv", "Via telefonsiden", c, v -> startActivity(new Intent(this, UploadActivity.class))));
+        list.addView(Ui.row(this, "Dette tv's adresse", "Vis som QR", c, v -> {
+            String address = Post.address(prefs);
+            android.widget.ImageView qr = new android.widget.ImageView(this);
+            qr.setImageBitmap(UploadActivity.qrBitmap(address, Ui.dp(this, 320)));
+            LinearLayout box = new LinearLayout(this);
+            box.setOrientation(LinearLayout.VERTICAL);
+            box.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+            int pad = Ui.dp(this, 16);
+            box.setPadding(pad, pad, pad, pad);
+            box.addView(qr, new LinearLayout.LayoutParams(Ui.dp(this, 320), Ui.dp(this, 320)));
+            box.addView(Ui.text(this, "Scan med telefonens kamera, kopiér teksten og send den til dem, der skal kunne skrive hertil. "
+                    + "Den kan også deles fra telefonsiden.", 16, Ui.TEXT_DIM));
+            new AlertDialog.Builder(this, Ui.dialogTheme()).setTitle("Dette tv's adresse").setView(box).setPositiveButton("Luk", null).show();
+        }));
+        list.addView(Ui.text(this, "Kan slås fra under Funktioner og rækker.", 14, Ui.TEXT_DIM));
+    }
+
+    /** Skriv med fjernbetjeningen: vælg modtager, skriv, send. */
+    private void writePost() {
+        java.util.List<String> names = new java.util.ArrayList<>(Post.contacts(prefs).keySet());
+        names.add(0, "Dette tv");
+        new AlertDialog.Builder(this, Ui.dialogTheme())
+                .setTitle("Til hvem?")
+                .setItems(names.toArray(new String[0]), (d, which) -> {
+                    String to = which == 0 ? null : names.get(which);
+                    ask("Besked til " + names.get(which), "", "Husk at købe mælk", text -> {
+                        if (text.trim().isEmpty()) return;
+                        String address = to == null ? null : Post.contacts(prefs).get(to);
+                        Net.async(() -> {
+                            Post.send(prefs, address, prefs.profileName(), text);
+                            return true;
+                        }, (ok, err) -> Toast.makeText(this, ok != null ? "Sendt til " + names.get(which)
+                                : "Beskeden kunne ikke sendes", Toast.LENGTH_LONG).show());
+                    });
+                })
+                .show();
+    }
+
+    /** Navn, dato og type i tre korte trin. */
+    private void addDay() {
+        ask("Hvad hedder dagen?", "", "Mor, Roskilde, Vores dag", name -> {
+            if (name.trim().isEmpty()) return;
+            ask("Dato (dd-mm-åååå, eller dd-mm uden år)", "", "12-03-1970", date -> {
+                int[] d = Days.parse(date);
+                if (d == null) {
+                    Toast.makeText(this, "Skriv datoen som 12-03-1970", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                String[] names = new String[Days.KINDS.length];
+                for (int i = 0; i < names.length; i++) names[i] = Days.KINDS[i][1];
+                new AlertDialog.Builder(this, Ui.dialogTheme())
+                        .setTitle("Hvad slags dag?")
+                        .setItems(names, (dlg, which) -> {
+                            String kind = Days.KINDS[which][0];
+                            if (Days.ONCE.equals(kind) && d[0] <= 0) {
+                                Toast.makeText(this, "En nedtælling skal have et år", Toast.LENGTH_LONG).show();
+                                return;
+                            }
+                            Days.add(prefs, new Days.Day(name.trim(), kind, d[0], d[1], d[2]));
+                            build();
+                        })
+                        .show();
+            });
+        });
+    }
+
+    private void buildBoot() {
+        int c = accent;
+        title("Opstart");
+        list.addView(Ui.header(this, "NÅR TV'ET TÆNDES", c));
+        for (String key : new String[]{"boot", "boot_when", "boot_length"}) {
+            Looks.Option o = Looks.find(key);
+            list.addView(Ui.row(this, o.title, Looks.name(o, Looks.get(prefs, o)), c,
+                    v -> choose(o.title, o.values, Looks.get(prefs, o), value -> Looks.set(prefs, o, value))));
+        }
+        list.addView(Ui.header(this, "DINE ORD", c));
+        String t = prefs.str("boot_title", ""), s = prefs.str("boot_sub", "");
+        list.addView(Ui.row(this, "Overskrift", t.isEmpty() ? "Temaets egen" : t, c,
+                v -> ask("Overskrift (tom = temaets egen)", t, "Fx GODMORGEN eller EKSTRA!", x -> prefs.setStr("boot_title", x.trim()))));
+        list.addView(Ui.row(this, "Undertekst", s.isEmpty() ? "Temaets egen" : s, c,
+                v -> ask("Undertekst (tom = temaets egen)", s, "Fx Klar til filmaften", x -> prefs.setStr("boot_sub", x.trim()))));
+        list.addView(Ui.text(this, "Hilsenen med dit navn kommer altid med. Det hele gemmes i din profil, så hver person har sin egen.", 16, Ui.TEXT_DIM));
+        list.addView(Ui.header(this, "PRØV", c));
+        list.addView(Ui.row(this, "Vis opstarten nu", "", c, v -> {
+            if ("fra".equals(BootIntro.style(prefs))) {
+                android.widget.Toast.makeText(this, "Opstarten er slået fra", android.widget.Toast.LENGTH_SHORT).show();
+                return;
+            }
+            BootIntro.play(BootIntro.make(this, prefs, Greeting.text(prefs), prefs.accentColor()), (android.view.ViewGroup) findViewById(android.R.id.content));
+        }));
     }
 
     private void buildHa() {
@@ -401,7 +770,7 @@ public class SettingsActivity extends Activity {
                 if (ca != cb) return ca ? -1 : 1;
                 return a[1].compareToIgnoreCase(b[1]);
             });
-            AlertDialog.Builder b = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle(title);
+            AlertDialog.Builder b = new AlertDialog.Builder(this, Ui.dialogTheme()).setTitle(title);
             if (max == 1) {
                 String[] names = new String[cands.size() + 1];
                 names[0] = "Ingen";
@@ -528,7 +897,7 @@ public class SettingsActivity extends Activity {
             handler.postDelayed(this::build, 1500);
             return;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Gør til forside")
                 .setMessage("Tv'et giver sig selv lov via sin egen fejlfinding (ADB), så der skal ikke bruges en pc.\n\n"
                         + "1. Slå ADB debugging til under Indstillinger > My Fire TV > Developer options.\n"
@@ -541,7 +910,7 @@ public class SettingsActivity extends Activity {
                         return true;
                     }, (ok, err) -> {
                         if (err != null) {
-                            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                            new AlertDialog.Builder(this, Ui.dialogTheme())
                                     .setTitle("Det lykkedes ikke").setMessage(String.valueOf(err.getMessage()))
                                     .setPositiveButton("OK", null).show();
                             return;
@@ -563,7 +932,7 @@ public class SettingsActivity extends Activity {
             names[i] = items.get(i).label;
             off[i] = items.get(i).disabled;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Slå fra (flueben = slået fra)")
                 .setMultiChoiceItems(names, off, (d, which, checked) -> off[which] = checked)
                 .setPositiveButton("Gem", (d, w) -> {
@@ -599,7 +968,7 @@ public class SettingsActivity extends Activity {
         String log = ErrorLog.text();
         list.addView(Ui.row(this, "Fejl-log", log.isEmpty() ? "Ingen fejl" : log.split("\n").length + " linjer, vis", c, v -> {
             if (log.isEmpty()) return;
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            new AlertDialog.Builder(this, Ui.dialogTheme())
                     .setTitle("Fejl-log (nyeste først)")
                     .setMessage(log)
                     .setPositiveButton("Ryd", (d, w) -> {
@@ -612,7 +981,7 @@ public class SettingsActivity extends Activity {
         String crash = prefs.lastCrash();
         list.addView(Ui.row(this, "Seneste fejl", crash.isEmpty() ? "Ingen" : "Vis", c, v -> {
             if (crash.isEmpty()) return;
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            new AlertDialog.Builder(this, Ui.dialogTheme())
                     .setTitle("Seneste fejl")
                     .setMessage(crash)
                     .setPositiveButton("Ryd", (d, w) -> {
@@ -657,7 +1026,7 @@ public class SettingsActivity extends Activity {
             names[i] = Prefs.ACCENTS[i][1];
             if (Prefs.ACCENTS[i][0].equals(prefs.accentKey())) checked = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Accentfarve")
                 .setSingleChoiceItems(names, checked, (d, which) -> {
                     prefs.setAccentKey(Prefs.ACCENTS[which][0]);
@@ -684,7 +1053,7 @@ public class SettingsActivity extends Activity {
             names[i] = options[i][1];
             if (options[i][0].equals(current)) checked = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle(title)
                 .setSingleChoiceItems(names, checked, (d, which) -> {
                     setter.set(options[which][0]);
@@ -696,17 +1065,17 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseTheme() {
-        // Udgavens egne temaer først, så de andre
+        // De 8 gennemførte temaer først, så de ældre temaer
         List<String[]> themes = new ArrayList<>();
-        for (String[] t : Themes.ALL) if (t[3].equals(prefs.edition())) themes.add(t);
-        for (String[] t : Themes.ALL) if (!t[3].equals(prefs.edition())) themes.add(t);
+        for (String k : Themes.MAIN) for (String[] t : Themes.ALL) if (t[0].equals(k)) themes.add(t);
+        for (String[] t : Themes.ALL) if (!Themes.main(t[0])) themes.add(t);
         String[] names = new String[themes.size()];
         int checked = -1;
         for (int i = 0; i < names.length; i++) {
-            names[i] = themes.get(i)[1] + "  ·  " + themes.get(i)[2];
+            names[i] = (Themes.main(themes.get(i)[0]) ? "" : "Ældre: ") + themes.get(i)[1] + "  ·  " + themes.get(i)[2];
             if (themes.get(i)[0].equals(prefs.theme())) checked = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Tema")
                 .setSingleChoiceItems(names, checked, (d, which) -> {
                     Themes.apply(prefs, themes.get(which)[0]);
@@ -715,6 +1084,35 @@ public class SettingsActivity extends Activity {
                     build();
                 })
                 .show();
+    }
+
+    /** By til vejret: skriv navnet, vælg den rigtige blandt dem, Open-Meteo finder. */
+    private void chooseWeather() {
+        ask("By til vejret (tom = intet)", Weather.city(prefs), "Aarhus", t -> {
+            if (t.trim().isEmpty()) {
+                Weather.set(prefs, null);
+                build();
+                return;
+            }
+            Net.async(() -> Weather.search(t), (places, err) -> {
+                if (places == null || places.isEmpty()) {
+                    Toast.makeText(this, err != null ? "Kunne ikke søge efter byen" : "Fandt ingen by med det navn", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                String[] names = new String[places.size()];
+                for (int i = 0; i < names.length; i++) names[i] = places.get(i).label();
+                new AlertDialog.Builder(this, Ui.dialogTheme())
+                        .setTitle("Hvilken by?")
+                        .setItems(names, (d, which) -> {
+                            Weather.set(prefs, places.get(which));
+                            Net.async(() -> Weather.fetch(prefs), (w, e) -> {
+                                if (w != null) Toast.makeText(this, "Vejret i " + Weather.city(prefs) + ": " + w, Toast.LENGTH_SHORT).show();
+                                build();
+                            });
+                        })
+                        .show();
+            });
+        });
     }
 
     /** Tekstfelt med fjernbetjeningens tastatur. Tryk Gem for at gemme. */
@@ -728,7 +1126,7 @@ public class SettingsActivity extends Activity {
         int pad = Ui.dp(this, 24);
         box.setPadding(pad, Ui.dp(this, 8), pad, 0);
         box.addView(input);
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle(title)
                 .setView(box)
                 .setPositiveButton("Gem", (d, w) -> {
@@ -746,7 +1144,7 @@ public class SettingsActivity extends Activity {
             names[i] = Prefs.TILE_SIZES[i][1];
             if (Prefs.TILE_SIZES[i][0].equals(prefs.tileSize())) checked = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Størrelse på cards")
                 .setSingleChoiceItems(names, checked, (d, which) -> {
                     prefs.setTileSize(Prefs.TILE_SIZES[which][0]);
@@ -765,7 +1163,7 @@ public class SettingsActivity extends Activity {
             names[i] = modeName(modes[i]);
             if (modes[i].equals(prefs.bgMode())) checked = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Skift billede")
                 .setSingleChoiceItems(names, checked, (d, which) -> {
                     prefs.setBgMode(modes[which]);
@@ -793,7 +1191,7 @@ public class SettingsActivity extends Activity {
             }
             names[i] = label;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new AlertDialog.Builder(this, Ui.dialogTheme())
                 .setTitle("Vis igen")
                 .setItems(names, (d, which) -> {
                     Set<String> h = prefs.hidden();
@@ -817,7 +1215,7 @@ public class SettingsActivity extends Activity {
             }
             String code = res.optString("Code");
             String secret = res.optString("Secret");
-            AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            AlertDialog dialog = new AlertDialog.Builder(this, Ui.dialogTheme())
                     .setTitle("Quick Connect: " + code)
                     .setMessage("Åbn Jellyfin på telefonen eller pc'en, gå til din profil > Quick Connect og skriv koden " + code + ".")
                     .setNegativeButton("Annullér", null)

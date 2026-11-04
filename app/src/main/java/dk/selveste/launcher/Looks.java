@@ -41,11 +41,16 @@ final class Looks {
             {"salvie", "Lys salvie"},
             {"skov", "Skovgrøn"},
             {"hav", "Dybt hav"},
+            {"avis", "Avispapir"},
+            {"tegneserie", "Tegneseriepapir"},
+            {"kalk", "Kalket væg"},
+            {"kalender", "Julekalender rød"},
     };
 
     static final String[][] CORNERS = {{"skarp", "Skarpe"}, {"normal", "Normale"}, {"rund", "Runde"}, {"ekstra", "Ekstra runde"}};
     static final String[][] CARDS = {{"fast", "Faste"}, {"papir", "Papir (flade, uden kant)"}, {"streg", "Kun streg"},
-            {"tegneserie", "Tegneserie (sort kant og skygge)"}, {"glas", "Glas (gennemsigtige)"}};
+            {"tegneserie", "Tegneserie (sort kant og skygge)"}, {"glas", "Glas (gennemsigtige)"},
+            {"apple", "Apple TV (store ikoner, navn ved fokus)"}};
     static final String[][] SHADE = {{"ingen", "Ingen"}, {"let", "Let"}, {"normal", "Normal"}, {"kraftig", "Kraftig"}};
     static final String[][] BG_SOURCE = {{"tema", "Temaets fotos"}, {"billeder", "Mine billeder"}, {"ensfarvet", "Ensfarvet"}};
     static final String[][] SORT = {{"egen", "Min egen rækkefølge"}, {"senest", "Senest brugt forrest"}, {"mest", "Mest brugt forrest"}};
@@ -66,6 +71,9 @@ final class Looks {
             new Option("clock", "clock_style", "Ur", "Ur og skrift", "stor", Prefs.CLOCKS),
             new Option("font", "font", "Skrifttype", "Ur og skrift", "system", Prefs.FONTS),
             new Option("sort", "app_sort", "Rækkefølge i Apps", "Forside", "egen", SORT),
+            new Option("boot", "boot_style", "Opstart", "Opstart", "tema", BootIntro.STYLES),
+            new Option("boot_when", "boot_when", "Hvornår", "Opstart", "altid", BootIntro.WHEN),
+            new Option("boot_length", "boot_length", "Længde", "Opstart", "normal", BootIntro.LENGTH),
     };
 
     static final String[] GROUPS = {"Farver", "Stemning", "Form", "Ur og skrift", "Forside"};
@@ -85,7 +93,7 @@ final class Looks {
             if (v[0].equals(value)) {
                 prefs.setStr(o.pref, value);
                 // Sortering er ikke en del af udseendet, så temaet beholder sit navn
-                if (!"Forside".equals(o.group) && !"effects".equals(o.key)) prefs.setTheme("");
+                if (!"Forside".equals(o.group) && !"Opstart".equals(o.group) && !"effects".equals(o.key)) prefs.setTheme("");
                 return;
             }
         }
@@ -98,6 +106,6 @@ final class Looks {
 
     /** Alt der kræver, at forsiden bygges forfra, når det ændres. */
     static String layoutSignature(Prefs prefs) {
-        return prefs.tone() + "|" + prefs.str("cards", "fast") + "|" + prefs.str("corners", "normal") + "|" + prefs.str("shade", "normal");
+        return prefs.theme() + "|" + prefs.tone() + "|" + prefs.str("cards", "fast") + "|" + prefs.str("corners", "normal") + "|" + prefs.str("shade", "normal");
     }
 }

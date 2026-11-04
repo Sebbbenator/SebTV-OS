@@ -47,6 +47,10 @@ final class Prefs {
             {"jul", "Julerød", "#D23B33"},
             {"petrol", "Petrol", "#1F7A8C"},
             {"skum", "Havskum", "#7FD6DC"},
+            {"avisrod", "Avisrød", "#C8102E"},
+            {"ravgul", "Ravgul", "#F5C518"},
+            {"terrakotta", "Terrakotta", "#9A5B3A"},
+            {"julegul", "Julegul", "#E2BD62"},
             {"auto", "Fra baggrunden", ""},
     };
 
@@ -69,6 +73,7 @@ final class Prefs {
         }
         // Alle skærme læser Prefs først, så tonen er altid sat, før noget tegnes
         Ui.applyStyle(tone(), str("cards", "fast"), str("corners", "normal"));
+        Skin.key = theme();
     }
 
     /**
@@ -463,6 +468,18 @@ final class Prefs {
             {"hud", "Jarvis ring med sekunder"},
             {"sekunder", "Digital med sekunder"},
             {"analog", "Analogt ur"},
+            {"reaktor", "Buereaktor (Iron Man)"},
+            {"boble", "Taleboble (Spider-Man)"},
+            {"signal", "Batsignal (Batman)"},
+            {"sol", "Sol og store tal (Superman)"},
+            {"tavle", "Vippetavle (Biograf)"},
+            {"rosette", "Serif med rose (Rosé)"},
+            {"lys", "Stearinlys (Hygge)"},
+            {"blad", "Eukalyptuskvist (Salvie)"},
+            {"maane", "Månen i dag (Nattehimmel)"},
+            {"kugle", "Julekugle (Jul)"},
+            {"boelge", "Bølger (Havbrise)"},
+            {"blade", "Efterårsblade (Efterår)"},
     };
 
     static final String[][] FONTS = {

@@ -27,8 +27,49 @@ final class ThemePhotos {
             {"salvie", "1611255550543-b5ecb01dfddc", "1542728928-ee495082a3c6", "1687910819417-6f1b2b213e2d", "1521571086300-579bd981bbb6"},
             {"natte", "1488866022504-f2584929ca5f", "1464802686167-b939a6910659", "1595520519880-a86c48ea536c", "1522124624696-7ea32eb9592c", "1606247357835-d27fe83fc6a3"},
             {"jul", "1607956853617-d9d248a8f327", "1576536423721-d68a48c8ffd8", "1764276680194-0bcbaa3eb8be", "1703155559816-774e802ec421", "1701387961421-378314b96fd9"},
+            // Stederne fra Apples baggrunde: Big Sur, Yosemite (El Capitan), Catalina, Mojave og Monterey
+            {"apple", "1623169840544-0982db65d00e", "1691088986876-f2b1b30f690f", "1672167109138-f0ac5cde877d", "1509223276291-a9d41410cf25",
+                    "1519335337423-a3357c2cd12e", "1468863823688-36ac11ede785", "1509223397999-28fd1c5f11f5", "1745907429402-e5f700a5480d"},
             {"hav", "1518837695005-2083093ee35b", "1559827260-dc66d52bef19", "1560260240-c6ef90a163a4", "1484387436194-cf7cb70800ce", "1785677516870-de1ebe79f4e9"},
     };
+
+    /**
+     * Ægte fotos til temaernes ure (julekugle, stearinlys, måne ...), vist i en rund ramme ved siden
+     * af tiden. Hentes kvadratisk og ligger for sig selv, så de ikke bliver baggrunde.
+     */
+    private static final String[][] ART = {
+            {"jul", "1765372823786-1e6dd2c3c7ae"},       // guld julekugle på grantræet
+            {"hygge", "1787095544697-6fa650377d7b"},     // stearinlys i mørket
+            {"natte", "1522030299830-16b8d3d049fe"},     // fuldmåne
+            {"rose", "1773866035253-feccf6c5776a"},      // rose helt tæt på
+            {"salvie", "1611255550543-b5ecb01dfddc"},    // eukalyptus
+            {"efteraar", "1506193503569-d57d2a678510"},  // ahornblade i efterårsfarver
+            {"hav", "1616141893496-fbc65370493e"},       // bølge, der brydes
+            {"batman", "1715316110001-c2374d87e753"},    // Batsignalet på himlen
+            {"superman", "1615752592676-f6bd84f9419d"},  // solnedgang
+            {"ironman", "1776483289460-1ca426d583bf"},   // Iron Man hjelmen
+    };
+
+    /** Urets foto for temaet, hentet første gang. Null, hvis temaet ikke har et. Kaldes på en baggrundstråd. */
+    static android.graphics.Bitmap art(Context c, String theme) {
+        String id = null;
+        for (String[] a : ART) if (a[0].equals(theme)) id = a[1];
+        if (id == null) return null;
+        File d = new File(new File(c.getFilesDir(), "tema-ur"), theme);
+        if (!d.isDirectory()) d.mkdirs();
+        File f = new File(d, id + ".jpg");
+        if (!f.isFile() || f.length() == 0) {
+            File tmp = new File(d, id + ".del");
+            try {
+                Net.download("https://images.unsplash.com/photo-" + id + "?w=480&h=480&q=85&fm=jpg&fit=crop&crop=entropy", tmp);
+                if (!tmp.renameTo(f)) return null;
+            } catch (Exception e) {
+                tmp.delete();
+                return null;
+            }
+        }
+        return android.graphics.BitmapFactory.decodeFile(f.getPath());
+    }
 
     static File dir(Context c, String theme) {
         File d = new File(new File(c.getFilesDir(), "tema"), safe(theme));

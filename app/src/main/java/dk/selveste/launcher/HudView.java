@@ -25,6 +25,7 @@ final class HudView extends View {
     /** Blød opstart til Hjem udgaven: rolige ringe der breder sig, et hjerte og en hilsen. */
     private boolean soft;
     private float t;
+    private long duration = 3200;
 
     HudView(Context context, String greeting, int color) {
         super(context);
@@ -40,6 +41,11 @@ final class HudView extends View {
     HudView titled(String title, String subtitle) {
         this.title = title;
         this.subtitle = subtitle;
+        return this;
+    }
+
+    HudView lasting(long ms) {
+        duration = ms;
         return this;
     }
 
@@ -64,7 +70,7 @@ final class HudView extends View {
     void play(ViewGroup parent) {
         parent.addView(this, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
-        a.setDuration(3200);
+        a.setDuration(duration);
         a.setInterpolator(new LinearInterpolator());
         a.addUpdateListener(v -> {
             t = (float) v.getAnimatedValue();

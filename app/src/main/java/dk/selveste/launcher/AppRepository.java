@@ -85,6 +85,12 @@ final class AppRepository {
         Map<String, AppEntry> all = new LinkedHashMap<>();
         collect(all, Intent.CATEGORY_LEANBACK_LAUNCHER);
         collect(all, Intent.CATEGORY_LAUNCHER);
+        // Egne navne fra "Omdøb" i appens menu
+        for (Map.Entry<String, AppEntry> en : all.entrySet()) {
+            String own = prefs.str("label:" + en.getKey(), "");
+            AppEntry e = en.getValue();
+            if (!own.isEmpty()) en.setValue(new AppEntry(e.packageName, own, e.banner, e.icon, e.launchIntent));
+        }
         all.remove(context.getPackageName());
         for (String h : prefs.hidden()) all.remove(h);
 
@@ -176,16 +182,41 @@ final class AppRepository {
                     .addCategory(category)
                     .setComponent(new ComponentName(ai.packageName, ai.name))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+            // Bannere og ikoner læses én gang pr. app; listen bygges igen efter hver app, der er åbnet
+            String key = ai.packageName + "/" + ai.name;
+            Object[] got = CACHE.get(key);
+            if (got == null) {
+                got = new Object[]{String.valueOf(info.loadLabel(pm)), loadBanner(ai), info.loadIcon(pm)};
+                CACHE.put(key, got);
+            }
             into.put(ai.packageName, new AppEntry(
                     ai.packageName,
-                    String.valueOf(info.loadLabel(pm)),
-                    loadBanner(ai),
-                    info.loadIcon(pm),
+                    (String) got[0],
+                    copy((Drawable) got[1]),
+                    copy((Drawable) got[2]),
                     launch));
         }
     }
 
+    private static final Map<String, Object[]> CACHE = new java.util.HashMap<>();
+
+    /** Apps er installeret, fjernet eller opdateret: læs bannere og navne forfra næste gang. */
+    static void forget() {
+        CACHE.clear();
+    }
+
+    /** Hver flise får sin egen drawable, men de deler billedet. */
+    private Drawable copy(Drawable d) {
+        if (d == null) return null;
+        Drawable.ConstantState cs = d.getConstantState();
+        return cs == null ? d : cs.newDrawable(context.getResources()).mutate();
+    }
+
+    /** Kun til skærmbilleder i test: bannere til opdigtede apps. */
+    static java.util.function.Function<String, Drawable> testBanners;
+
     private Drawable loadBanner(ActivityInfo ai) {
+        if (testBanners != null) return testBanners.apply(ai.packageName);
         try {
             Drawable banner = ai.loadBanner(pm);
             if (banner != null) return banner;

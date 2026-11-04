@@ -10,6 +10,15 @@
         <item name="android:windowSwipeToDismiss">false</item>
         <item name="android:windowShowWallpaper">false</item>
     </style>
+    <!-- Dialoger i Apple temaet: mørkegrå, runde hjørner, hvid tekst og fokus -->
+    <style name="AppleDialog" parent="@android:style/Theme.DeviceDefault.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/apple_dialog</item>
+        <item name="android:colorBackground">#2C2C2E</item>
+        <item name="android:colorAccent">#FFFFFF</item>
+        <item name="android:colorControlHighlight">#40FFFFFF</item>
+        <item name="android:textColorPrimary">#FFFFFF</item>
+        <item name="android:textColorSecondary">#A1A1A6</item>
+    </style>
     <color name="jarvis_bg">#02080D</color>
     <color name="jarvis_cyan">#4FD8FF</color>
 </resources>

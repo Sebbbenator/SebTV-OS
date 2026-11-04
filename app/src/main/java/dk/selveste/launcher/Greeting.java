@@ -11,6 +11,7 @@ final class Greeting {
 
     static String text(Prefs prefs) {
         int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        if (Days.birthday(prefs)) return prefs.profileName().isEmpty() ? "Tillykke med dagen" : "Tillykke med dagen, " + prefs.profileName();
         String custom = prefs.customGreeting();
         if (!custom.isEmpty()) return custom;
         String g = h < 5 ? "Godnat" : h < 10 ? "Godmorgen" : h < 17 ? "Goddag" : h < 23 ? "Godaften" : "Godnat";

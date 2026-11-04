@@ -30,7 +30,7 @@ public class UploadActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.HORIZONTAL);
         root.setGravity(Gravity.CENTER);
-        root.setBackgroundColor(Ui.BG);
+        root.setBackground(Ui.screenBackground());
         int pad = Ui.dp(this, 56);
         root.setPadding(pad, pad, pad, pad);
 
@@ -43,7 +43,9 @@ public class UploadActivity extends Activity {
         col.setPadding(Ui.dp(this, 48), 0, 0, 0);
         root.addView(col);
 
-        col.addView(Ui.header(this, "TELEFONSIDEN", Ui.CYAN));
+        // Temaets egen farve (hvid i Apple), ikke Jarvis' cyan i alle temaer
+        int accent = Ui.apple() ? Ui.TEXT : new Prefs(this).accentColor();
+        col.addView(Ui.header(this, "TELEFONSIDEN", accent));
         TextView url = Ui.text(this, "", 28, Ui.TEXT);
         col.addView(url);
         // Hjemme virker wifi. Er tv'et på et andet net end hjemmenettet (fx hos kæresten), kan wifi'et
@@ -61,8 +63,8 @@ public class UploadActivity extends Activity {
             col.addView(Ui.text(this, (useTailscale ? "Uden Tailscale, på samme wifi: http://" : "Med Tailscale på telefonen: http://")
                     + other + ":" + UploadServer.PORT, 15, Ui.TEXT_DIM));
         }
-        col.addView(Ui.header(this, "KODE", Ui.CYAN));
-        TextView pin = Ui.text(this, "", 56, Ui.CYAN);
+        col.addView(Ui.header(this, "KODE", accent));
+        TextView pin = Ui.text(this, "", 56, accent);
         pin.setTypeface(Typeface.MONOSPACE);
         pin.setLetterSpacing(0.3f);
         col.addView(pin);

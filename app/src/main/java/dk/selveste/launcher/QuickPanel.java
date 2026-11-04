@@ -37,7 +37,7 @@ final class QuickPanel {
         LinearLayout box = new LinearLayout(a);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(a.dp(24), a.dp(8), a.dp(24), a.dp(24));
-        box.setBackground(Ui.card(a, Ui.bg(0.94f), Ui.CARD_STROKE, 1));
+        box.setBackground(Ui.panel(a, 0.94f));
         box.addView(Ui.header(a, "HURTIGPANEL", c));
 
         Map<String, JSONObject> states = a.lastStates;
@@ -82,7 +82,7 @@ final class QuickPanel {
             box.addView(Ui.row(a, "Profil", active.isEmpty() ? "Vælg" : active, c, v -> {
                 d.dismiss();
                 String[] names = profiles.toArray(new String[0]);
-                new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                new android.app.AlertDialog.Builder(a, Ui.dialogTheme())
                         .setTitle("Profil")
                         .setSingleChoiceItems(names, profiles.indexOf(active), (dd, which) -> {
                             dd.dismiss();

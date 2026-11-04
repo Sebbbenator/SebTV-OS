@@ -37,7 +37,7 @@ final class Search {
         LinearLayout box = new LinearLayout(a);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(a.dp(24), a.dp(8), a.dp(24), a.dp(24));
-        box.setBackground(Ui.card(a, Ui.bg(0.95f), Ui.CARD_STROKE, 1));
+        box.setBackground(Ui.panel(a, 0.95f));
         box.addView(Ui.header(a, "SØG", c));
         EditText input = new EditText(a);
         input.setSingleLine(true);

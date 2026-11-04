@@ -39,11 +39,17 @@ final class Motion {
 
     /** Fokus på et kort: fjedrer lidt forbi og falder på plads ved Fuld. */
     static void focus(View v, boolean has, String level) {
-        float s = has ? 1.08f : 1f;
+        // Apple TV løfter ikonet tydeligere frem end de andre temaer
+        float s = has ? (Ui.apple() ? 1.1f : 1.08f) : 1f;
         if (NONE.equals(level)) {
             v.animate().cancel();
             v.setScaleX(s);
             v.setScaleY(s);
+            return;
+        }
+        if (Ui.apple()) {
+            // tvOS glider roligt op uden at fjedre
+            v.animate().scaleX(s).scaleY(s).setDuration(200).setInterpolator(EASE).start();
             return;
         }
         if (FULL.equals(level) && has) {
@@ -51,6 +57,19 @@ final class Motion {
         } else {
             v.animate().scaleX(s).scaleY(s).setDuration(has ? 140 : 180).setInterpolator(EASE).start();
         }
+    }
+
+    /** Som focus, men med temaets egen størrelse i fokus. */
+    static void focusTo(View v, float s, String level) {
+        if (NONE.equals(level)) {
+            v.animate().cancel();
+            v.setScaleX(s);
+            v.setScaleY(s);
+            return;
+        }
+        boolean up = s > 1f;
+        v.animate().scaleX(s).scaleY(s).setDuration(up && FULL.equals(level) ? 260 : 170)
+                .setInterpolator(up && FULL.equals(level) ? SPRING : EASE).start();
     }
 
     /** Kortene i en række glider ind et ad gangen, første gang rækken vises. */
