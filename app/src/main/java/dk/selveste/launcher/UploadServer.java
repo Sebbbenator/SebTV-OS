@@ -139,6 +139,23 @@ final class UploadServer {
                         .replace("<title>Jarvis TV</title>", "<title>" + prefs.appName() + "</title>")));
                 return;
             }
+            if (path.startsWith("/font/")) {
+                // Temaernes skrifter, så telefonsiden kan klæde sig ud som tv'et
+                String name = path.substring(6);
+                if (!name.matches("[A-Za-z0-9-]+\\.ttf")) {
+                    send(out, 404, "text/plain", bytes("Findes ikke"));
+                    return;
+                }
+                byte[] font;
+                try (InputStream fin = context.getAssets().open("fonts/" + name)) {
+                    font = readAll(fin);
+                } catch (IOException e) {
+                    send(out, 404, "text/plain", bytes("Findes ikke"));
+                    return;
+                }
+                send(out, 200, "font/ttf", font, "public, max-age=604800");
+                return;
+            }
             if (path.equals("/api/profile-once")) {
                 // QR'en fra tv'et: koden hentes én gang med en tilfældig nøgle, uden PIN
                 String code = takeProfileCode(query.get("key"));
@@ -462,14 +479,18 @@ final class UploadServer {
     private synchronized String page() throws IOException {
         if (page == null) {
             try (InputStream in = context.getAssets().open("telefon.html")) {
-                java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
-                byte[] buf = new byte[16384];
-                int n;
-                while ((n = in.read(buf)) > 0) b.write(buf, 0, n);
-                page = new String(b.toByteArray(), StandardCharsets.UTF_8);
+                page = new String(readAll(in), StandardCharsets.UTF_8);
             }
         }
         return page;
+    }
+
+    private static byte[] readAll(InputStream in) throws IOException {
+        java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+        byte[] buf = new byte[16384];
+        int n;
+        while ((n = in.read(buf)) > 0) b.write(buf, 0, n);
+        return b.toByteArray();
     }
 
     /** Kun rigtige billeder gemmes: Android skal kunne læse deres størrelse. */
@@ -506,11 +527,15 @@ final class UploadServer {
     }
 
     private static void send(OutputStream out, int code, String type, byte[] body) throws IOException {
+        send(out, code, type, body, "no-store");
+    }
+
+    private static void send(OutputStream out, int code, String type, byte[] body, String cache) throws IOException {
         String status = code == 200 ? "OK" : code == 403 ? "Forbidden" : code == 404 ? "Not Found" : code == 413 ? "Too Large" : "Error";
         String head = "HTTP/1.1 " + code + " " + status + "\r\n"
                 + "Content-Type: " + type + "\r\n"
                 + "Content-Length: " + body.length + "\r\n"
-                + "Cache-Control: no-store\r\n"
+                + "Cache-Control: " + cache + "\r\n"
                 + "Connection: close\r\n\r\n";
         out.write(head.getBytes(StandardCharsets.US_ASCII));
         out.write(body);

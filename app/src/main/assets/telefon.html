@@ -4,23 +4,24 @@
 <meta name="theme-color" content="#0b0d10">
 <title>Jarvis TV</title>
 <style>
-:root{--bg:#0b0d10;--card:#16191e;--card2:#1e2228;--line:#ffffff14;--text:#f2f4f7;--dim:#9aa3ad;--acc:#4fd8ff;--on:#06121a;--r:18px}
+:root{--bg:#0b0d10;--bgi:none;--card:#16191e;--card2:#1e2228;--line:#ffffff14;--text:#f2f4f7;--dim:#9aa3ad;--acc:#4fd8ff;--on:#06121a;--r:18px;--r2:12px;--pill:999px;--bd:none;--sh:none;--nav:#0b0d10ee;--inv:#f2f4f7;--invt:#111;--hf:inherit;--hw:700;--lf:inherit;--bf:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
-html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 var(--bf)}
+body{background-image:var(--bgi);background-attachment:fixed;min-height:100vh}
 body{padding:0 16px calc(96px + env(safe-area-inset-bottom))}
-h1{font-size:28px;line-height:1.15;margin:0;font-weight:700;letter-spacing:-.01em}
-h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:26px 4px 10px}
+h1{font-size:28px;line-height:1.15;margin:0;font-weight:var(--hw);letter-spacing:-.01em;font-family:var(--hf)}
+h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:26px 4px 10px;font-family:var(--lf)}
 p{margin:0}.dim{color:var(--dim)}.small{font-size:14px}
 button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer;border:0;background:var(--card2);border-radius:12px;padding:11px 16px;font-weight:600}
+button{cursor:pointer;border:0;background:var(--card2);border-radius:var(--r2);padding:11px 16px;font-weight:600}
 button.acc{background:var(--acc);color:var(--on)}
 button.ghost{background:none;color:var(--acc);padding:8px 4px}
 button.danger{background:none;color:#ff6b6b;padding:8px 4px}
-input[type=text],input[type=date],input[type=password],textarea,select{width:100%;background:var(--card2);border:1px solid transparent;border-radius:12px;padding:12px 14px;outline:none}
+input[type=text],input[type=date],input[type=password],textarea,select{width:100%;background:var(--card2);border:1px solid transparent;border-radius:var(--r2);padding:12px 14px;outline:none}
 input:focus,textarea:focus,select:focus{border-color:var(--acc)}
 textarea{resize:none}
-.card{background:var(--card);border-radius:var(--r);padding:6px 16px}
+.card{background:var(--card);border-radius:var(--r);padding:6px 16px;border:var(--bd);box-shadow:var(--sh)}
 .card.pad{padding:16px}
 .row{display:flex;align-items:center;gap:12px;min-height:54px;padding:8px 0;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:0}
@@ -34,21 +35,21 @@ textarea{resize:none}
 .switch span{position:absolute;inset:0;background:#3a3f47;border-radius:31px;transition:.2s}
 .switch span::after{content:"";position:absolute;left:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;transition:.2s}
 .switch input:checked+span{background:var(--acc)}.switch input:checked+span::after{transform:translateX(20px)}
-.seg{display:flex;background:var(--card2);border-radius:12px;padding:3px;gap:3px;overflow-x:auto;scrollbar-width:none}
+.seg{display:flex;background:var(--card2);border-radius:var(--r2);padding:3px;gap:3px;overflow-x:auto;scrollbar-width:none}
 .seg::-webkit-scrollbar{display:none}
 .seg button{flex:1 0 auto;background:none;padding:8px 12px;border-radius:9px;font-weight:500;font-size:14px;color:var(--dim);white-space:nowrap}
-.seg button.on{background:var(--text);color:#111}
+.seg button.on{background:var(--inv);color:var(--invt)}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{background:var(--card2);border-radius:999px;padding:8px 14px;font-weight:500;font-size:15px}
+.chip{background:var(--card2);border-radius:var(--pill);padding:8px 14px;font-weight:500;font-size:15px}
 .chip.on{background:var(--acc);color:var(--on)}
 /* Toppen */
 .top{display:flex;align-items:center;gap:14px;padding:calc(18px + env(safe-area-inset-top)) 0 6px}
 .avatar{width:52px;height:52px;border-radius:50%;background:var(--card2) center/cover;flex:none;display:grid;place-items:center;font-weight:700;font-size:21px;color:var(--text);border:2px solid var(--acc);overflow:hidden}
 .avatar.big{width:84px;height:84px;font-size:34px}
 .who{flex:1;min-width:0}.who .dim{font-size:14px}
-.switcher{background:var(--card2);border-radius:999px;padding:8px 12px 8px 14px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
+.switcher{background:var(--card2);border-radius:var(--pill);padding:8px 12px 8px 14px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
 /* Faner */
-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0b0d10ee;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:5}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--nav);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:5}
 nav button{flex:1;background:none;border-radius:12px;padding:6px 0 4px;color:var(--dim);font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px}
 nav button svg{width:24px;height:24px}
 nav button.on{color:var(--acc)}
@@ -59,8 +60,8 @@ section{display:none}section.on{display:block;animation:in .2s ease}
 .theme{position:relative;aspect-ratio:16/10;border-radius:14px;overflow:hidden;cursor:pointer;border:2px solid transparent;text-align:left;padding:0;background:#222}
 .theme.on{border-color:var(--acc)}
 .theme .art{position:absolute;inset:0}
-.theme .name{position:absolute;left:10px;bottom:8px;font-size:15px;font-weight:700;text-shadow:0 1px 6px #0008;color:#fff}
-.theme.on .name::after{content:" ✓"}
+.theme .name{position:absolute;left:10px;bottom:8px;font-size:17px;font-weight:400;text-transform:none!important;letter-spacing:.01em!important;text-shadow:0 1px 6px #0008;color:#fff}
+.theme.on .name::after{content:" ✓";font-family:-apple-system,sans-serif;font-size:14px}
 /* Billeder */
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .img{position:relative;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#000;border:2px solid transparent}
@@ -72,28 +73,142 @@ section{display:none}section.on{display:block;animation:in .2s ease}
 .compose button{flex:none;width:48px;height:48px;border-radius:50%;padding:0;display:grid;place-items:center}
 .day{display:flex;align-items:center;gap:12px;min-height:56px;border-bottom:1px solid var(--line)}
 .day:last-child{border-bottom:0}
-.day .ico{width:38px;height:38px;border-radius:12px;background:var(--card2);display:grid;place-items:center;font-size:18px;flex:none}
+.day .ico{width:38px;height:38px;border-radius:var(--r2);background:var(--card2);display:grid;place-items:center;font-size:18px;flex:none}
 .day .when{color:var(--acc);font-size:14px;font-weight:600;white-space:nowrap}
 .del{background:var(--card2);width:30px;height:30px;border-radius:50%;padding:0;color:var(--dim);font-size:18px;line-height:30px;flex:none}
 .empty{color:var(--dim);padding:14px 0;font-size:15px}
 /* Ark (bundark) */
 .sheet-bg{position:fixed;inset:0;background:#0009;z-index:9;display:none}
-.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-radius:22px 22px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom));z-index:10;transform:translateY(105%);transition:transform .25s ease;max-height:88vh;overflow:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--sheet,var(--card));border-radius:22px 22px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom));z-index:10;transform:translateY(105%);transition:transform .25s ease;max-height:88vh;overflow:auto}
 .sheet:not(.open){visibility:hidden;transition:transform .25s ease,visibility 0s .25s}.sheet.open{transform:none}.sheet-bg.open{display:block}
 .sheet .grab{width:38px;height:5px;border-radius:3px;background:#ffffff30;margin:0 auto 14px}
-.sheet h3{margin:0 0 14px;font-size:20px}
+.sheet h3{margin:0 0 14px;font-size:22px;font-family:var(--hf);font-weight:var(--hw)}
 .sheet .stack>*{margin-bottom:12px}
 details{border-bottom:1px solid var(--line)}details:last-child{border-bottom:0}
 summary{list-style:none;display:flex;justify-content:space-between;align-items:center;min-height:54px;cursor:pointer;font-weight:500}
 summary::-webkit-details-marker{display:none}
 summary::after{content:"›";color:var(--dim);font-size:22px;transition:.2s}details[open] summary::after{transform:rotate(90deg)}
 details .inner{padding:0 0 12px}
-#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--text);color:#111;padding:10px 16px;border-radius:999px;font-weight:600;font-size:14px;opacity:0;transition:.25s;z-index:20;pointer-events:none;max-width:90vw;text-align:center}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--inv);color:var(--invt);padding:10px 16px;border-radius:var(--pill);font-weight:600;font-size:14px;opacity:0;transition:.25s;z-index:20;pointer-events:none;max-width:90vw;text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 /* Log ind */
 #login{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:18px;padding-bottom:80px}
 #pin{width:220px;text-align:center;font-size:34px;letter-spacing:.5em;padding:14px 0 14px .5em;font-weight:700}
 .hint{font-size:13px;color:var(--dim);margin:8px 4px 0}
+/* ===== Telefonsiden klæder sig ud som tv'ets tema ===== */
+@font-face{font-family:Rajdhani;src:url(/font/Rajdhani-SemiBold.ttf);font-display:swap}
+@font-face{font-family:TechMono;src:url(/font/ShareTechMono.ttf);font-display:swap}
+@font-face{font-family:Bangers;src:url(/font/Bangers.ttf);font-display:swap}
+@font-face{font-family:ComicNeue;src:url(/font/ComicNeue-Bold.ttf);font-display:swap}
+@font-face{font-family:Shoulders;src:url(/font/BigShoulders.ttf);font-display:swap}
+@font-face{font-family:JetMono;src:url(/font/JetBrainsMono.ttf);font-display:swap}
+@font-face{font-family:Fraktur;src:url(/font/UnifrakturMaguntia.ttf);font-display:swap}
+@font-face{font-family:PlayfairBlack;src:url(/font/PlayfairDisplay-Black.ttf);font-display:swap}
+@font-face{font-family:OldStandard;src:url(/font/OldStandard.ttf);font-display:swap}
+@font-face{font-family:OldStandard;src:url(/font/OldStandard-Bold.ttf);font-weight:700;font-display:swap}
+@font-face{font-family:Limelight;src:url(/font/Limelight.ttf);font-display:swap}
+@font-face{font-family:Bebas;src:url(/font/BebasNeue.ttf);font-display:swap}
+@font-face{font-family:FrauncesBlack;src:url(/font/Fraunces-Black.ttf);font-display:swap}
+@font-face{font-family:FrauncesItalic;src:url(/font/Fraunces-Italic.ttf);font-display:swap}
+@font-face{font-family:CaveatBold;src:url(/font/Caveat-Bold.ttf);font-display:swap}
+@font-face{font-family:Cormorant;src:url(/font/Cormorant.ttf);font-display:swap}
+@font-face{font-family:CormorantItalic;src:url(/font/Cormorant-Italic.ttf);font-display:swap}
+@font-face{font-family:Reenie;src:url(/font/ReenieBeanie.ttf);font-display:swap}
+
+/* Apple: sort, grå grupper, hvid fokus */
+.th-apple{--bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--line:#ffffff1a;--text:#fff;--dim:#8e8e93;--acc:#fff;--on:#000;--r:14px;--r2:10px;--nav:#121214e6;--sheet:#1c1c1e;--hw:700}
+.th-apple h1{font-size:30px;letter-spacing:-.02em}
+.th-apple h2{text-transform:none;letter-spacing:0;font-size:15px;font-weight:600;color:#fff;margin:28px 2px 8px}
+.th-apple .avatar{border-color:#ffffff33}
+.th-apple .chip.on,.th-apple button.acc{background:#fff;color:#000}
+.th-apple .switch input:checked+span{background:#30d158}
+
+/* Jarvis: HUD, cyan streger, skråskårne hjørner, guld */
+.th-jarvis{--bg:#03121a;--bgi:radial-gradient(120% 60% at 20% 0%,#0e3a4a 0%,transparent 60%),repeating-linear-gradient(0deg,#5ef2ff08 0 1px,transparent 1px 28px),repeating-linear-gradient(90deg,#5ef2ff08 0 1px,transparent 1px 28px);--card:#06222dcc;--card2:#0a2f3d;--line:#5ef2ff22;--text:#eafdff;--dim:#8fdfea99;--acc:#5ef2ff;--on:#03121a;--r:0;--r2:0;--pill:0;--bd:1px solid #5ef2ff55;--nav:#03121aee;--sheet:#062430;--inv:#5ef2ff;--invt:#03121a;--hf:Rajdhani,sans-serif;--hw:600;--lf:TechMono,monospace;--bf:Rajdhani,-apple-system,sans-serif}
+.th-jarvis body{font-size:17px}
+.th-jarvis h1{text-transform:uppercase;letter-spacing:.08em;font-size:26px}
+.th-jarvis h2{color:#f2b33d;letter-spacing:.2em}.th-jarvis h2::before{content:"// "}
+.th-jarvis .card{clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.th-jarvis .avatar{border-radius:50%;box-shadow:0 0 0 3px #03121a,0 0 0 5px #f2b33d}
+.th-jarvis button.acc,.th-jarvis .chip.on{background:#5ef2ff;color:#03121a;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+.th-jarvis .chip,.th-jarvis button{letter-spacing:.06em;text-transform:uppercase;font-size:14px}
+.th-jarvis .compose button{clip-path:none;border-radius:50%}
+.th-jarvis nav button.on{color:#5ef2ff;text-shadow:0 0 10px #5ef2ff}
+.th-jarvis .day .when{font-family:TechMono,monospace;color:#f2b33d}
+.th-jarvis input,.th-jarvis textarea,.th-jarvis select{border:1px solid #5ef2ff33;font-family:TechMono,monospace;font-size:15px}
+
+/* Spider-Man: tegneserieside med rastrede prikker, sorte rammer og gule tekstbokse */
+.th-spiderman{--bg:#f6ecd0;--bgi:radial-gradient(#c8102e22 1.4px,transparent 1.6px);--card:#fff;--card2:#f3ead2;--line:#1111111f;--text:#111;--dim:#4a4438;--acc:#c8102e;--on:#fff;--r:4px;--r2:4px;--pill:4px;--bd:3px solid #111;--sh:5px 5px 0 #111;--nav:#fffdf6f2;--sheet:#fffdf6;--inv:#111;--invt:#ffe14d;--hf:Bangers,Impact,sans-serif;--hw:400;--lf:Bangers,Impact,sans-serif;--bf:ComicNeue,"Comic Sans MS",sans-serif}
+.th-spiderman body{background-size:9px 9px}
+.th-spiderman h1{font-size:34px;letter-spacing:.04em;color:#c8102e;-webkit-text-stroke:1px #111;text-shadow:2px 2px 0 #111}
+.th-spiderman h2{display:table;background:#ffe14d;color:#111;border:2.5px solid #111;padding:2px 10px;font-size:17px;letter-spacing:.06em;margin:24px 0 10px;transform:rotate(-1.5deg)}
+.th-spiderman nav{border-top:3px solid #111}
+.th-spiderman button.acc,.th-spiderman .chip.on{background:#c8102e;color:#fff;border:2.5px solid #111;box-shadow:3px 3px 0 #111}
+.th-spiderman .chip,.th-spiderman button{border:2px solid #111}
+.th-spiderman button.ghost,.th-spiderman button.danger,.th-spiderman nav button,.th-spiderman .del{border:0;box-shadow:none}
+.th-spiderman button.ghost{color:#1b3f8f}
+.th-spiderman input,.th-spiderman textarea,.th-spiderman select{background:#fff;border:2px solid #111}
+.th-spiderman .avatar{border:3px solid #111;background-color:#1b3f8f;color:#fff;font-family:Bangers,sans-serif}
+.th-spiderman .day .when{color:#1b3f8f}
+.th-spiderman nav button.on{color:#c8102e}
+
+/* Batman: Batcomputeren, mørk skifer, ravgul, mono */
+.th-batman{--bg:#0b0c0e;--card:#101317;--card2:#181c22;--line:#2b3038;--text:#e9e4d6;--dim:#7c7462;--acc:#f5c518;--on:#0b0c0e;--r:2px;--r2:2px;--pill:2px;--bd:1px solid #2b3038;--nav:#0b0c0ef2;--sheet:#101317;--inv:#f5c518;--invt:#0b0c0e;--hf:Shoulders,"Arial Narrow",sans-serif;--hw:800;--lf:JetMono,monospace;--bf:-apple-system,"Segoe UI",Roboto,sans-serif}
+.th-batman h1{text-transform:uppercase;letter-spacing:.08em;font-size:30px}
+.th-batman h2{color:#f5c518;letter-spacing:.18em;font-size:12px;border-bottom:1px solid #2b3038;padding-bottom:6px;margin-left:0;margin-right:0}
+.th-batman h2::before{content:"▌ ";color:#f5c518}
+.th-batman .card{border-left:3px solid #f5c518}
+.th-batman .avatar{border-radius:2px;border-color:#f5c518}
+.th-batman .day .when,.th-batman .val{font-family:JetMono,monospace;font-size:13px}
+.th-batman .day .when{color:#f5c518}
+.th-batman nav{border-top:1px solid #f5c51855}
+
+/* Superman: avisforside, sort tryk på papir, rød streg, fraktur */
+.th-superman{--bg:#f1eadb;--bgi:linear-gradient(90deg,#00000006 1px,transparent 1px);--card:transparent;--card2:#e8dfcc;--line:#15151533;--text:#151515;--dim:#5a5348;--acc:#c8102e;--on:#fff;--r:0;--r2:0;--pill:0;--nav:#f1eadbf2;--sheet:#f6f0e3;--inv:#151515;--invt:#f1eadb;--hf:PlayfairBlack,Georgia,serif;--hw:400;--lf:OldStandard,Georgia,serif;--bf:OldStandard,Georgia,serif}
+.th-superman body{background-size:6px 6px}
+.th-superman .top{border-bottom:3px double #151515;padding-bottom:12px}
+.th-superman h1{font-family:Fraktur,serif;font-size:34px;letter-spacing:0}
+.th-superman h2{font-family:PlayfairBlack,Georgia,serif;color:#151515;text-transform:uppercase;font-size:15px;letter-spacing:.12em;border-top:3px solid #151515;border-bottom:1px solid #151515;padding:4px 0;margin:26px 0 6px;text-align:center}
+.th-superman .card{padding:0 2px}
+.th-superman .card.pad{padding:8px 0}
+.th-superman button.acc,.th-superman .chip.on{background:#151515;color:#f1eadb}
+.th-superman .chip{background:none;border:1px solid #151515}
+.th-superman input,.th-superman textarea,.th-superman select{background:#fbf7ee;border:1px solid #15151555}
+.th-superman .avatar{border-radius:0;border:2px solid #151515;background-color:#c8102e;color:#fff;font-family:PlayfairBlack,serif}
+.th-superman .day .when{color:#c8102e;font-style:italic}
+.th-superman nav{border-top:3px double #151515}
+.th-superman nav button.on{color:#c8102e}
+.th-superman .theme{border-radius:0}
+
+/* Biograf: rødt fløjl, guld, lysskilt og billetter */
+.th-biograf{--bg:#1d0a0b;--bgi:linear-gradient(90deg,#5a0b12 0,#2a0f0f 18px,transparent 40px,transparent calc(100% - 40px),#2a0f0f calc(100% - 18px),#5a0b12 100%);--card:#2a1210;--card2:#3a1a16;--line:#c9a24f33;--text:#f6ead2;--dim:#c9b07e;--acc:#ffc75a;--on:#1d0a0b;--r:6px;--r2:4px;--pill:4px;--bd:1px dashed #c9a24f88;--nav:#1d0a0bf2;--sheet:#2a1210;--inv:#ffe7a3;--invt:#1d0a0b;--hf:Limelight,serif;--hw:400;--lf:Bebas,"Arial Narrow",sans-serif;--bf:-apple-system,"Segoe UI",Roboto,sans-serif}
+.th-biograf h1{color:#ffe7a3;text-shadow:0 0 12px #ffb02e99;font-size:30px}
+.th-biograf h2{color:#ffc75a;font-size:20px;letter-spacing:.2em;text-align:center;margin:26px 0 10px}
+.th-biograf h2::before,.th-biograf h2::after{content:" ★ ";font-size:12px;vertical-align:3px}
+.th-biograf .card{background:radial-gradient(circle at 0 50%,transparent 9px,#2a1210 10px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 9px,#2a1210 10px) right/51% 100% no-repeat}
+.th-biograf button.acc,.th-biograf .chip.on{background:#ffc75a;color:#1d0a0b;font-family:Bebas,sans-serif;letter-spacing:.1em;font-size:17px}
+.th-biograf .avatar{border-color:#ffc75a;box-shadow:0 0 14px #ffb02e66}
+.th-biograf .day .when{font-family:Bebas,sans-serif;font-size:18px;letter-spacing:.08em;color:#ffc75a}
+.th-biograf nav button.on{color:#ffe7a3;text-shadow:0 0 10px #ffb02e}
+
+/* Jul: julekalender, rødt papir, grønne låger med guld */
+.th-jul{--bg:#7a121c;--bgi:radial-gradient(circle at 15% 10%,#ffffff12 0 2px,transparent 3px),radial-gradient(circle at 70% 40%,#ffffff10 0 1.5px,transparent 2.5px),radial-gradient(circle at 40% 80%,#ffffff12 0 2px,transparent 3px);--card:#174a35;--card2:#1f5a42;--line:#e2bd6233;--text:#f6ead2;--dim:#d9c9a3;--acc:#e2bd62;--on:#3b0a10;--r:10px;--r2:8px;--pill:8px;--bd:2px solid #e2bd62;--nav:#5e0d15f2;--sheet:#174a35;--inv:#e2bd62;--invt:#3b0a10;--hf:FrauncesBlack,Georgia,serif;--hw:400;--lf:FrauncesItalic,Georgia,serif;--bf:-apple-system,"Segoe UI",Roboto,sans-serif}
+.th-jul body{background-size:120px 120px}
+.th-jul h1{font-size:30px}
+.th-jul h2{text-transform:none;letter-spacing:.02em;font-size:20px;color:#e2bd62;margin:26px 4px 8px}
+.th-jul .hint,.th-jul .empty{font-family:CaveatBold,cursive;font-size:19px;color:#f6ead2}
+.th-jul .avatar{border-color:#e2bd62;background-color:#174a35}
+.th-jul .day .ico{background:#7a121c;border:1.5px solid #e2bd62}
+.th-jul .day .when{color:#e2bd62}
+
+/* Hygge: billedhylde, varmt papir, notesbog og håndskrift */
+.th-hygge{--bg:#efe6d6;--card:#fbf6ea;--card2:#f3ecdd;--line:#3a2c2215;--text:#3a2c22;--dim:#8a7560;--acc:#9a5b3a;--on:#fff;--r:6px;--r2:6px;--pill:999px;--sh:0 2px 8px #3c230f1f;--nav:#efe6d6f0;--sheet:#fbf6ea;--inv:#3a2c22;--invt:#fbf6ea;--hf:CormorantItalic,Georgia,serif;--hw:400;--lf:Cormorant,Georgia,serif;--bf:-apple-system,"Segoe UI",Roboto,sans-serif}
+.th-hygge h1{font-size:34px}
+.th-hygge h2{text-transform:none;letter-spacing:.02em;font-size:21px;color:#3a2c22;font-weight:600;margin:26px 4px 8px}
+.th-hygge .hint,.th-hygge .empty{font-family:Reenie,cursive;font-size:25px;color:#6b5442;line-height:1.1}
+.th-hygge .card{background-image:repeating-linear-gradient(0deg,transparent 0 53px,#9a5b3a14 53px 54px)}
+.th-hygge .avatar{border-color:#e2cfae;background-color:#e8dcc5}
+.th-hygge .theme{box-shadow:0 2px 6px #3c230f22}
 </style></head><body>
 
 <div id="login">
@@ -237,13 +352,13 @@ const $=id=>document.getElementById(id);
 let PIN=localStorage.getItem('pin')||'';let S=null;let DEMO=!!window.DEMO;
 const MAIN={
  apple:{n:'Apple',bg:'linear-gradient(160deg,#3a3d44,#16171a)',f:'-apple-system,sans-serif',c:'#fff',x:'<div style="position:absolute;left:12%;right:12%;bottom:22%;height:22%;border-radius:8px;background:#ffffff30"></div>'},
- jarvis:{n:'Jarvis',bg:'radial-gradient(circle at 30% 45%,#0e3a4a,#03121a 70%)',c:'#bff3ff',x:'<div style="position:absolute;left:14%;top:22%;width:34%;aspect-ratio:1;border-radius:50%;border:3px solid #4fd8ff;box-shadow:0 0 0 4px #03121a,0 0 0 6px #e8b04b"></div>'},
- spiderman:{n:'Spider-Man',bg:'#f6ecd0',c:'#111',f:'Impact,sans-serif',x:'<div style="position:absolute;left:6%;top:8%;width:42%;height:48%;background:#c8102e;border:2px solid #111"></div><div style="position:absolute;right:6%;top:8%;width:42%;height:48%;background:#1b3f8f;border:2px solid #111"></div>',shadow:'none'},
- batman:{n:'Batman',bg:'#0b0b0b',c:'#f2c230',f:'Impact,"Arial Narrow",sans-serif',x:'<div style="position:absolute;right:8%;top:14%;font:900 30px Impact,sans-serif;color:#f2c230">22:30</div>'},
- superman:{n:'Superman',bg:'#f1eadb',c:'#151515',f:'Georgia,serif',x:'<div style="position:absolute;left:8%;right:8%;top:12%;border-top:2px solid #151515;border-bottom:1px solid #151515;padding:3px 0;text-align:center;font:700 italic 15px Georgia,serif;color:#151515">Daily Planet</div><div style="position:absolute;left:8%;top:12%;width:14%;height:12%;background:#c8102e"></div>',shadow:'none'},
- biograf:{n:'Biograf',bg:'linear-gradient(90deg,#5a0b12 0 9%,#2a0f0f 9% 91%,#5a0b12 91%)',c:'#f6ead2',x:'<div style="position:absolute;left:22%;right:22%;top:14%;height:34%;background:#f4efe3;outline:3px dotted #e2bd62;outline-offset:3px"></div>'},
- jul:{n:'Jul',bg:'#7a121c',c:'#f6ead2',f:'Georgia,serif',x:'<div style="position:absolute;left:8%;top:14%;width:36%;height:52%;background:#174a35;border:2px solid #e2bd62"></div><div style="position:absolute;right:10%;top:16%;font-size:28px">❤︎</div>'},
- hygge:{n:'Hygge',bg:'#efe6d6',c:'#3b2f25',f:'Georgia,serif',x:'<div style="position:absolute;left:8%;top:12%;width:34%;height:40%;background:#fbf6ea;box-shadow:0 2px 6px #0003;transform:rotate(-3deg)"></div><div style="position:absolute;right:16%;top:16%;width:7%;height:34%;background:#f7f1e3;border-radius:3px;box-shadow:0 -8px 10px -2px #f6a94a88"></div>',shadow:'none'}
+ jarvis:{n:'Jarvis',bg:'radial-gradient(circle at 30% 45%,#0e3a4a,#03121a 70%)',c:'#bff3ff',f:'Rajdhani,sans-serif',x:'<div style="position:absolute;left:14%;top:22%;width:34%;aspect-ratio:1;border-radius:50%;border:3px solid #4fd8ff;box-shadow:0 0 0 4px #03121a,0 0 0 6px #e8b04b"></div>'},
+ spiderman:{n:'Spider-Man',bg:'#f6ecd0',c:'#111',f:'Bangers,Impact,sans-serif',x:'<div style="position:absolute;left:6%;top:8%;width:42%;height:48%;background:#c8102e;border:2px solid #111"></div><div style="position:absolute;right:6%;top:8%;width:42%;height:48%;background:#1b3f8f;border:2px solid #111"></div>',shadow:'none'},
+ batman:{n:'Batman',bg:'#0b0b0b',c:'#f2c230',f:'Shoulders,Impact,sans-serif',x:'<div style="position:absolute;right:8%;top:14%;font:900 30px Impact,sans-serif;color:#f2c230">22:30</div>'},
+ superman:{n:'Superman',bg:'#f1eadb',c:'#151515',f:'PlayfairBlack,Georgia,serif',x:'<div style="position:absolute;left:8%;right:8%;top:12%;border-top:2px solid #151515;border-bottom:1px solid #151515;padding:3px 0;text-align:center;font:700 italic 15px Georgia,serif;color:#151515">Daily Planet</div><div style="position:absolute;left:8%;top:12%;width:14%;height:12%;background:#c8102e"></div>',shadow:'none'},
+ biograf:{n:'Biograf',bg:'linear-gradient(90deg,#5a0b12 0 9%,#2a0f0f 9% 91%,#5a0b12 91%)',c:'#f6ead2',f:'Limelight,serif',x:'<div style="position:absolute;left:22%;right:22%;top:14%;height:34%;background:#f4efe3;outline:3px dotted #e2bd62;outline-offset:3px"></div>'},
+ jul:{n:'Jul',bg:'#7a121c',c:'#f6ead2',f:'FrauncesBlack,Georgia,serif',x:'<div style="position:absolute;left:8%;top:14%;width:36%;height:52%;background:#174a35;border:2px solid #e2bd62"></div><div style="position:absolute;right:10%;top:16%;font-size:28px">❤︎</div>'},
+ hygge:{n:'Hygge',bg:'#efe6d6',c:'#3b2f25',f:'CormorantItalic,Georgia,serif',x:'<div style="position:absolute;left:8%;top:12%;width:34%;height:40%;background:#fbf6ea;box-shadow:0 2px 6px #0003;transform:rotate(-3deg)"></div><div style="position:absolute;right:16%;top:16%;width:7%;height:34%;background:#f7f1e3;border-radius:3px;box-shadow:0 -8px 10px -2px #f6a94a88"></div>',shadow:'none'}
 };
 const ICON={birthday:'🎂',yearly:'♥',once:'⏳'};
 
@@ -269,8 +384,13 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;',
 function hello(){const h=new Date().getHours();return h<5?'Godnat':h<10?'Godmorgen':h<17?'Goddag':h<23?'Godaften':'Godnat'}
 function avatar(el){const P=S.profile;el.style.backgroundImage=P.picture?'url(/profil.jpg?pin='+PIN+'&t='+(S._pt||0)+')':'';el.textContent=P.picture?'':(P.name||'?').slice(0,1).toUpperCase()}
 
+const SKINS=['apple','jarvis','spiderman','batman','superman','biograf','jul','hygge'];
+function skin(t){const h=document.documentElement;const k=SKINS.includes(t)?t:'';h.className=k?'th-'+k:'';
+ if(k)h.style.removeProperty('--acc');else h.style.setProperty('--acc',(S&&S.accent)||'#4fd8ff');
+ const m=document.querySelector('meta[name=theme-color]');if(m)m.content=getComputedStyle(h).getPropertyValue('--bg').trim()||'#0b0d10';
+ try{localStorage.setItem('skin',t)}catch(e){}}
 function render(){
- const P=S.profile;document.documentElement.style.setProperty('--acc',S.accent||'#4fd8ff');
+ const P=S.profile;skin(S.theme);
  $('hello').textContent=hello()+(P.name?', '+P.name:'');
  const th=(S.themes.find(t=>t[0]==S.theme)||[])[1];
  $('sub').textContent=[th?th.split(' · ')[0]:'Eget udseende',S.wx].filter(Boolean).join(' · ');
@@ -419,6 +539,7 @@ async function haLogin(){const u=$('haUrl').value.trim();if(!u){toast('Skriv adr
 function saveHa(){const o={haUrl:$('haUrl').value};if($('haToken').value)o.haToken=$('haToken').value;$('haToken').value='';post(o)}
 function forget(){if(confirm('Glem token på tv\'et?'))post({haForget:true})}
 
+try{const t=localStorage.getItem('skin');if(t)skin(t)}catch(e){}
 $('pin').value=PIN;
 $('pin').addEventListener('input',()=>{if($('pin').value.length==4)go()});
 try{const t=sessionStorage.getItem('tab');if(t)tab(t)}catch(e){}
