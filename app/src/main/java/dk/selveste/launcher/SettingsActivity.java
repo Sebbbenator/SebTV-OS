@@ -312,6 +312,14 @@ public class SettingsActivity extends Activity {
         return t;
     }
 
+    private int phoneCount() {
+        try {
+            return new org.json.JSONArray(prefs.str(UploadServer.TOKENS, "[]")).length();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     private void buildMain() {
         int c = accent;
         title("Indstillinger");
@@ -326,6 +334,14 @@ public class SettingsActivity extends Activity {
         int unseen = Post.unseen(prefs).size();
         list.addView(Ui.row(this, "Beskeder", unseen > 0 ? unseen + " ulæst" : Post.contacts(prefs).size() + " tv", c, v -> open(PAGE_POST)));
         list.addView(Ui.row(this, "Vejr", Weather.on(prefs) ? Weather.city(prefs) : "Vælg by", c, v -> chooseWeather()));
+        int phones = phoneCount();
+        list.addView(Ui.row(this, "Telefon", phones == 0 ? "Fjernbetjening og telefonsiden" : phones + " parret", c,
+                v -> startActivity(new Intent(this, UploadActivity.class))));
+        if (phones > 0) list.addView(Ui.row(this, "Glem parrede telefoner", "De skal så skrive koden igen", c, v -> {
+            UploadServer.forgetPhones(prefs);
+            Toast.makeText(this, "Telefonerne er glemt", Toast.LENGTH_SHORT).show();
+            build();
+        }));
 
         list.addView(Ui.header(this, "BAGGRUNDE", c));
         list.addView(Ui.row(this, "Læg billeder op fra telefonen", new Backgrounds(this).list().size() + " billeder", c,
