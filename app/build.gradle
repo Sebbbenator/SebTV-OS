@@ -58,4 +58,6 @@ android {
 dependencies {
     implementation "io.nayuki:qrcodegen:1.8.0"
     testImplementation "junit:junit:4.13.2"
+    // Rigtig org.json i tests (Androids egen er kun en tom stub uden for tv'et)
+    testImplementation "org.json:json:20240303"
 }
