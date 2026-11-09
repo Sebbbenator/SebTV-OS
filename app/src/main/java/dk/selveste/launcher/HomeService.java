@@ -69,6 +69,22 @@ public class HomeService extends AccessibilityService {
         return true;
     }
 
+    static HomeService get() {
+        return instance;
+    }
+
+    /** Starter en app fra baggrunden; Home tjenesten må det, selv når en anden app står fremme. */
+    static boolean launch(Intent intent) {
+        Context c = instance;
+        if (c == null) return false;
+        try {
+            c.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /** Sov nu fra Fire TV menuen. */
     static boolean sleepNow() {
         if (instance == null || Build.VERSION.SDK_INT < 28) return false;
@@ -85,6 +101,7 @@ public class HomeService extends AccessibilityService {
         if (messages != null) messages.stop();
         handler.removeCallbacksAndMessages(null);
         instance = null;
+        UploadServer.stopShared();
     }
 
     @Override
@@ -98,6 +115,8 @@ public class HomeService extends AccessibilityService {
         NightUpdate.schedule(this);
         messages = new JarvisMessages(this);
         messages.start();
+        // Telefonsiden og fjernbetjeningen kører hele tiden
+        UploadServer.shared(this);
         homeActivities.clear();
         PackageManager pm = getPackageManager();
         Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);

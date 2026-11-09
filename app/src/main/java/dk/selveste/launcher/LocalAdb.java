@@ -55,6 +55,11 @@ final class LocalAdb implements AutoCloseable {
      * venter op til waitMs på, at man trykker. Kaldes fra en baggrundstråd.
      */
     static LocalAdb connect(Context context, int waitMs) throws Exception {
+        return connect(context, waitMs, true);
+    }
+
+    /** Uden offerKey vises ingen Tillad dialog: kendes nøglen ikke, opgives det med det samme. */
+    static LocalAdb connect(Context context, int waitMs, boolean offerKey) throws Exception {
         KeyPair keys = keys(context);
         Socket s = new Socket();
         try {
@@ -76,6 +81,7 @@ final class LocalAdb implements AutoCloseable {
                     sentSignature = true;
                     adb.write(AUTH, AUTH_SIGNATURE, 0, sign((RSAPrivateKey) keys.getPrivate(), m.data));
                 } else {
+                    if (!offerKey) throw new IOException("Tv'et kender ikke nøglen");
                     // Nøglen kendes ikke: send den, så tv'et spørger, og vent på svaret
                     adb.write(AUTH, AUTH_RSAPUBLICKEY, 0, publicKey((RSAPublicKey) keys.getPublic()));
                     s.setSoTimeout(waitMs);

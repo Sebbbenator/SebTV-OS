@@ -455,13 +455,7 @@ public class SettingsActivity extends Activity {
                 return;
             }
             // Telefonsiden skal køre, mens QR'en vises; QR'en har kun en kort nøgle, så den er let at scanne
-            UploadServer server = new UploadServer(this, null);
-            try {
-                server.start();
-            } catch (Exception e) {
-                server = null;
-            }
-            UploadServer running = server;
+            UploadServer.shared(this);
             String url = "http://" + UploadActivity.ip() + ":" + UploadServer.PORT + "/#kode=" + UploadServer.offerProfileCode(code);
             android.widget.ImageView qr = new android.widget.ImageView(this);
             qr.setImageBitmap(UploadActivity.qrBitmap(url, Ui.dp(this, 360)));
@@ -476,9 +470,6 @@ public class SettingsActivity extends Activity {
                     .setTitle("Din profilkode")
                     .setView(box)
                     .setPositiveButton("Luk", null)
-                    .setOnDismissListener(d -> {
-                        if (running != null) running.stop();
-                    })
                     .show();
         });
     }

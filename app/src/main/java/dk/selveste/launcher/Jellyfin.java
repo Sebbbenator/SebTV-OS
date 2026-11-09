@@ -14,6 +14,8 @@ final class Jellyfin {
 
     static final class Item {
         String id;
+        /** Movie, Series, Episode ... */
+        String type = "";
         String title;
         String subtitle;
         String imageUrl;
@@ -205,6 +207,16 @@ final class Jellyfin {
         return items(get("/Items?userId=" + u + "&" + q, "/Users/" + u + "/Items?" + q));
     }
 
+    /** Sete film og afsnit, senest sete først (til Månedens tal). */
+    JSONArray playedRecently() throws Exception {
+        String u = prefs.jfUser();
+        String q = "includeItemTypes=Movie,Episode&recursive=true&filters=IsPlayed&sortBy=DatePlayed&sortOrder=Descending&limit=400"
+                + "&fields=UserData&enableImages=false";
+        String json = get("/Items?userId=" + u + "&" + q, "/Users/" + u + "/Items?" + q).trim();
+        JSONArray arr = json.startsWith("[") ? new JSONArray(json) : new JSONObject(json).optJSONArray("Items");
+        return arr == null ? new JSONArray() : arr;
+    }
+
     Item randomUnwatchedMovie() throws Exception {
         String u = prefs.jfUser();
         String q = "includeItemTypes=Movie&isPlayed=false&sortBy=Random&limit=1&recursive=true&fields=Overview";
@@ -228,6 +240,7 @@ final class Jellyfin {
         Item it = new Item();
         it.id = o.optString("Id");
         String type = o.optString("Type");
+        it.type = type;
         if ("Episode".equals(type)) {
             it.title = o.optString("SeriesName", o.optString("Name"));
             it.subtitle = "S" + o.optInt("ParentIndexNumber", 0) + ":E" + o.optInt("IndexNumber", 0) + " " + o.optString("Name");

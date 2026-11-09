@@ -9,7 +9,7 @@
 [hidden]{display:none!important}
 html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 var(--bf)}
 body{background-image:var(--bgi);background-attachment:fixed;min-height:100vh}
-body{padding:0 16px calc(96px + env(safe-area-inset-bottom))}
+body{padding:0 16px calc(150px + env(safe-area-inset-bottom))}
 h1{font-size:28px;line-height:1.15;margin:0;font-weight:var(--hw);letter-spacing:-.01em;font-family:var(--hf)}
 h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:26px 4px 10px;font-family:var(--lf)}
 p{margin:0}.dim{color:var(--dim)}.small{font-size:14px}
@@ -76,6 +76,9 @@ section{display:none}section.on{display:block;animation:in .2s ease}
 .day .ico{width:38px;height:38px;border-radius:var(--r2);background:var(--card2);display:grid;place-items:center;font-size:18px;flex:none}
 .day .when{color:var(--acc);font-size:14px;font-weight:600;white-space:nowrap}
 .del{background:var(--card2);width:30px;height:30px;border-radius:50%;padding:0;color:var(--dim);font-size:18px;line-height:30px;flex:none}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin:4px 0 12px}
+.stats b{display:block;font-size:34px;line-height:1.1;color:var(--acc);font-family:var(--hf);font-weight:var(--hw)}
+.stats span{font-size:13px;color:var(--dim)}
 .empty{color:var(--dim);padding:14px 0;font-size:15px}
 /* Ark (bundark) */
 .sheet-bg{position:fixed;inset:0;background:#0009;z-index:9;display:none}
@@ -95,6 +98,27 @@ details .inner{padding:0 0 12px}
 #login{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:18px;padding-bottom:80px}
 #pin{width:220px;text-align:center;font-size:34px;letter-spacing:.5em;padding:14px 0 14px .5em;font-weight:700}
 .hint{font-size:13px;color:var(--dim);margin:8px 4px 0}
+
+/* Fjernbetjening */
+.remote-fab{position:fixed;right:16px;bottom:calc(78px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;padding:0;display:grid;place-items:center;z-index:6;box-shadow:0 6px 20px #0006}
+.th-jarvis .remote-fab,.th-spiderman .remote-fab,.th-biograf .remote-fab{clip-path:none!important;border-radius:50%}
+.pad-ring{position:relative;width:250px;height:250px;margin:6px auto 18px;border-radius:50%;background:var(--card2);border:var(--bd);box-shadow:var(--sh)}
+.pad-ring button{position:absolute;background:none;border-radius:0;padding:0;color:var(--text);display:grid;place-items:center;border:0!important;box-shadow:none!important;clip-path:none!important}
+.pad-ring button:active,.rkeys button:active{opacity:.55;transform:scale(.96)}
+.pad-ring .u{left:80px;top:0;width:90px;height:80px}.pad-ring .d{left:80px;bottom:0;width:90px;height:80px}
+.pad-ring .l{left:0;top:80px;width:80px;height:90px}.pad-ring .r{right:0;top:80px;width:80px;height:90px}
+.pad-ring .ok{left:78px;top:78px;width:94px;height:94px;border-radius:50%!important;background:var(--acc);color:var(--on);font-weight:700;font-size:17px;letter-spacing:.05em}
+.rkeys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+.rkeys button{height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0}
+.rkeys button small{font-size:11px;font-weight:600;color:var(--dim);display:block;line-height:1}
+/* Film og serier */
+.media{display:flex;flex-direction:column}
+.mrow{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.mrow:last-child{border-bottom:0}
+.mrow .poster{width:92px;aspect-ratio:16/9;border-radius:var(--r2);background:var(--card2) center/cover;flex:none;position:relative;overflow:hidden}
+.mrow .poster i{position:absolute;left:0;bottom:0;height:3px;background:var(--acc)}
+.mrow .t{flex:1;min-width:0}.mrow .t div:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.mrow .play{width:36px;height:36px;border-radius:50%;background:var(--acc);color:var(--on);display:grid;place-items:center;flex:none}
 /* ===== Telefonsiden klæder sig ud som tv'ets tema ===== */
 @font-face{font-family:Rajdhani;src:url(/font/Rajdhani-SemiBold.ttf);font-display:swap}
 @font-face{font-family:TechMono;src:url(/font/ShareTechMono.ttf);font-display:swap}
@@ -214,7 +238,7 @@ details .inner{padding:0 0 12px}
 <div id="login">
  <div class="avatar big" style="border-color:var(--acc)">📺</div>
  <h1>JARVIS TV</h1>
- <p class="dim">Skriv koden, der står på tv'et</p>
+ <p class="dim">Skriv koden, der står på tv'et<br><span class="small">Tv: Indstillinger &gt; Telefon. Kun første gang.</span></p>
  <input id="pin" type="text" inputmode="numeric" maxlength="4" autocomplete="one-time-code">
  <button class="acc" style="width:220px" onclick="go()">Forbind</button>
 </div>
@@ -225,6 +249,7 @@ details .inner{padding:0 0 12px}
   <div class="who"><h1 id="hello">Hej</h1><div class="dim" id="sub"></div></div>
   <button class="switcher" id="switchBtn" onclick="openProfiles()"><span id="switchName">Profil</span> ▾</button>
  </div>
+ <button class="remote-fab acc" id="fab" onclick="openRemote()" aria-label="Fjernbetjening"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="5"/><circle cx="12" cy="8.5" r="2.2"/><path d="M10 14h4M10 17h4"/></svg></button>
 
  <!-- HJEM -->
  <section id="t-home" class="on">
@@ -233,6 +258,13 @@ details .inner{padding:0 0 12px}
    <div class="chips" id="postTo"></div>
    <div class="compose"><textarea id="postText" rows="1" maxlength="300" placeholder="Skriv en besked til tv'et"></textarea>
     <button class="acc" onclick="sendPost()" aria-label="Send"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+  </div>
+  <h2>Send til tv'et</h2>
+  <div class="card pad">
+   <div class="compose" style="margin-top:0"><input id="sendQ" type="text" placeholder="Søg en film, eller indsæt et link" autocomplete="off" enterkeyhint="go">
+    <button class="acc" id="sendGo" onclick="sendGo()" aria-label="Send"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+   <div id="sendHint" class="small dim" style="margin:8px 2px 0">YouTube links åbner i YouTube på tv'et, film og serier i Wholphin.</div>
+   <div id="sendList" class="media"></div>
   </div>
   <h2>Snart</h2>
   <div class="card" id="soon"></div>
@@ -267,6 +299,8 @@ details .inner{padding:0 0 12px}
   <div class="card" id="days"></div>
   <button class="ghost" onclick="openDay()">+ Tilføj mærkedag</button>
 
+  <h2 id="recapH">Månedens tal</h2>
+  <div class="card pad" id="recap"><div class="empty">Henter fra Jellyfin...</div></div>
   <h2>Når tv'et tændes</h2>
   <div class="card pad stackish">
    <div class="chips" id="bootStyle"></div>
@@ -302,6 +336,8 @@ details .inner{padding:0 0 12px}
 
  <!-- MERE -->
  <section id="t-more">
+  <h2>Denne telefon</h2>
+  <div class="card"><div class="row tap" onclick="logout()"><div class="grow">Glem tv'et på denne telefon<div class="small dim">Så skal koden fra tv'et skrives igen</div></div></div></div>
   <h2>Del og gem</h2>
   <div class="card">
    <div class="row tap" onclick="shareFriend()"><div class="grow">Del med en ven<div class="small dim">Dit udseende, uden navn, kæreste og mærkedage</div></div></div>
@@ -367,16 +403,16 @@ async function api(path,opt={}){
  if(DEMO)return demo(path,opt);
  opt.headers=Object.assign({'X-Pin':PIN},opt.headers||{});
  const r=await fetch(path,opt);
- if(r.status==403){$('app').hidden=true;$('nav').hidden=true;$('login').hidden=false;throw new Error('Forkert kode')}
+ if(r.status==403){const t=await r.text();$('app').hidden=true;$('nav').hidden=true;$('login').hidden=false;try{localStorage.removeItem('pin')}catch(e){}throw new Error(t||'Forkert kode')}
  if(!r.ok)throw new Error(await r.text());return r.json()}
 async function post(o,msg){try{S=await api('/api/settings',{method:'POST',body:JSON.stringify(o)});render();toast(msg||'Gemt')}catch(e){toast(e.message)}}
-async function go(auto){if(!DEMO)PIN=$('pin').value.trim();try{S=await api('/api/state');localStorage.setItem('pin',PIN);
+async function go(auto){if(!DEMO&&!auto)PIN=$('pin').value.trim();try{S=await api('/api/state');if(S.token){PIN=S.token;delete S.token}try{localStorage.setItem('pin',PIN)}catch(e){}
  $('login').hidden=true;$('app').hidden=false;$('nav').hidden=false;render();
  if(location.hash.startsWith('#kode=')||location.hash.startsWith('#profil='))fromHash()}catch(e){if(!auto)toast(e.message)}}
 
 // Faner
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
-function tab(t){document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.t==t));
+function tab(t){if(t=='me')loadRecap();document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.t==t));
  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id=='t-'+t));window.scrollTo(0,0);try{sessionStorage.setItem('tab',t)}catch(e){}}
 
 function imgUrl(n){return DEMO?demoImg(n):'/img/'+encodeURIComponent(n)+'?pin='+PIN}
@@ -498,6 +534,63 @@ async function sendPost(){const t=$('postText').value.trim();if(!t){toast('Skriv
 function grow(){const t=$('postText');t.style.height='auto';t.style.height=Math.min(140,t.scrollHeight)+'px'}
 $('postText').addEventListener('input',grow);
 
+// Fjernbetjening
+const ARW=d=>'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="'+{u:'M6 15l6-6 6 6',d:'M6 9l6 6 6-6',l:'M15 6l-6 6 6 6',r:'M9 6l6 6-6 6'}[d]+'"/></svg>';
+let typeT,typeWarned=false;
+function openRemote(){sheet('<h3>Fjernbetjening</h3>'
+ +'<div class="pad-ring"><button class="u" data-k="up">'+ARW('u')+'</button><button class="l" data-k="left">'+ARW('l')+'</button><button class="ok" data-k="ok">OK</button><button class="r" data-k="right">'+ARW('r')+'</button><button class="d" data-k="down">'+ARW('d')+'</button></div>'
+ +'<div class="rkeys">'+[['back','M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3','Tilbage'],['home','M3 11l9-7 9 7M5 9.5V20h5v-6h4v6h5V9.5','Hjem'],['menu','M4 7h16M4 12h16M4 17h16','Menu'],
+  ['rew','M11 6L4 12l7 6zM20 6l-7 6 7 6z',''],['playpause','M5 5l8 7-8 7zM16 5v14M20 5v14',''],['ff','M13 6l7 6-7 6zM4 6l7 6-7 6z',''],
+  ['voldown','M4 9h4l5-4v14l-5-4H4zM17 12h4','Lyd'],['mute','M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6','Lydløs'],['volup','M4 9h4l5-4v14l-5-4H4zM17 12h4M19 10v4','Lyd']]
+  .map(([k,d,l])=>'<button data-k="'+k+'"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="'+d+'"/></svg>'+(l?'<small>'+l+'</small>':'')+'</button>').join('')+'</div>'
+ +'<div class="compose"><input id="rText" type="text" placeholder="Skriv på tv\'et (vælg søgefeltet først)" autocomplete="off" enterkeyhint="search"><button class="acc" id="rEnter" aria-label="Søg">↵</button></div>'
+ +'<p class="hint">Teksten kommer frem på tv\'et, mens du skriver.</p>');
+ document.querySelectorAll('#sheetBody [data-k]').forEach(b=>{let rep,t0;const k=b.dataset.k;
+  const fire=()=>{press(k)};
+  b.addEventListener('pointerdown',e=>{e.preventDefault();fire();if(['up','down','left','right','voldown','volup'].includes(k)){t0=setTimeout(()=>{rep=setInterval(fire,140)},420)}});
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>{clearTimeout(t0);clearInterval(rep)}));
+  b.addEventListener('click',e=>e.preventDefault())});
+ const tx=$('rText');tx.addEventListener('input',()=>{clearTimeout(typeT);typeT=setTimeout(()=>typeOnTv(tx.value,false),300)});
+ tx.addEventListener('keydown',e=>{if(e.key=='Enter'){e.preventDefault();clearTimeout(typeT);typeOnTv(tx.value,true)}});
+ $('rEnter').onclick=()=>{clearTimeout(typeT);typeOnTv($('rText').value,true)}}
+async function press(k){try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}
+ try{await api('/api/remote',{method:'POST',body:JSON.stringify({key:k})})}catch(e){toast(e.message)}}
+async function typeOnTv(t,enter){try{await api('/api/remote',{method:'POST',body:JSON.stringify({text:t,enter})});typeWarned=false;if(enter)toast('Sendt')}catch(e){if(!typeWarned||enter)toast(e.message);typeWarned=true}}
+
+// Send til tv'et
+let sendT,sendSeq=0;
+const isLink=v=>/^\s*\S*https?:\/\//i.test(v)||/(youtu\.be|youtube\.com)\//i.test(v);
+$('sendQ').addEventListener('input',()=>{const v=$('sendQ').value;clearTimeout(sendT);
+ if(isLink(v)){$('sendList').innerHTML='';$('sendHint').textContent=/youtu/i.test(v)?'Tryk på pilen, så åbner videoen i YouTube på tv\'et.':'Tryk på pilen, så åbner linket på tv\'et.';return}
+ $('sendHint').textContent=v.trim()?'Søger...':'YouTube links åbner i YouTube på tv\'et, film og serier i Wholphin.';
+ sendT=setTimeout(()=>jfSearch(v.trim()),350)});
+$('sendQ').addEventListener('keydown',e=>{if(e.key=='Enter'){e.preventDefault();sendGo()}});
+$('sendQ').addEventListener('focus',()=>{if(!$('sendQ').value&&!$('sendList').children.length)jfSearch('')});
+async function sendGo(){const v=$('sendQ').value.trim();if(!v){toast('Søg en film eller indsæt et link');return}
+ if(isLink(v)){try{const r=await api('/api/open',{method:'POST',body:JSON.stringify({url:v})});$('sendQ').value='';toast('Åbner i '+r.app)}catch(e){toast(e.message)}}
+ else{clearTimeout(sendT);const items=await jfSearch(v);if(items&&items.length==1)playItem(items[0])}}
+async function jfSearch(q){const my=++sendSeq;try{const r=await api('/api/jf-search?q='+encodeURIComponent(q));if(my!=sendSeq)return;
+ const L=$('sendList');L.innerHTML='';$('sendHint').textContent=q?(r.items.length?'':'Intet fundet på Jellyfin.'):(r.items.length?'Fortsæt at se:':'');
+ r.items.forEach(it=>{const d=document.createElement('div');d.className='mrow';
+  d.innerHTML='<div class="poster" style="background-image:url(\''+esc(it.img||'')+'\')">'+(it.progress>0&&it.progress<100?'<i style="width:'+it.progress+'%"></i>':'')+'</div><div class="t"><div>'+esc(it.title)+'</div><div class="small dim">'+esc(it.sub||({Series:'Serie',Movie:'Film'}[it.type]||''))+'</div></div><div class="play">▶</div>';
+  d.onclick=()=>playItem(it);L.appendChild(d)});return r.items}catch(e){if(my==sendSeq)$('sendHint').textContent=e.message}}
+async function playItem(it){try{await api('/api/jf-play',{method:'POST',body:JSON.stringify({id:it.id,type:it.type,pos:it.pos||0})});toast((it.type=='Series'?'Åbner ':'Afspiller ')+it.title+' på tv\'et')}catch(e){toast(e.message)}}
+
+async function logout(){if(!confirm('Glemme tv\'et på denne telefon?'))return;try{await api('/api/logout',{method:'POST'})}catch(e){}
+ try{localStorage.removeItem('pin')}catch(e){}PIN='';location.reload()}
+
+// Månedens tal
+let recapAt=0;
+async function loadRecap(){if(Date.now()-recapAt<10*60e3)return;recapAt=Date.now();const R=$('recap');
+ try{const r=await api('/api/recap');$('recapH').textContent='Månedens tal · '+r.month;
+  if(!r.episodes&&!r.movies){R.innerHTML='<div class="empty">Intet set på Jellyfin i '+esc(r.month)+'.</div>';return}
+  R.innerHTML='<div class="stats"><div><b>'+r.hours+'</b><span>'+(r.hours==1?'time':'timer')+'</span></div><div><b>'+r.episodes+'</b><span>afsnit</span></div><div><b>'+r.movies+'</b><span>film</span></div></div>'
+   +(r.topCount>1?'<div class="small">Mest set: <b>'+esc(r.top)+'</b> · '+r.topCount+' afsnit</div>':'')+(r.lastMovie?'<div class="small dim">Sidste film: '+esc(r.lastMovie)+'</div>':'')
+   +'<button style="width:100%;margin-top:12px" onclick="recapOnTv()">Vis på tv\'et</button>'
+   +'<p class="hint" style="margin:8px 0 0">Tv\'et viser dem selv første gang, det tændes i en ny måned.</p>'}
+ catch(e){recapAt=0;R.innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}
+async function recapOnTv(){try{await api('/api/recap',{method:'POST'});toast('Vises på tv\'et')}catch(e){toast(e.message)}}
+
 // Koder
 function share(text,title){if(navigator.share)navigator.share({title,text}).catch(()=>{});else if(navigator.clipboard)navigator.clipboard.writeText(text).then(()=>toast('Kopieret'));else prompt('Kopiér',text)}
 async function shareFriend(){try{const r=await api('/api/profile-code');share(r.friend||r.code,'Tv profil')}catch(e){toast(e.message)}}
@@ -540,7 +633,6 @@ function saveHa(){const o={haUrl:$('haUrl').value};if($('haToken').value)o.haTok
 function forget(){if(confirm('Glem token på tv\'et?'))post({haForget:true})}
 
 try{const t=localStorage.getItem('skin');if(t)skin(t)}catch(e){}
-$('pin').value=PIN;
 $('pin').addEventListener('input',()=>{if($('pin').value.length==4)go()});
 try{const t=sessionStorage.getItem('tab');if(t)tab(t)}catch(e){}
 if(PIN||DEMO)go(true);

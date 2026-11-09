@@ -138,4 +138,36 @@ public class LogicTest {
         assertEquals("Regn", Weather.describe(61, true, 14));
         assertEquals("Sne", Weather.describe(73, true, 2));
     }
+
+    @Test
+    public void maanedensTal() throws Exception {
+        org.json.JSONArray a = new org.json.JSONArray()
+                .put(new org.json.JSONObject().put("Type", "Episode").put("SeriesName", "Severance").put("RunTimeTicks", 30_000_000_000L)
+                        .put("UserData", new org.json.JSONObject().put("LastPlayedDate", "2026-10-20T19:00:00.0000000Z")))
+                .put(new org.json.JSONObject().put("Type", "Episode").put("SeriesName", "Severance").put("RunTimeTicks", 30_000_000_000L)
+                        .put("UserData", new org.json.JSONObject().put("LastPlayedDate", "2026-10-19T19:00:00.0000000Z")))
+                .put(new org.json.JSONObject().put("Type", "Movie").put("Name", "Dune").put("RunTimeTicks", 90_000_000_000L)
+                        .put("UserData", new org.json.JSONObject().put("LastPlayedDate", "2026-10-10T19:00:00.0000000Z")))
+                .put(new org.json.JSONObject().put("Type", "Movie").put("Name", "Gammel").put("RunTimeTicks", 90_000_000_000L)
+                        .put("UserData", new org.json.JSONObject().put("LastPlayedDate", "2026-09-10T19:00:00.0000000Z")));
+        MonthRecap.Stats s = MonthRecap.compute(a, 2026, 9);
+        assertEquals(2, s.episodes);
+        assertEquals(1, s.movies);
+        assertEquals(250, s.minutes);
+        assertEquals(4, s.hours());
+        assertEquals("Severance", s.topSeries);
+        assertEquals("Dune", s.lastMovie);
+        assertTrue(java.util.Arrays.equals(new int[]{2025, 11}, MonthRecap.lastMonth(day(2026, 1, 3))));
+    }
+
+    @Test
+    public void sendTilTv() {
+        assertEquals("dQw4w9WgXcQ", Send.youtubeId("https://youtu.be/dQw4w9WgXcQ?si=abc"));
+        assertEquals("dQw4w9WgXcQ", Send.youtubeId("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10"));
+        assertEquals("dQw4w9WgXcQ", Send.youtubeId("https://youtube.com/shorts/dQw4w9WgXcQ"));
+        assertNull(Send.youtubeId("https://example.com/watch?v=dQw4w9WgXcQ"));
+        assertEquals("0123456789abcdef0123456789abcdef", Send.jellyfinId("http://nas:8096/web/#/details?id=0123456789ABCDEF0123456789abcdef&serverId=x"));
+        assertEquals(19, Remote.code("up"));
+        assertEquals(-1, Remote.code("nope"));
+    }
 }

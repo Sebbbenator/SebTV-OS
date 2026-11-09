@@ -276,6 +276,7 @@ public class MainActivity extends Activity {
         ha = new HomeAssistant(prefs);
         jf = new Jellyfin(prefs);
         ErrorLog.init(this);
+        UploadServer.shared(this);
         installCrashHandler(this);
         if (!"2".equals(prefs.str("skin_v", ""))) {
             // Første gang med temaernes egne ure, vejr og lyde: giv det valgte tema dem med det samme
@@ -2015,8 +2016,29 @@ public class MainActivity extends Activity {
             return;
         }
         whoAnswered = false;
-        if (!Motion.NONE.equals(motion) && BootIntro.due(prefs)) BootIntro.play(BootIntro.make(this, prefs, greetingText(), currentAccent()), root);
+        boolean intro = !Motion.NONE.equals(motion) && BootIntro.due(prefs);
+        if (intro) BootIntro.play(BootIntro.make(this, prefs, greetingText(), currentAccent()), root);
         speakGreeting();
+        if (MonthRecap.due(prefs) && jf.configured()) showRecap(intro ? 4500 : 600, true);
+    }
+
+    /** Månedens tal fra telefonsiden: vis dem på tv'et, hvis forsiden står fremme. */
+    static boolean recapFromPhone() {
+        MainActivity a = visible;
+        if (a == null || !a.jf.configured()) return false;
+        a.handler.post(() -> a.showRecap(0, false));
+        return true;
+    }
+
+    private void showRecap(long delay, boolean once) {
+        Net.async(() -> MonthRecap.fetch(jf), (stats, err) -> {
+            if (stats == null) return;
+            if (once) MonthRecap.markShown(prefs);
+            if (stats.empty() || visible != this) return;
+            handler.postDelayed(() -> {
+                if (visible == this) MonthRecap.show(this, root, stats, prefs.profileName(), currentAccent());
+            }, delay);
+        });
     }
 
     private void speakGreeting() {

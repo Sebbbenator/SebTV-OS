@@ -23,8 +23,9 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Lille webside på sticken, så billeder og nøgler kan lægges ind fra telefonen.
- * Kører kun mens upload skærmen er åben og kræver koden, der står på tv'et.
+ * Lille webside på sticken: telefonsiden og fjernbetjeningen. Kører hele tiden (startes af Home tjenesten).
+ * En ny telefon parres med den firecifrede kode, der står på tv'et, mens Telefon skærmen er åben, og får
+ * så en lang tilfældig nøgle, den husker. Koden virker kun under parringen.
  */
 final class UploadServer {
 
@@ -35,11 +36,14 @@ final class UploadServer {
         void changed();
     }
 
-    final String pin;
+    /** Koden på tv'et; virker kun, mens parringen er åben. */
+    volatile String pin;
+    private volatile long pairUntil;
+    private volatile long lockedUntil;
     private final Context context;
     private final Backgrounds backgrounds;
     private final Prefs prefs;
-    private final Listener listener;
+    private volatile Listener listener;
     private final Handler main = new Handler(Looper.getMainLooper());
     private ServerSocket socket;
     private volatile boolean running;
@@ -75,6 +79,86 @@ final class UploadServer {
         this.prefs = new Prefs(context);
         this.listener = listener;
         this.pin = String.format(Locale.ROOT, "%04d", new SecureRandom().nextInt(10000));
+    }
+
+    private static UploadServer shared;
+
+    /** Den fælles server; startes første gang. */
+    static synchronized UploadServer shared(Context context) {
+        if (shared == null || !shared.running) {
+            UploadServer s = new UploadServer(context, null);
+            try {
+                s.start();
+            } catch (IOException e) {
+                ErrorLog.note("Telefonside", e);
+                return s;
+            }
+            shared = s;
+        }
+        return shared;
+    }
+
+    static synchronized void stopShared() {
+        if (shared != null) shared.stop();
+        shared = null;
+    }
+
+    /** Telefon skærmen er åben: ny kode, der virker i 10 minutter. */
+    synchronized String openPairing(Listener l) {
+        pin = String.format(Locale.ROOT, "%04d", new SecureRandom().nextInt(10000));
+        pairUntil = System.currentTimeMillis() + 10 * 60_000L;
+        wrongPins.set(0);
+        lockedUntil = 0;
+        listener = l;
+        return pin;
+    }
+
+    /** Skærmen er lukket: koden virker et minut mere, så en langsom telefon kan nå det. */
+    synchronized void closePairing() {
+        pairUntil = Math.min(pairUntil, System.currentTimeMillis() + 60_000L);
+        listener = null;
+    }
+
+    static final String TOKENS = "phone_tokens";
+
+    private boolean knownToken(String t) {
+        if (t == null || t.length() < 20) return false;
+        try {
+            JSONArray a = new JSONArray(prefs.str(TOKENS, "[]"));
+            for (int i = 0; i < a.length(); i++) if (t.equals(a.optString(i))) return true;
+        } catch (Exception ignored) {
+        }
+        return false;
+    }
+
+    private synchronized String newToken() {
+        byte[] b = new byte[18];
+        new SecureRandom().nextBytes(b);
+        String t = android.util.Base64.encodeToString(b, android.util.Base64.URL_SAFE | android.util.Base64.NO_WRAP | android.util.Base64.NO_PADDING);
+        JSONArray out = new JSONArray();
+        try {
+            JSONArray a = new JSONArray(prefs.str(TOKENS, "[]"));
+            for (int i = Math.max(0, a.length() - 11); i < a.length(); i++) out.put(a.getString(i));
+        } catch (Exception ignored) {
+        }
+        out.put(t);
+        prefs.setStr(TOKENS, out.toString());
+        return t;
+    }
+
+    private void forgetToken(String t) {
+        JSONArray out = new JSONArray();
+        try {
+            JSONArray a = new JSONArray(prefs.str(TOKENS, "[]"));
+            for (int i = 0; i < a.length(); i++) if (!a.getString(i).equals(t)) out.put(a.getString(i));
+        } catch (Exception ignored) {
+        }
+        prefs.setStr(TOKENS, out.toString());
+    }
+
+    /** Glemmer alle parrede telefoner. */
+    static void forgetPhones(Prefs prefs) {
+        prefs.setStr(TOKENS, "[]");
     }
 
     void start() throws IOException {
@@ -171,9 +255,28 @@ final class UploadServer {
 
             // Koden tjekkes, før noget af indholdet læses, så en fremmed ikke kan fylde hukommelsen
             String given = headers.getOrDefault("x-pin", query.getOrDefault("pin", ""));
-            if (!pin.equals(given)) {
-                if (wrongPins.incrementAndGet() > 20) stop();
-                send(out, 403, "text/plain", bytes("Forkert kode"));
+            String issued = null;
+            if (!knownToken(given)) {
+                long now = System.currentTimeMillis();
+                boolean pairing = now < pairUntil && now > lockedUntil;
+                if (!pairing || !pin.equals(given)) {
+                    if (pairing && wrongPins.incrementAndGet() >= 10) lockedUntil = now + 5 * 60_000L;
+                    send(out, 403, "text/plain", bytes(now >= pairUntil
+                            ? "Åbn Telefon på tv'et (Indstillinger > Telefon) og skriv koden, der står der"
+                            : "Forkert kode"));
+                    return;
+                }
+                if (path.equals("/api/state")) issued = newToken();
+            }
+            if (path.equals("/api/logout")) {
+                forgetToken(given);
+                send(out, 200, "application/json", bytes("{}"));
+                return;
+            }
+            if (issued != null && path.equals("/api/state")) {
+                JSONObject st = state();
+                st.put("token", issued);
+                send(out, 200, "application/json", bytes(st.toString()));
                 return;
             }
 
@@ -318,6 +421,63 @@ final class UploadServer {
             String host = query.getOrDefault("host", "");
             if (!host.matches("[0-9a-zA-Z.:\\[\\]-]+")) host = UploadActivity.ip() + ":" + PORT;
             send(out, 200, "application/json", bytes(new JSONObject().put("url", HaLogin.startUrl(haUrl, "http://" + host)).toString()));
+        } else if (path.equals("/api/remote") && method.equals("POST")) {
+            JSONObject j = new JSONObject(new String(body, StandardCharsets.UTF_8));
+            String err;
+            if (j.has("key")) err = Remote.press(context, j.getString("key"));
+            else err = Remote.type(context, j.has("text") ? j.getString("text") : null, j.optBoolean("enter", false));
+            if (err != null) send(out, 409, "text/plain", bytes(err));
+            else send(out, 200, "application/json", bytes("{}"));
+        } else if (path.equals("/api/open") && method.equals("POST")) {
+            JSONObject j = new JSONObject(new String(body, StandardCharsets.UTF_8));
+            try {
+                String app = Send.open(context, j.optString("url"));
+                send(out, 200, "application/json", bytes(new JSONObject().put("app", app).toString()));
+            } catch (Exception e) {
+                send(out, 409, "text/plain", bytes(String.valueOf(e.getMessage())));
+            }
+        } else if (path.equals("/api/jf-search")) {
+            Jellyfin jf = new Jellyfin(prefs);
+            if (!jf.configured()) {
+                send(out, 409, "text/plain", bytes("Tv'et er ikke logget ind på Jellyfin"));
+                return;
+            }
+            String q = query.getOrDefault("q", "").trim();
+            JSONArray res = new JSONArray();
+            try {
+                for (Jellyfin.Item it : q.isEmpty() ? jf.resume() : jf.search(q)) {
+                    res.put(new JSONObject().put("id", it.id).put("type", it.type).put("title", it.title)
+                            .put("sub", it.subtitle).put("img", it.imageUrl).put("progress", it.progress).put("pos", it.positionMs));
+                }
+            } catch (Exception e) {
+                send(out, 502, "text/plain", bytes("Jellyfin svarede ikke"));
+                return;
+            }
+            send(out, 200, "application/json", bytes(new JSONObject().put("items", res).toString()));
+        } else if (path.equals("/api/jf-play") && method.equals("POST")) {
+            JSONObject j = new JSONObject(new String(body, StandardCharsets.UTF_8));
+            try {
+                Send.play(context, j.getString("id"), j.optString("type"), j.optLong("pos", 0));
+                send(out, 200, "application/json", bytes("{}"));
+            } catch (Exception e) {
+                send(out, 409, "text/plain", bytes(String.valueOf(e.getMessage())));
+            }
+        } else if (path.equals("/api/recap")) {
+            Jellyfin jf = new Jellyfin(prefs);
+            if (!jf.configured()) {
+                send(out, 409, "text/plain", bytes("Tv'et er ikke logget ind på Jellyfin"));
+                return;
+            }
+            if (method.equals("POST")) {
+                if (!MainActivity.recapFromPhone()) send(out, 409, "text/plain", bytes("Gå til forsiden på tv'et først"));
+                else send(out, 200, "application/json", bytes("{}"));
+                return;
+            }
+            try {
+                send(out, 200, "application/json", bytes(MonthRecap.fetch(jf).json().toString()));
+            } catch (Exception e) {
+                send(out, 502, "text/plain", bytes("Jellyfin svarede ikke"));
+            }
         } else if (path.equals("/api/settings") && method.equals("POST")) {
             JSONObject j = new JSONObject(new String(body, StandardCharsets.UTF_8));
             if (j.has("mode")) prefs.setBgMode(j.getString("mode"));

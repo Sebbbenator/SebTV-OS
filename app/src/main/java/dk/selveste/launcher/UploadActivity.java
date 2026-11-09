@@ -17,7 +17,7 @@ import java.util.Collections;
 
 import io.nayuki.qrcodegen.QrCode;
 
-/** Viser QR kode, adresse og kode til telefonsiden. Serveren kører kun mens skærmen er åben. */
+/** Viser QR kode, adresse og kode til telefonsiden. Koden parrer en ny telefon; en parret telefon virker altid. */
 public class UploadActivity extends Activity {
 
     private UploadServer server;
@@ -68,23 +68,19 @@ public class UploadActivity extends Activity {
         pin.setTypeface(Typeface.MONOSPACE);
         pin.setLetterSpacing(0.3f);
         col.addView(pin);
-        status = Ui.text(this, "Her lægger du baggrunde op, logger ind på Home Assistant og gemmer eller indlæser din profilkode.", 16, Ui.TEXT_DIM);
+        status = Ui.text(this, "Koden skal kun bruges første gang. Bagefter husker telefonen tv'et og virker også som fjernbetjening, når denne skærm er lukket.", 16, Ui.TEXT_DIM);
         status.setPadding(0, Ui.dp(this, 24), 0, 0);
         col.addView(status);
         setContentView(root);
 
-        server = new UploadServer(this, () -> {
+        server = UploadServer.shared(this);
+        String code = server.openPairing(() -> {
             uploads++;
             status.setText("Gemt (" + uploads + "). Tryk Tilbage, når du er færdig.");
         });
-        try {
-            server.start();
-        } catch (Exception e) {
-            status.setText("Kunne ikke starte siden: " + e.getMessage());
-        }
         String address = "http://" + primary + ":" + UploadServer.PORT;
         url.setText(address);
-        pin.setText(server.pin);
+        pin.setText(code);
         qr.setImageBitmap(qrBitmap(address, qrSize));
     }
 
@@ -92,7 +88,7 @@ public class UploadActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         MainActivity.appsDirty = true;
-        if (server != null) server.stop();
+        if (server != null) server.closePairing();
     }
 
     /**
