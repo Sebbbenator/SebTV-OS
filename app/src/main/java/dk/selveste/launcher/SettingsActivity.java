@@ -697,7 +697,9 @@ public class SettingsActivity extends Activity {
                 android.widget.Toast.makeText(this, "Opstarten er slået fra", android.widget.Toast.LENGTH_SHORT).show();
                 return;
             }
-            BootIntro.play(BootIntro.make(this, prefs, Greeting.text(prefs), prefs.accentColor()), (android.view.ViewGroup) findViewById(android.R.id.content));
+            android.view.ViewGroup content = findViewById(android.R.id.content);
+            if (!RiveTheme.playBoot(this, content, prefs, Greeting.text(prefs)))
+                BootIntro.play(BootIntro.make(this, prefs, Greeting.text(prefs), prefs.accentColor()), content);
         }));
     }
 

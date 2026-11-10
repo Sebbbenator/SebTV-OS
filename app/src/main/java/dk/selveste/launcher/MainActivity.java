@@ -2025,7 +2025,9 @@ public class MainActivity extends Activity {
         }
         whoAnswered = false;
         boolean intro = !Motion.NONE.equals(motion) && BootIntro.due(prefs);
-        if (intro) BootIntro.play(BootIntro.make(this, prefs, greetingText(), currentAccent()), root);
+        // Temaets egen Rive opstart (fx jul.riv fra telefonsiden), ellers den indbyggede
+        if (intro && !RiveTheme.playBoot(this, root, prefs, greetingText()))
+            BootIntro.play(BootIntro.make(this, prefs, greetingText(), currentAccent()), root);
         speakGreeting();
         if (MonthRecap.due(prefs) && jf.configured()) showRecap(intro ? 4500 : 600, true);
     }
