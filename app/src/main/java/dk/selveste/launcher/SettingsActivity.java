@@ -334,6 +334,10 @@ public class SettingsActivity extends Activity {
         int unseen = Post.unseen(prefs).size();
         list.addView(Ui.row(this, "Beskeder", unseen > 0 ? unseen + " ulæst" : Post.contacts(prefs).size() + " tv", c, v -> open(PAGE_POST)));
         list.addView(Ui.row(this, "Vejr", Weather.on(prefs) ? Weather.city(prefs) : "Vælg by", c, v -> chooseWeather()));
+        list.addView(Ui.row(this, "Animationstest", "Rive animationer med måling af hakken", c, v -> {
+            MainActivity.pendingRive = "";
+            finish();
+        }));
         int phones = phoneCount();
         list.addView(Ui.row(this, "Telefon", phones == 0 ? "Fjernbetjening og telefonsiden" : phones + " parret", c,
                 v -> startActivity(new Intent(this, UploadActivity.class))));

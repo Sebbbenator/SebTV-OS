@@ -4,7 +4,8 @@ plugins {
 
 android {
     namespace "dk.selveste.launcher"
-    compileSdk 34
+    // 36 fordi Rive bruger nyere AndroidX; targetSdk (opførslen på tv'et) er uændret
+    compileSdk 36
 
     defaultConfig {
         applicationId "dk.selveste.launcher"
@@ -14,6 +15,13 @@ android {
         def v = System.getenv("JARVIS_VERSION") ?: System.getenv("GITHUB_RUN_NUMBER") ?: "1"
         versionCode v.toInteger()
         versionName "1.0." + v + (System.getenv("JARVIS_CHANNEL") == "test" ? "-test" : "")
+        // Kun ARM (Fire TV og Google TV); Rives afspiller fylder ellers dobbelt
+        ndk { abiFilters "armeabi-v7a", "arm64-v8a" }
+    }
+
+    packaging {
+        // Pak Rives .so filer komprimeret, så selvopdateringen henter mindre
+        jniLibs { useLegacyPackaging true }
     }
 
     signingConfigs {
@@ -57,6 +65,8 @@ android {
 
 dependencies {
     implementation "io.nayuki:qrcodegen:1.8.0"
+    // Rive: animationer lavet i Rive editoren (.riv), tegnet på grafikchippen
+    implementation "app.rive:rive-android:11.16.2"
     testImplementation "junit:junit:4.13.2"
     // Rigtig org.json i tests (Androids egen er kun en tom stub uden for tv'et)
     testImplementation "org.json:json:20240303"

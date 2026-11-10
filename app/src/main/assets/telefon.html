@@ -369,6 +369,13 @@ details .inner{padding:0 0 12px}
    <details><summary>Sådan laver du et klip</summary><div class="inner small dim">MP4, højst 60 MB. Med gennemsigtighed: billedet øverst og en sort/hvid maske nederst i samme video. Forsiden skifter under blitzet midt i klippet. Koden er op op ned ned venstre højre venstre højre.<br><button class="danger" onclick="removeClip()">Fjern klippet</button></div></details>
   </div>
   <input id="clipFile" type="file" accept="video/mp4,video/quicktime" hidden onchange="uploadClip(this.files[0])">
+  <h2>Animationer (Rive)</h2>
+  <div class="card">
+   <div class="row"><div class="grow small dim">Læg en .riv fil fra Rive op. Den vises med det samme oven på forsiden, mens tv'et måler, om den hakker.</div><button onclick="riveFile.click()">Vælg</button></div>
+   <div id="riveList"></div>
+   <button class="acc" style="margin-top:10px" onclick="riveTest()">Vis prøven på tv'et</button>
+  </div>
+  <input id="riveFile" type="file" accept=".riv,application/octet-stream" hidden onchange="uploadRive(this.files[0])">
  </section>
 </div>
 
@@ -480,6 +487,7 @@ function render(){
  (S.contacts||[]).forEach(n=>{const r=document.createElement('div');r.className='row';r.innerHTML='<div class="grow">'+esc(n)+'</div><button class="danger">Fjern</button>';
   r.querySelector('button').onclick=async()=>{if(!confirm('Fjern '+n+'?'))return;try{S=await api('/api/post-contact',{method:'POST',body:JSON.stringify({remove:n})});render();toast('Fjernet')}catch(e){toast(e.message)}};C.appendChild(r)});
  $('clipState').textContent=S.konamiClip?'Dit eget klip':'Appens egen hjelmsekvens';
+ $('riveList').innerHTML=(S.rive||[]).map(f=>'<div class="mrow"><div class="t" onclick="riveTest(\''+esc(f.name)+'\')"><div>'+esc(f.name)+'</div><div class="small dim">'+f.kb+' kB · tryk for at vise</div></div><button class="ghost" onclick="riveDel(\''+esc(f.name)+'\')">Slet</button></div>').join('');
 }
 function look(k){return S.looks.find(o=>o.key==k)||{values:[],value:''}}
 function seg(id,key,after){const o=look(key);const el=$(id);el.innerHTML='';o.values.forEach(([k,n])=>{const b=document.createElement('button');b.className='chip'+(k==o.value?' on':'');b.textContent=n;
@@ -624,6 +632,11 @@ function uploadClip(f){if(!f)return;if(f.size>60*1024*1024){toast('Klippet må h
  const x=new XMLHttpRequest();x.open('POST','/api/konami-clip');x.setRequestHeader('X-Pin',PIN);
  x.upload.onprogress=e=>{if(e.lengthComputable)toast('Lægger klip op: '+Math.round(e.loaded*100/e.total)+' %')};
  x.onload=()=>{if(x.status==200){S=JSON.parse(x.responseText);render();toast('Klippet er gemt')}else toast(x.responseText);$('clipFile').value=''};x.onerror=()=>toast('Overførslen fejlede');x.send(f)}
+function uploadRive(f){if(!f)return;if(f.size>15*1024*1024){toast('Filen må højst fylde 15 MB');return}
+ const x=new XMLHttpRequest();x.open('POST','/api/rive?name='+encodeURIComponent(f.name));x.setRequestHeader('X-Pin',PIN);
+ x.onload=()=>{if(x.status==200){S=JSON.parse(x.responseText);render();toast('Gemt og vises på tv\'et')}else toast(x.responseText);$('riveFile').value=''};x.onerror=()=>toast('Overførslen fejlede');x.send(f)}
+async function riveTest(name){try{await api('/api/rive-test',{method:'POST',body:JSON.stringify(name?{name}:{})});toast('Vises på tv\'et')}catch(e){toast(e.message)}}
+async function riveDel(name){if(!confirm('Slet '+name+'?'))return;try{S=await api('/api/rive?delete='+encodeURIComponent(name),{method:'POST'});render()}catch(e){toast(e.message)}}
 async function removeClip(){if(!confirm('Fjern klippet?'))return;try{S=await api('/api/konami-clip',{method:'POST'});render();toast('Klippet er fjernet')}catch(e){toast(e.message)}}
 
 // Home Assistant

@@ -331,6 +331,13 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         visible = this;
+        if (pendingRive != null) {
+            String r = pendingRive.isEmpty() ? null : pendingRive;
+            pendingRive = null;
+            handler.postDelayed(() -> {
+                if (visible == this) RiveTest.show(this, root, r);
+            }, 400);
+        }
         if (ambientView != null) ambientView.setRunning(true);
         backgrounds.importShared();
         loadBackground(pendingHome);
@@ -394,6 +401,7 @@ public class MainActivity extends Activity {
         super.onPause();
         if (visible == this) visible = null;
         if (konamiVideo != null) konamiVideo.stop();
+        RiveTest.close();
         HaSocket.get(this).removeListener(haLive);
         handler.removeCallbacks(tick);
         if (kenBurns != null) kenBurns.pause();
@@ -2029,6 +2037,20 @@ public class MainActivity extends Activity {
         a.handler.post(() -> a.showRecap(0, false));
         return true;
     }
+
+    /** Rive prøven fra telefonen eller indstillingerne: vises oven på forsiden. */
+    static boolean riveFromOutside(String name) {
+        MainActivity a = visible;
+        if (a == null) {
+            pendingRive = name == null ? "" : name;
+            return false;
+        }
+        a.handler.post(() -> RiveTest.show(a, a.root, name));
+        return true;
+    }
+
+    /** Sat, når prøven bestilles fra indstillingerne; vises, når forsiden kommer frem igen. */
+    static String pendingRive;
 
     private void showRecap(long delay, boolean once) {
         Net.async(() -> MonthRecap.fetch(jf), (stats, err) -> {

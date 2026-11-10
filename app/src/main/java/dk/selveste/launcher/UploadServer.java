@@ -462,6 +462,21 @@ final class UploadServer {
             } catch (Exception e) {
                 send(out, 409, "text/plain", bytes(String.valueOf(e.getMessage())));
             }
+        } else if (path.equals("/api/rive") && method.equals("POST")) {
+            // Rive fil fra telefonen (rå bytes, navnet i ?name=); tom krop + ?delete= sletter
+            String del = query.get("delete");
+            try {
+                if (del != null) RiveTest.delete(context, del);
+                else MainActivity.riveFromOutside(RiveTest.save(context, query.get("name"), body));
+            } catch (IOException e) {
+                send(out, 415, "text/plain", bytes(String.valueOf(e.getMessage())));
+                return;
+            }
+            send(out, 200, "application/json", bytes(state().toString()));
+        } else if (path.equals("/api/rive-test") && method.equals("POST")) {
+            String name = body.length == 0 ? null : new JSONObject(new String(body, StandardCharsets.UTF_8)).optString("name", null);
+            if (MainActivity.riveFromOutside(name)) send(out, 200, "application/json", bytes("{}"));
+            else send(out, 409, "text/plain", bytes("Vises, når du går til forsiden på tv'et"));
         } else if (path.equals("/api/recap")) {
             Jellyfin jf = new Jellyfin(prefs);
             if (!jf.configured()) {
@@ -565,6 +580,9 @@ final class UploadServer {
     private JSONObject state() throws Exception {
         JSONObject j = new JSONObject();
         j.put("konamiClip", KonamiClip.exists(context));
+        JSONArray rive = new JSONArray();
+        for (java.io.File f : RiveTest.files(context)) rive.put(new JSONObject().put("name", f.getName()).put("kb", (f.length() + 1023) / 1024));
+        j.put("rive", rive);
         JSONArray imgs = new JSONArray();
         for (String n : backgrounds.list()) imgs.put(n);
         j.put("images", imgs);
