@@ -41,7 +41,10 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            // Fjerner den del af AndroidX/Compose, som Rive trækker med men ikke bruger. Vores egen kode
+            // og Rive beholdes helt (proguard-rules.pro), og navne forkortes ikke, så fejllogs kan læses
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             // Uden secret: runnerens debug nøgle, og install.ps1 geninstallerer ved nøgleskift
             signingConfig System.getenv("JARVIS_KEYSTORE") ? signingConfigs.jarvis : signingConfigs.debug
         }
