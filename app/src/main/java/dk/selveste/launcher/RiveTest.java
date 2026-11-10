@@ -258,7 +258,20 @@ final class RiveTest {
         Net.async(() -> {
             init(a);
             ensureSample(a);
-            return files(a);
+            // Én post pr. artboard, så Opstart, Baggrund, Ur og Fokus i et tema kan ses hver for sig
+            List<Entry> entries = new ArrayList<>();
+            for (File f : files(a)) {
+                List<String> boards = new ArrayList<>();
+                try {
+                    app.rive.runtime.kotlin.core.File rf = new app.rive.runtime.kotlin.core.File(read(f), RendererType.Rive, null);
+                    boards.addAll(rf.getArtboardNames());
+                    rf.release();
+                } catch (Throwable ignored) {
+                }
+                if (boards.isEmpty()) boards.add(null);
+                for (String b : boards) entries.add(new Entry(f, b));
+            }
+            return entries;
         }, (list, err) -> {
             if (st.closed) return;
             if (list == null || list.isEmpty()) {
@@ -269,7 +282,7 @@ final class RiveTest {
             }
             st.files = list;
             int start = 0;
-            for (int i = 0; i < list.size(); i++) if (list.get(i).getName().equals(startWith)) start = i;
+            for (int i = list.size() - 1; i >= 0; i--) if (list.get(i).file.getName().equals(startWith)) start = i;
             load(a, scrim, stats, statsLp, st, start);
             ui.postDelayed(tick, 1000);
         });
@@ -277,8 +290,9 @@ final class RiveTest {
 
     private static void load(Activity a, FrameLayout scrim, TextView stats, FrameLayout.LayoutParams statsLp, State st, int index) {
         st.index = index;
-        File f = st.files.get(index);
-        st.name = f.getName();
+        Entry e = st.files.get(index);
+        File f = e.file;
+        st.name = f.getName() + (e.artboard == null ? "" : " · " + e.artboard);
         Net.async(() -> read(f), (bytes, err) -> {
             if (st.closed) return;
             if (st.view != null) scrim.removeView(st.view);
@@ -289,7 +303,7 @@ final class RiveTest {
                 try {
                     RiveAnimationView v = new RiveAnimationView(a, null);
                     v.setFocusable(false);
-                    v.setRiveBytes(bytes, null, null, null, true, false, Fit.CONTAIN, Alignment.CENTER, Loop.AUTO);
+                    v.setRiveBytes(bytes, e.artboard, null, null, true, false, Fit.CONTAIN, Alignment.CENTER, Loop.AUTO);
                     st.view = v;
                     scrim.addView(v, 0);
                     place(a, st);
@@ -322,8 +336,18 @@ final class RiveTest {
         st.view.setLayoutParams(lp);
     }
 
+    private static final class Entry {
+        final File file;
+        final String artboard;
+
+        Entry(File file, String artboard) {
+            this.file = file;
+            this.artboard = artboard;
+        }
+    }
+
     private static final class State {
-        List<File> files = new ArrayList<>();
+        List<Entry> files = new ArrayList<>();
         int index;
         String name = "";
         int size;

@@ -468,6 +468,7 @@ final class UploadServer {
             try {
                 if (del != null) RiveTest.delete(context, del);
                 else MainActivity.riveFromOutside(RiveTest.save(context, query.get("name"), body));
+                MainActivity.riveChanged();
             } catch (IOException e) {
                 send(out, 415, "text/plain", bytes(String.valueOf(e.getMessage())));
                 return;

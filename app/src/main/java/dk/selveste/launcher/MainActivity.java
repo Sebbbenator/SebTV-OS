@@ -125,6 +125,11 @@ public class MainActivity extends Activity {
     private Ambient ambientView;
     /** Temaets scene (avisforside, markise, reaktor ...) og det den står på; null uden. */
     private Stage stage;
+    /** Temaets Rive animationer (Baggrund, Ur, Fokus), hvis temaet har en .riv fil. */
+    private RiveTheme.Live rive;
+    private String riveSig = "";
+    private int riveBgIndex;
+    private LinearLayout clockBox, topBar;
     private Backdrop backdrop;
     private List<String> stageParts = new ArrayList<>();
     private List<String> haParts = new ArrayList<>();
@@ -189,6 +194,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (rive != null) rive.release();
         try {
             unregisterReceiver(packages);
         } catch (Exception ignored) {
@@ -311,6 +317,8 @@ public class MainActivity extends Activity {
             Motion.reveal(root, motion, -1, -1);
         }
         applyLook();
+        riveSig = RiveTheme.signature(this);
+        setUpRive();
         updateMore();
         showCached();
         NightUpdate.schedule(this);
@@ -331,6 +339,10 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         visible = this;
+        if (!RiveTheme.signature(this).equals(riveSig)) {
+            riveSig = RiveTheme.signature(this);
+            setUpRive();
+        } else if (rive != null) rive.resume();
         if (pendingRive != null) {
             String r = pendingRive.isEmpty() ? null : pendingRive;
             pendingRive = null;
@@ -402,6 +414,7 @@ public class MainActivity extends Activity {
         if (visible == this) visible = null;
         if (konamiVideo != null) konamiVideo.stop();
         RiveTest.close();
+        if (rive != null) rive.pause();
         HaSocket.get(this).removeListener(haLive);
         handler.removeCallbacks(tick);
         if (kenBurns != null) kenBurns.pause();
@@ -464,6 +477,7 @@ public class MainActivity extends Activity {
         }
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             lastKey = System.currentTimeMillis();
+            if (rive != null) rive.key(code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER);
             if (wakeUp()) return true;
             trackKonami(code);
             if (code >= KeyEvent.KEYCODE_1 && code <= KeyEvent.KEYCODE_9 && event.getRepeatCount() == 0) {
@@ -567,6 +581,7 @@ public class MainActivity extends Activity {
         ambientView = new Ambient(this);
         if (staged) ambientView.setVisibility(View.GONE);
         root.addView(ambientView, match());
+        riveBgIndex = root.getChildCount();
 
         column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
@@ -606,10 +621,12 @@ public class MainActivity extends Activity {
         top.setOrientation(LinearLayout.HORIZONTAL);
         if (apple || staged) top.setVisibility(View.GONE);
         column.addView(top);
+        topBar = top;
 
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
         top.addView(left, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        clockBox = left;
         clock = Ui.text(this, "", 64, Ui.TEXT);
         clock.setIncludeFontPadding(false);
         left.addView(clock);
@@ -786,6 +803,7 @@ public class MainActivity extends Activity {
             Net.async(() -> ThemePhotos.art(this, artTheme), (bmp, err) -> themeClock.setArt(bmp));
         }
         ambientView.setAnimate(Motion.FULL.equals(motion));
+        if (rive != null) rive.hideClocks();
         Typeface thin = "system".equals(prefs.font()) ? Typeface.create("sans-serif-thin", Typeface.NORMAL) : Ui.display;
         clock.setTypeface("tynd".equals(style) ? thin : Ui.display);
         clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, "tynd".equals(style) ? 96 : "sekunder".equals(style) ? 56 : 64);
@@ -1975,6 +1993,7 @@ public class MainActivity extends Activity {
     /** Rolig tilstand: kun baggrunden og et lille ur, som en pauseskærm inde i forsiden. */
     void setAmbient(boolean on) {
         ambient = on;
+        if (rive != null) rive.calm(on);
         column.animate().alpha(on ? 0f : 1f).setDuration(on ? 1500 : 250).start();
         ambientClock.setText(timeFormat.format(new Date()));
         ambientClock.animate().alpha(on ? 1f : 0f).setDuration(on ? 1500 : 250).start();
@@ -2049,6 +2068,45 @@ public class MainActivity extends Activity {
         }
         a.handler.post(() -> RiveTest.show(a, a.root, name));
         return true;
+    }
+
+    /** En ny eller slettet .riv fil fra telefonen: temaets animationer laves forfra. */
+    static void riveChanged() {
+        MainActivity a = visible;
+        if (a == null) return;
+        a.handler.post(() -> {
+            a.riveSig = RiveTheme.signature(a);
+            a.setUpRive();
+        });
+    }
+
+    /** Baggrund, Ur og Fokus fra temaets .riv fil; fjerner de gamle først. */
+    private void setUpRive() {
+        if (rive != null) {
+            rive.release();
+            rive = null;
+            appliedLook = null;
+            applyLook();
+        }
+        rive = RiveTheme.Live.create(this, prefs, new RiveTheme.Host() {
+            @Override
+            public String greeting() {
+                return greetingText();
+            }
+
+            @Override
+            public String weather() {
+                if (stageParts != null) for (String p : stageParts) if (p.contains("°")) return p;
+                return Weather.cached(prefs);
+            }
+        });
+        if (rive == null) return;
+        rive.background(root, riveBgIndex, ambientView);
+        if (stage != null) rive.scene(stage);
+        else if (topBar != null && topBar.getVisibility() == View.VISIBLE) rive.clock(clockBox, dp(420), dp(140), clock, clockRing, themeClock);
+        else rive.clockCorner(root, dp(420), dp(140), dp(48));
+        rive.focus(root, column, () -> !ambient && night.getVisibility() != View.VISIBLE && visible == this);
+        rive.resume();
     }
 
     /** Sat, når prøven bestilles fra indstillingerne; vises, når forsiden kommer frem igen. */
